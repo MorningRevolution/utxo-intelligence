@@ -1,244 +1,261 @@
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useWallet } from "@/store/WalletContext";
-import { calculatePrivacyScore, formatBTC } from "@/utils/utxo-utils";
-import { Progress } from "@/components/ui/progress";
-import { Wallet, ShieldAlert, AlertTriangle, CheckCircle, FileText, Table, Bot } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { 
+  Wallet, 
+  Table, 
+  AlertTriangle, 
+  FileText, 
+  Bot, 
+  ArrowRight, 
+  CreditCard,
+  Tag,
+  Eye,
+  Shield
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { useWallet } from "@/store/WalletContext";
+import { formatBTC, calculatePrivacyScore } from "@/utils/utxo-utils";
 
-export default function Dashboard() {
-  const { walletData } = useWallet();
-  
-  if (!walletData) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[80vh] p-6">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-6">Welcome to UTXO Intelligence</h1>
-          <p className="text-xl text-gray-400 mb-8">
-            Your Bitcoin UTXO privacy analysis dashboard
-          </p>
-        </div>
+const Dashboard = () => {
+  const navigate = useNavigate();
+  const { walletData, hasWallet } = useWallet();
 
-        <Card className="w-full max-w-md bg-dark-card border-dark-lighter">
-          <CardHeader>
-            <CardTitle className="text-2xl">Get Started</CardTitle>
-            <CardDescription>Import your wallet to begin UTXO analysis</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link to="/wallet-import">
-              <Button className="w-full bg-bitcoin hover:bg-bitcoin-dark">
-                <Wallet className="mr-2 h-4 w-4" />
-                Import Wallet
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Calculate privacy metrics if wallet is loaded
+  const privacyScore = walletData ? calculatePrivacyScore(walletData.utxos) : 0;
+  const getScoreColor = () => {
+    if (privacyScore >= 80) return "bg-risk-low";
+    if (privacyScore >= 50) return "bg-risk-medium";
+    return "bg-risk-high";
+  };
 
-  // Calculate statistics
-  const privacyScore = calculatePrivacyScore(walletData.utxos);
-  const highRiskUtxos = walletData.utxos.filter(u => u.privacyRisk === 'high');
-  const mediumRiskUtxos = walletData.utxos.filter(u => u.privacyRisk === 'medium');
-  const lowRiskUtxos = walletData.utxos.filter(u => u.privacyRisk === 'low');
+  const getScoreText = () => {
+    if (privacyScore >= 80) return "Good";
+    if (privacyScore >= 50) return "Fair";
+    return "Poor";
+  };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Dashboard</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-dark-card border-dark-lighter">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-gray-400 text-sm font-normal">Wallet</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{walletData.name}</div>
-            <p className="text-sm text-gray-400">{walletData.utxos.length} UTXOs</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-dark-card border-dark-lighter">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-gray-400 text-sm font-normal">Balance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatBTC(walletData.totalBalance)}</div>
-            <p className="text-sm text-gray-400">Total Balance</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-dark-card border-dark-lighter">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-gray-400 text-sm font-normal">Privacy Score</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <div className="text-2xl font-bold">{privacyScore.toFixed(0)}/100</div>
-              {privacyScore >= 80 ? (
-                <CheckCircle className="text-risk-low h-5 w-5" />
-              ) : privacyScore >= 50 ? (
-                <AlertTriangle className="text-risk-medium h-5 w-5" />
-              ) : (
-                <ShieldAlert className="text-risk-high h-5 w-5" />
-              )}
-            </div>
-            <div className="mt-2">
-              <div className={`h-2 w-full rounded-full ${
-                  privacyScore >= 80 
-                    ? "bg-risk-low/20" 
-                    : privacyScore >= 50 
-                    ? "bg-risk-medium/20" 
-                    : "bg-risk-high/20"
-                }`}>
-                <div 
-                  className={`h-2 rounded-full ${
-                    privacyScore >= 80 
-                      ? "bg-risk-low" 
-                      : privacyScore >= 50 
-                      ? "bg-risk-medium" 
-                      : "bg-risk-high"
-                  }`}
-                  style={{ width: `${privacyScore}%` }}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-dark-card border-dark-lighter">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-gray-400 text-sm font-normal">UTXOs by Risk</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="text-center">
-                <div className="text-lg font-bold text-risk-low">{lowRiskUtxos.length}</div>
-                <p className="text-xs text-gray-400">Low</p>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-bold text-risk-medium">{mediumRiskUtxos.length}</div>
-                <p className="text-xs text-gray-400">Medium</p>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-bold text-risk-high">{highRiskUtxos.length}</div>
-                <p className="text-xs text-gray-400">High</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="container py-6">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-8">
+        <div className="flex items-center">
+          <Shield className="h-10 w-10 text-bitcoin mr-3" />
+          <h1 className="text-3xl font-bold text-white">UTXO Intelligence</h1>
+        </div>
       </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-dark-card border-dark-lighter">
+
+      {!hasWallet ? (
+        <Card className="bg-dark-card border-dark-border shadow-lg">
           <CardHeader>
-            <CardTitle>Privacy Risk Distribution</CardTitle>
-            <CardDescription>UTXO breakdown by privacy risk level</CardDescription>
+            <CardTitle>Welcome to UTXO Intelligence</CardTitle>
+            <CardDescription>
+              A privacy-focused UTXO management and tagging system for Bitcoin
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex h-12 w-full rounded-md overflow-hidden">
-              {lowRiskUtxos.length > 0 && (
-                <div 
-                  className="bg-risk-low h-full"
-                  style={{ width: `${(lowRiskUtxos.length / walletData.utxos.length) * 100}%` }}
-                />
-              )}
-              {mediumRiskUtxos.length > 0 && (
-                <div 
-                  className="bg-risk-medium h-full"
-                  style={{ width: `${(mediumRiskUtxos.length / walletData.utxos.length) * 100}%` }}
-                />
-              )}
-              {highRiskUtxos.length > 0 && (
-                <div 
-                  className="bg-risk-high h-full"
-                  style={{ width: `${(highRiskUtxos.length / walletData.utxos.length) * 100}%` }}
-                />
-              )}
+          <CardContent className="space-y-4">
+            <p>
+              This tool lets you analyze your Bitcoin UTXOs, assess privacy risks, and simulate transactions to identify potential privacy leaks.
+            </p>
+            <div className="rounded-md bg-dark-lighter p-4">
+              <h3 className="font-medium mb-2">To get started:</h3>
+              <p className="text-muted-foreground text-sm mb-4">
+                Import a wallet or load the demo wallet to explore the features.
+              </p>
+              <Button onClick={() => navigate("/wallet-import")}>
+                <Wallet className="mr-2 h-5 w-5" />
+                Import Wallet
+              </Button>
             </div>
-            
-            <div className="mt-4 space-y-2">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-risk-low mr-2" />
-                  <span>Low Risk</span>
-                </div>
-                <div>
-                  <span className="font-medium">{lowRiskUtxos.length} UTXOs</span>
-                  <span className="text-gray-400 ml-2">
-                    ({((lowRiskUtxos.length / walletData.utxos.length) * 100).toFixed(0)}%)
-                  </span>
-                </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <Card className="bg-dark-card border-dark-border shadow-lg">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Wallet Balance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-bitcoin">
+                {formatBTC(walletData!.totalBalance)}
               </div>
-              
-              <div className="flex justify-between items-center">
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-risk-medium mr-2" />
-                  <span>Medium Risk</span>
-                </div>
-                <div>
-                  <span className="font-medium">{mediumRiskUtxos.length} UTXOs</span>
-                  <span className="text-gray-400 ml-2">
-                    ({((mediumRiskUtxos.length / walletData.utxos.length) * 100).toFixed(0)}%)
-                  </span>
-                </div>
+              <p className="text-muted-foreground text-sm mt-1">{walletData?.utxos.length} UTXOs</p>
+            </CardContent>
+            <CardFooter className="pt-0">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/utxo-table")}>
+                <Eye className="mr-2 h-4 w-4" />
+                View UTXOs
+              </Button>
+            </CardFooter>
+          </Card>
+          
+          <Card className="bg-dark-card border-dark-border shadow-lg">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Privacy Score</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between mb-1">
+                <span className="text-3xl font-bold text-bitcoin">
+                  {privacyScore.toFixed(0)}/100
+                </span>
+                <span className={`text-${getScoreColor().replace('bg-', '')}`}>
+                  {getScoreText()}
+                </span>
               </div>
-              
-              <div className="flex justify-between items-center">
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-risk-high mr-2" />
+              <Progress value={privacyScore} className={getScoreColor()} />
+            </CardContent>
+            <CardFooter className="pt-0">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/report-export")}>
+                <FileText className="mr-2 h-4 w-4" />
+                View Full Report
+              </Button>
+            </CardFooter>
+          </Card>
+          
+          <Card className="bg-dark-card border-dark-border shadow-lg">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Risk Analysis</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between mb-1">
+                <div className="flex gap-2 items-center">
+                  <div className="w-3 h-3 rounded-full bg-risk-high"></div>
                   <span>High Risk</span>
                 </div>
-                <div>
-                  <span className="font-medium">{highRiskUtxos.length} UTXOs</span>
-                  <span className="text-gray-400 ml-2">
-                    ({((highRiskUtxos.length / walletData.utxos.length) * 100).toFixed(0)}%)
-                  </span>
+                <span>{walletData?.utxos.filter(u => u.privacyRisk === 'high').length}</span>
+              </div>
+              <div className="flex justify-between mb-1">
+                <div className="flex gap-2 items-center">
+                  <div className="w-3 h-3 rounded-full bg-risk-medium"></div>
+                  <span>Medium Risk</span>
                 </div>
+                <span>{walletData?.utxos.filter(u => u.privacyRisk === 'medium').length}</span>
+              </div>
+              <div className="flex justify-between">
+                <div className="flex gap-2 items-center">
+                  <div className="w-3 h-3 rounded-full bg-risk-low"></div>
+                  <span>Low Risk</span>
+                </div>
+                <span>{walletData?.utxos.filter(u => u.privacyRisk === 'low').length}</span>
+              </div>
+            </CardContent>
+            <CardFooter className="pt-0">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/risk-simulator")}>
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Simulate Transaction
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="bg-dark-card border-dark-border shadow-lg">
+          <CardHeader>
+            <CardTitle>Key Features</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-4 items-start">
+              <div className="bg-dark-lighter p-3 rounded-lg">
+                <CreditCard className="h-6 w-6 text-bitcoin" />
+              </div>
+              <div>
+                <h3 className="font-medium">UTXO Management</h3>
+                <p className="text-muted-foreground text-sm">
+                  View all your UTXOs, track confirmations, and monitor balances in one place
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex gap-4 items-start">
+              <div className="bg-dark-lighter p-3 rounded-lg">
+                <Tag className="h-6 w-6 text-bitcoin" />
+              </div>
+              <div>
+                <h3 className="font-medium">Custom Tagging</h3>
+                <p className="text-muted-foreground text-sm">
+                  Create and apply custom tags to organize UTXOs by source, purpose, or privacy level
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex gap-4 items-start">
+              <div className="bg-dark-lighter p-3 rounded-lg">
+                <AlertTriangle className="h-6 w-6 text-bitcoin" />
+              </div>
+              <div>
+                <h3 className="font-medium">Privacy Risk Simulation</h3>
+                <p className="text-muted-foreground text-sm">
+                  Simulate transactions to analyze potential privacy implications before sending
+                </p>
               </div>
             </div>
           </CardContent>
+          <CardFooter>
+            <Button className="w-full" onClick={() => navigate("/wallet-import")} disabled={hasWallet}>
+              <ArrowRight className="mr-2 h-5 w-5" />
+              {hasWallet ? 'Wallet Already Imported' : 'Get Started'}
+            </Button>
+          </CardFooter>
         </Card>
         
-        <Card className="bg-dark-card border-dark-lighter">
+        <Card className="bg-dark-card border-dark-border shadow-lg">
           <CardHeader>
-            <CardTitle>Actions</CardTitle>
-            <CardDescription>Tools to manage your UTXOs</CardDescription>
+            <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <Link to="/utxo-table">
-                <Button variant="secondary" className="w-full">
-                  <Table className="mr-2 h-4 w-4" />
-                  View UTXOs
-                </Button>
-              </Link>
-              
-              <Link to="/risk-simulator">
-                <Button variant="secondary" className="w-full">
-                  <AlertTriangle className="mr-2 h-4 w-4" />
-                  Risk Simulator
-                </Button>
-              </Link>
-              
-              <Link to="/report-export">
-                <Button variant="secondary" className="w-full">
-                  <FileText className="mr-2 h-4 w-4" />
-                  Export Report
-                </Button>
-              </Link>
-              
-              <Link to="/ai-assistant">
-                <Button variant="secondary" className="w-full">
-                  <Bot className="mr-2 h-4 w-4" />
-                  AI Assistant
-                </Button>
-              </Link>
-            </div>
+          <CardContent className="space-y-2">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => navigate("/wallet-import")}
+            >
+              <Wallet className="mr-2 h-5 w-5" />
+              {hasWallet ? 'Update Wallet' : 'Import Wallet'}
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => navigate("/utxo-table")}
+              disabled={!hasWallet}
+            >
+              <Table className="mr-2 h-5 w-5" />
+              Browse UTXOs
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => navigate("/risk-simulator")}
+              disabled={!hasWallet}
+            >
+              <AlertTriangle className="mr-2 h-5 w-5" />
+              Simulate Transaction
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => navigate("/report-export")}
+              disabled={!hasWallet}
+            >
+              <FileText className="mr-2 h-5 w-5" />
+              Generate Report
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => navigate("/ai-assistant")}
+            >
+              <Bot className="mr-2 h-5 w-5" />
+              Ask AI Assistant
+            </Button>
           </CardContent>
         </Card>
       </div>
     </div>
   );
-}
+};
+
+export default Dashboard;
