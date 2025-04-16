@@ -61,6 +61,22 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				bitcoin: {
+					DEFAULT: '#f7931a',
+					dark: '#e57c12',
+					light: '#ffba61',
+				},
+				risk: {
+					low: '#4ade80',    // Green
+					medium: '#fbbf24', // Amber
+					high: '#ef4444',   // Red
+				},
+				dark: {
+					DEFAULT: '#121212',
+					lighter: '#1e1e1e',
+					light: '#2d2d2d',
+					card: '#252525'
 				}
 			},
 			borderRadius: {
