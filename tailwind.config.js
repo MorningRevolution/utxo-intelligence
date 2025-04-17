@@ -52,12 +52,12 @@ module.exports = {
           foreground: "hsl(var(--card-foreground))",
         },
         // Custom colors for the app with improved contrast
-        "dark": "#121212",
-        "dark-lighter": "#1E1E1E",
-        "dark-card": "#252525",
-        "dark-border": "#333333",
+        "dark": "#1c1c1e", // Changed from #121212 to charcoal
+        "dark-lighter": "#24242c", // Adjusted to match new charcoal
+        "dark-card": "#2c2c34", // Adjusted card background
+        "dark-border": "#3a3a44", // Improved border contrast
         "bitcoin": "#f7931a",
-        "risk-low": "#10b981", // green
+        "risk-low": "#22c55e", // Slightly brighter green for better contrast
         "risk-medium": "#f59e0b", // amber
         "risk-high": "#ef4444", // red
       },

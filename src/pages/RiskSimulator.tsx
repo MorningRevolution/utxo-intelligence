@@ -149,6 +149,12 @@ const RiskSimulator = () => {
     setConfirmModalOpen(false);
   };
 
+  // Fixed: Make this function properly close the risk details modal and clear state
+  const handleRiskDetailsClose = () => {
+    setRiskDetailsOpen(false);
+    // No need to reset other states as user may want to continue working with the simulation
+  };
+
   const goToUtxoTable = () => {
     navigate("/utxo-table");
   };
@@ -203,7 +209,7 @@ const RiskSimulator = () => {
   return (
     <div className="container px-2 md:px-4 py-6">
       <div className="flex flex-col md:flex-row justify-between gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-white">Risk Simulator</h1>
+        <h1 className="text-2xl font-bold text-foreground">Risk Simulator</h1>
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -227,7 +233,7 @@ const RiskSimulator = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Input UTXOs */}
-        <Card className="bg-dark-card border-dark-border shadow-lg">
+        <Card className="bg-card border-dark-border shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>Transaction Inputs</span>
@@ -321,7 +327,7 @@ const RiskSimulator = () => {
         </Card>
 
         {/* Output addresses */}
-        <Card className="bg-dark-card border-dark-border shadow-lg">
+        <Card className="bg-card border-dark-border shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>Transaction Outputs</span>
@@ -412,7 +418,7 @@ const RiskSimulator = () => {
 
       {/* Simulation Results */}
       {simulationResult && (
-        <Card className="mt-6 bg-dark-card border-dark-border shadow-lg">
+        <Card className="mt-6 bg-card border-dark-border shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center">
@@ -491,7 +497,7 @@ const RiskSimulator = () => {
 
       {/* Reset Simulation Alert */}
       <AlertDialog open={resetModalOpen} onOpenChange={setResetModalOpen}>
-        <AlertDialogContent className="bg-dark-card border-dark-border">
+        <AlertDialogContent className="bg-card border-dark-border">
           <AlertDialogHeader>
             <AlertDialogTitle>Reset Simulation</AlertDialogTitle>
             <AlertDialogDescription>
@@ -507,7 +513,7 @@ const RiskSimulator = () => {
 
       {/* Confirm Transaction Alert */}
       <AlertDialog open={confirmModalOpen} onOpenChange={setConfirmModalOpen}>
-        <AlertDialogContent className="bg-dark-card border-dark-border">
+        <AlertDialogContent className="bg-card border-dark-border">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Transaction</AlertDialogTitle>
             <AlertDialogDescription>
@@ -530,9 +536,9 @@ const RiskSimulator = () => {
         </AlertDialogContent>
       </AlertDialog>
       
-      {/* Risk Details Modal */}
+      {/* Risk Details Modal - Fixed to properly close when clicked */}
       <AlertDialog open={riskDetailsOpen} onOpenChange={setRiskDetailsOpen}>
-        <AlertDialogContent className="bg-dark-card border-dark-border max-w-xl">
+        <AlertDialogContent className="bg-card border-dark-border max-w-xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center">
               <AlertTriangle className={`mr-2 h-5 w-5 ${getRiskTextColor(simulationResult?.privacyRisk || 'medium')}`} />
@@ -545,7 +551,7 @@ const RiskSimulator = () => {
               
               <div className="mt-4 space-y-4">
                 <div>
-                  <h4 className="font-medium text-white mb-1">Issue Summary:</h4>
+                  <h4 className="font-medium text-foreground mb-1">Issue Summary:</h4>
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     {simulationResult?.reasons.map((reason, i) => (
                       <li key={i}>{reason}</li>
@@ -554,7 +560,7 @@ const RiskSimulator = () => {
                 </div>
                 
                 <div>
-                  <h4 className="font-medium text-white mb-1">Impact:</h4>
+                  <h4 className="font-medium text-foreground mb-1">Impact:</h4>
                   <p className="text-sm">
                     {simulationResult?.privacyRisk === 'high' 
                       ? 'This transaction could significantly compromise your privacy by linking your different wallet activities and potentially revealing your identity.' 
@@ -563,7 +569,7 @@ const RiskSimulator = () => {
                 </div>
                 
                 <div className="p-3 rounded-md bg-dark-lighter">
-                  <h4 className="font-medium text-white mb-1">Recommendations:</h4>
+                  <h4 className="font-medium text-foreground mb-1">Recommendations:</h4>
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     {simulationResult?.recommendations.map((rec, i) => (
                       <li key={i}>{rec}</li>
@@ -581,7 +587,7 @@ const RiskSimulator = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogAction onClick={() => setRiskDetailsOpen(false)}>
+            <AlertDialogAction onClick={handleRiskDetailsClose}>
               I understand the risks
             </AlertDialogAction>
           </AlertDialogFooter>

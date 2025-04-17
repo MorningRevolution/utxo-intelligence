@@ -46,14 +46,14 @@
   }
 
   .dark {
-    --background: 240 10% 7%; /* Improved dark background */
+    --background: 240 10% 12%; /* Improved charcoal background instead of #121212 */
     --foreground: 210 40% 98%;
 
-    --card: 240 10% 10%; /* Improved dark card */
-    --card-foreground: 210 40% 98%;
+    --card: 240 10% 14%; /* Improved darker card */
+    --card-foreground: 0 0% 98%; /* Improved text contrast */
 
-    --popover: 240 10% 7%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 240 10% 12%;
+    --popover-foreground: 0 0% 98%;
 
     --primary: 29 98% 54%; /* Bitcoin orange */
     --primary-foreground: 0 0% 100%;
@@ -62,7 +62,7 @@
     --secondary-foreground: 210 40% 98%;
 
     --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 70%; /* Improved visibility */
+    --muted-foreground: 215 20.2% 75%; /* Improved visibility */
 
     --accent: 29 98% 54%; /* Bitcoin orange */
     --accent-foreground: 0 0% 100%;
@@ -74,13 +74,13 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 29 98% 54%; /* Bitcoin orange */
     
-    --sidebar-background: 240 10% 5%;
-    --sidebar-foreground: 210 40% 98%;
+    --sidebar-background: 240 10% 10%;
+    --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 29 98% 54%; /* Bitcoin orange */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 10% 12%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 240 10% 16%; /* Better contrast */
+    --sidebar-accent: 240 10% 14%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 10% 18%; /* Better contrast */
     --sidebar-ring: 29 98% 54%; /* Bitcoin orange */
   }
 }
