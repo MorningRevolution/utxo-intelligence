@@ -1,5 +1,4 @@
-
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { WalletData, UTXO, Tag, Transaction, Report } from '../types/utxo';
 import { mockWalletData, mockTags } from '../data/mockData';
 
@@ -17,6 +16,8 @@ interface WalletContextType {
   clearSelectedUTXOs: () => void;
   generateReport: () => Report;
   hasWallet: boolean;
+  preselectedForSimulation: boolean;
+  setPreselectedForSimulation: (value: boolean) => void;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -25,10 +26,39 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [walletData, setWalletData] = useState<WalletData | null>(null);
   const [tags, setTags] = useState<Tag[]>(mockTags);
   const [selectedUTXOs, setSelectedUTXOs] = useState<UTXO[]>([]);
+  const [preselectedForSimulation, setPreselectedForSimulation] = useState<boolean>(false);
   
   const importWallet = (data: WalletData) => {
     setWalletData(data);
+    setPreselectedForSimulation(false);
   };
+
+  useEffect(() => {
+    if (walletData && !preselectedForSimulation) {
+      const kycUtxo = walletData.utxos.find(utxo => 
+        utxo.tags.includes('Exchange') || utxo.tags.includes('Bull KYC')
+      );
+      
+      const coinjoinUtxo = walletData.utxos.find(utxo => 
+        utxo.tags.includes('Coinjoin')
+      );
+      
+      const personalUtxo = walletData.utxos.find(utxo => 
+        utxo.tags.includes('Personal') && 
+        (!kycUtxo || new Date(utxo.createdAt).getTime() - new Date(kycUtxo.createdAt).getTime() > 30 * 24 * 60 * 60 * 1000)
+      );
+      
+      const preselectUtxos = [];
+      if (kycUtxo) preselectUtxos.push(kycUtxo);
+      if (coinjoinUtxo) preselectUtxos.push(coinjoinUtxo);
+      if (personalUtxo) preselectUtxos.push(personalUtxo);
+      
+      if (preselectUtxos.length >= 2) {
+        setSelectedUTXOs(preselectUtxos);
+        setPreselectedForSimulation(true);
+      }
+    }
+  }, [walletData, preselectedForSimulation]);
 
   const importFromJson = (jsonString: string) => {
     try {
@@ -103,7 +133,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   };
 
   const selectUTXO = (utxo: UTXO) => {
-    setSelectedUTXOs([...selectedUTXOs, utxo]);
+    if (!selectedUTXOs.some(u => u.txid === utxo.txid)) {
+      setSelectedUTXOs([...selectedUTXOs, utxo]);
+    }
   };
 
   const deselectUTXO = (utxo: UTXO) => {
@@ -119,16 +151,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       throw new Error("No wallet data available");
     }
     
-    // Calculate tag breakdown
     const tagBreakdown: { tagName: string; count: number; totalAmount: number }[] = [];
     
-    // Get unique tags
     const uniqueTags = new Set<string>();
     walletData.utxos.forEach(utxo => {
       utxo.tags.forEach(tag => uniqueTags.add(tag));
     });
     
-    // Calculate stats for each tag
     uniqueTags.forEach(tagName => {
       const utxosWithTag = walletData.utxos.filter(utxo => 
         utxo.tags.includes(tagName)
@@ -141,12 +170,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       });
     });
     
-    // Find risky UTXOs
     const riskyUtxos = walletData.utxos.filter(utxo => 
       utxo.privacyRisk === 'high' || utxo.privacyRisk === 'medium'
     );
     
-    // Calculate privacy score (0-100)
     const highRiskCount = walletData.utxos.filter(u => u.privacyRisk === 'high').length;
     const mediumRiskCount = walletData.utxos.filter(u => u.privacyRisk === 'medium').length;
     const totalUtxos = walletData.utxos.length;
@@ -155,7 +182,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       ((highRiskCount * 30) + (mediumRiskCount * 10)) / totalUtxos
     );
     
-    // Generate recommendations
     const recommendations = [
       "Consider using a Coinjoin transaction for your high-risk UTXOs",
       "Avoid address reuse for better privacy",
@@ -197,7 +223,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         deselectUTXO,
         clearSelectedUTXOs,
         generateReport,
-        hasWallet: !!walletData
+        hasWallet: !!walletData,
+        preselectedForSimulation,
+        setPreselectedForSimulation
       }}
     >
       {children}

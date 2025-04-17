@@ -26,9 +26,9 @@ import { Check, Info, Trash, AlertTriangle, ArrowRight, Eye, RefreshCcw, Shield,
 const RiskSimulator = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { selectedUTXOs, hasWallet, clearSelectedUTXOs } = useWallet();
+  const { selectedUTXOs, hasWallet, clearSelectedUTXOs, preselectedForSimulation, setPreselectedForSimulation } = useWallet();
   const [outputs, setOutputs] = useState<{ address: string; amount: number }[]>([
-    { address: "", amount: 0 }
+    { address: "bc1qu6jf0q7cjmj9pz4ymmwdj6tt4rdh2z9vqzt3xw", amount: 0.1 }
   ]);
   const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
@@ -45,6 +45,16 @@ const RiskSimulator = () => {
       });
     }
   }, [hasWallet, navigate, toast]);
+
+  // Auto-simulate transaction with preselected UTXOs on first load
+  useEffect(() => {
+    if (preselectedForSimulation && selectedUTXOs.length >= 2 && outputs[0].address) {
+      // Only run once when component mounts with preselected UTXOs
+      simulateTransaction();
+      // Mark as handled so it doesn't run again
+      setPreselectedForSimulation(false);
+    }
+  }, [preselectedForSimulation, selectedUTXOs]);
 
   const totalInputAmount = selectedUTXOs.reduce((sum, utxo) => sum + utxo.amount, 0);
   const totalOutputAmount = outputs.reduce((sum, output) => sum + (output.amount || 0), 0);

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/store/WalletContext";
-import { mockWalletJson } from "@/data/mockData";
+import { mockWalletData } from "@/data/mockData";
 
 const WalletImport = () => {
   const navigate = useNavigate();
@@ -54,11 +54,11 @@ const WalletImport = () => {
   const handleDemoWallet = () => {
     setIsLoading(true);
     try {
-      // Import mock wallet data
-      importFromJson(mockWalletJson);
+      // Import full mock wallet data with all 14 UTXOs
+      importWallet(mockWalletData);
       toast({
         title: "Demo wallet loaded",
-        description: "A demo wallet has been loaded with sample data",
+        description: "A demo wallet has been loaded with all sample data",
       });
       navigate("/utxo-table");
     } catch (error) {
