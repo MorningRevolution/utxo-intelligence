@@ -14,25 +14,34 @@ export const calculateTransactionPrivacyRisk = (
   const uniqueAddresses = new Set(outputAddresses);
   if (uniqueAddresses.size < outputAddresses.length) {
     risk = 'high';
-    reasons.push('Output address reuse detected');
-    recommendations.push('Avoid using the same address for multiple outputs');
+    reasons.push('Address reuse detected in outputs');
+    recommendations.push('Use unique addresses for each output to improve privacy');
   }
 
-  // Check for mixing tagged UTXOs
+  // Check for mixing tagged UTXOs with different origins
   const tags = inputs.flatMap(input => input.tags);
   const uniqueTags = new Set(tags);
 
   if (uniqueTags.size > 1) {
     risk = risk === 'high' ? 'high' : 'medium';
-    reasons.push('Mixing UTXOs with different tags can reduce privacy');
-    recommendations.push('Try to use UTXOs with the same tag in a single transaction');
+    reasons.push('Mixing UTXOs with different tags/sources can link your activities');
+    recommendations.push('Try to use UTXOs with the same tag/source in a single transaction');
+    
+    // Check for specific high-risk tag combinations
+    if (tags.includes('Exchange') || tags.includes('Bull KYC')) {
+      if (tags.some(tag => ['Personal', 'Gift', 'P2P'].includes(tag))) {
+        risk = 'high';
+        reasons.push('Mixing KYC exchange UTXOs with personal/P2P UTXOs compromises privacy');
+        recommendations.push('Never combine KYC exchange UTXOs with personal/anonymous UTXOs');
+      }
+    }
   }
 
   // Check for high-risk inputs
   const highRiskInputs = inputs.filter(input => input.privacyRisk === 'high');
   if (highRiskInputs.length > 0) {
     risk = 'high';
-    reasons.push('Using high-risk UTXOs as inputs');
+    reasons.push('Using high-risk UTXOs as inputs exposes transaction history');
     recommendations.push('Consider using CoinJoin or other privacy techniques before spending high-risk UTXOs');
   }
 
@@ -41,7 +50,7 @@ export const calculateTransactionPrivacyRisk = (
   const uniqueAmounts = new Set(amounts);
   if (uniqueAmounts.size < inputs.length / 2) {
     risk = risk === 'high' ? 'high' : 'medium';
-    reasons.push('Low input amount diversity');
+    reasons.push('Low input amount diversity makes transaction easier to identify');
     recommendations.push('Use inputs with different amounts to improve privacy');
   }
 
@@ -54,6 +63,26 @@ export const calculateTransactionPrivacyRisk = (
   if ((maxDate - minDate) < 7 * 24 * 60 * 60 * 1000) {
     reasons.push('Low time diversity between inputs');
     recommendations.push('Use UTXOs of different ages to improve transaction privacy');
+  } else {
+    // If there's significant time diversity (over 90 days), flag it as potentially problematic
+    if ((maxDate - minDate) > 90 * 24 * 60 * 60 * 1000) {
+      risk = risk === 'high' ? 'high' : 'medium';
+      reasons.push('Mixing very old UTXOs with recent ones may reveal spending patterns');
+      recommendations.push('Consider grouping UTXOs by age ranges when spending');
+    }
+  }
+
+  // Check for potential identifier outputs (round numbers that could be change addresses)
+  const roundAmounts = outputAddresses.filter((_, i) => {
+    // This is a placeholder for checking if amounts are suspiciously round
+    // In a real implementation, we would check the actual amount values
+    return i % 2 === 0; // Simplified check for demo purposes
+  });
+  
+  if (roundAmounts.length > 0 && inputs.length > 1) {
+    risk = risk === 'high' ? 'high' : 'medium';
+    reasons.push('Round amount outputs may reveal change addresses');
+    recommendations.push('Consider using a technique like PayJoin to obscure change outputs');
   }
 
   // If no specific issues were found but we have mixed UTXOs, keep medium
@@ -68,6 +97,14 @@ export const calculateTransactionPrivacyRisk = (
     risk = 'medium';
     reasons.push('Single-input transaction has reduced privacy');
     recommendations.push('Consider using multiple inputs to improve transaction privacy');
+  }
+
+  // Generate safe alternative suggestion
+  let safeAlternative = null;
+  if (risk === 'high' || risk === 'medium') {
+    // In a real implementation, this would analyze UTXOs and suggest safer combinations
+    // For the demo, we'll just make a placeholder recommendation
+    safeAlternative = "Consider using only Coinjoin UTXOs with similar age profiles";
   }
 
   return {
@@ -85,7 +122,8 @@ export const calculateTransactionPrivacyRisk = (
     },
     privacyRisk: risk,
     reasons,
-    recommendations
+    recommendations,
+    safeAlternative
   };
 };
 
@@ -140,6 +178,20 @@ export const getRiskTextColor = (risk: 'low' | 'medium' | 'high'): string => {
       return 'text-risk-high';
     default:
       return 'text-gray-400';
+  }
+};
+
+// Get risk badge style
+export const getRiskBadgeStyle = (risk: 'low' | 'medium' | 'high'): string => {
+  switch (risk) {
+    case 'low':
+      return 'bg-risk-low/20 text-risk-low border border-risk-low/20';
+    case 'medium':
+      return 'bg-risk-medium/20 text-risk-medium border border-risk-medium/20';
+    case 'high':
+      return 'bg-risk-high/20 text-risk-high border border-risk-high/20';
+    default:
+      return 'bg-gray-500/20 text-gray-500 border border-gray-500/20';
   }
 };
 

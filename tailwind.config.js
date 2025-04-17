@@ -51,11 +51,11 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Custom colors for the app
-        "dark": "#1A1F2C",
-        "dark-lighter": "#282F3F",
-        "dark-card": "#222736",
-        "dark-border": "#343C4F",
+        // Custom colors for the app with improved contrast
+        "dark": "#121212",
+        "dark-lighter": "#1E1E1E",
+        "dark-card": "#252525",
+        "dark-border": "#333333",
         "bitcoin": "#f7931a",
         "risk-low": "#10b981", // green
         "risk-medium": "#f59e0b", // amber

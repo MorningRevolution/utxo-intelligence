@@ -19,9 +19,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/store/WalletContext";
-import { formatBTC, calculateTransactionPrivacyRisk, getRiskColor, getRiskTextColor } from "@/utils/utxo-utils";
+import { formatBTC, calculateTransactionPrivacyRisk, getRiskColor, getRiskTextColor, getRiskBadgeStyle } from "@/utils/utxo-utils";
 import { UTXO, SimulationResult } from "@/types/utxo";
-import { Check, Info, Trash, AlertTriangle, ArrowRight, Eye, RefreshCcw } from "lucide-react";
+import { Check, Info, Trash, AlertTriangle, ArrowRight, Eye, RefreshCcw, Shield, Calendar, Tags } from "lucide-react";
 
 const RiskSimulator = () => {
   const navigate = useNavigate();
@@ -33,6 +33,7 @@ const RiskSimulator = () => {
   const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [riskDetailsOpen, setRiskDetailsOpen] = useState(false);
 
   // Redirect if no wallet is loaded
   useEffect(() => {
@@ -106,19 +107,11 @@ const RiskSimulator = () => {
 
     setSimulationResult(result);
 
-    // Show toast based on risk level
-    if (result.privacyRisk === 'high') {
-      toast({
-        variant: "destructive",
-        title: "High Privacy Risk Detected",
-        description: "This transaction has serious privacy implications",
-      });
-    } else if (result.privacyRisk === 'medium') {
-      toast({
-        title: "Medium Privacy Risk Detected",
-        description: "This transaction has some privacy concerns",
-      });
+    // Show risk details modal for medium/high risk
+    if (result.privacyRisk === 'high' || result.privacyRisk === 'medium') {
+      setRiskDetailsOpen(true);
     } else {
+      // Show toast for low risk
       toast({
         title: "Low Privacy Risk",
         description: "This transaction appears to maintain good privacy",
@@ -148,6 +141,53 @@ const RiskSimulator = () => {
 
   const goToUtxoTable = () => {
     navigate("/utxo-table");
+  };
+
+  // Helper function to get a human readable date difference
+  const getDateDiff = (date1: string, date2: string) => {
+    const d1 = new Date(date1);
+    const d2 = new Date(date2);
+    const diffTime = Math.abs(d2.getTime() - d1.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return "Same day";
+    if (diffDays === 1) return "1 day";
+    if (diffDays < 7) return `${diffDays} days`;
+    if (diffDays < 30) return `${Math.floor(diffDays/7)} weeks`;
+    if (diffDays < 365) return `${Math.floor(diffDays/30)} months`;
+    return `${Math.floor(diffDays/365)} years`;
+  };
+
+  // Get all unique tags from selected UTXOs
+  const getUniqueTags = () => {
+    const tags = new Set<string>();
+    selectedUTXOs.forEach(utxo => {
+      utxo.tags.forEach(tag => tags.add(tag));
+    });
+    return Array.from(tags);
+  };
+
+  // Check if there are significant date differences in UTXOs
+  const hasDateDiversityWarning = () => {
+    if (selectedUTXOs.length <= 1) return false;
+    
+    const dates = selectedUTXOs.map(utxo => new Date(utxo.createdAt).getTime());
+    const minDate = Math.min(...dates);
+    const maxDate = Math.max(...dates);
+    
+    // Warn if UTXOs span more than 90 days
+    return (maxDate - minDate) > 90 * 24 * 60 * 60 * 1000;
+  };
+
+  // Check if there are mixed tags that could compromise privacy
+  const hasMixedTagWarning = () => {
+    const tags = getUniqueTags();
+    
+    // Check for specific risky combinations
+    const hasKYC = tags.some(tag => tag === 'Exchange' || tag === 'Bull KYC');
+    const hasPersonal = tags.some(tag => ['Personal', 'Gift', 'P2P'].includes(tag));
+    
+    return hasKYC && hasPersonal;
   };
 
   return (
@@ -213,20 +253,54 @@ const RiskSimulator = () => {
                       <div className="flex items-center">
                         <div className={`w-2 h-2 rounded-full ${getRiskColor(utxo.privacyRisk)} mr-2`}></div>
                         <span className="text-sm">{formatBTC(utxo.amount)}</span>
+                        <span className="ml-2 text-xs text-muted-foreground flex items-center">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {new Date(utxo.createdAt).toLocaleDateString()}
+                        </span>
                       </div>
                     </div>
                     {utxo.tags.length > 0 && (
-                      <div className="flex gap-1">
-                        {utxo.tags.slice(0, 2).map((tag, i) => (
-                          <Badge key={i} variant="outline" className="text-xs">{tag}</Badge>
+                      <div className="flex flex-wrap gap-1 max-w-[120px]">
+                        {utxo.tags.map((tag, i) => (
+                          <Badge key={i} variant="outline" className="text-xs whitespace-nowrap">{tag}</Badge>
                         ))}
-                        {utxo.tags.length > 2 && <Badge variant="outline">+{utxo.tags.length - 2}</Badge>}
                       </div>
                     )}
                   </div>
                 ))}
               </div>
             )}
+            
+            {selectedUTXOs.length > 0 && (
+              <div className="mt-2">
+                {/* Warnings section */}
+                {hasMixedTagWarning() && (
+                  <div className="flex items-center gap-2 p-2 rounded bg-amber-500/10 mb-2 text-amber-400 text-xs">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                    <p>Mixing KYC and non-KYC UTXOs may compromise your privacy</p>
+                  </div>
+                )}
+                
+                {hasDateDiversityWarning() && (
+                  <div className="flex items-center gap-2 p-2 rounded bg-amber-500/10 mb-2 text-amber-400 text-xs">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                    <p>Large time diversity between UTXOs may reveal spending patterns</p>
+                  </div>
+                )}
+                
+                {/* Tags summary */}
+                <div className="mt-3 flex items-center gap-1">
+                  <Tags className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Tags: </span>
+                  <div className="flex flex-wrap gap-1">
+                    {getUniqueTags().map((tag, i) => (
+                      <Badge key={i} variant="outline" className="text-xs">{tag}</Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="mt-4 pt-4 border-t border-dark-border">
               <div className="flex justify-between">
                 <span>Total Input:</span>
@@ -330,11 +404,14 @@ const RiskSimulator = () => {
       {simulationResult && (
         <Card className="mt-6 bg-dark-card border-dark-border shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <span>Privacy Analysis Results</span>
-              <div className={`ml-auto px-3 py-1 rounded-full text-sm font-medium ${getRiskTextColor(simulationResult.privacyRisk)}`}>
-                <span className="capitalize">{simulationResult.privacyRisk}</span> Risk
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Shield className="mr-2 h-5 w-5" />
+                <span>Privacy Analysis Results</span>
               </div>
+              <Badge className={`ml-auto px-3 py-1 ${getRiskBadgeStyle(simulationResult.privacyRisk)}`}>
+                <span className="capitalize">{simulationResult.privacyRisk}</span> Risk
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -359,6 +436,13 @@ const RiskSimulator = () => {
                   <li key={index} className="text-sm">{recommendation}</li>
                 ))}
               </ul>
+              
+              {simulationResult.safeAlternative && (
+                <div className="mt-3 p-3 rounded-md border border-primary/30 bg-primary/5">
+                  <p className="text-sm font-medium text-primary">Suggested Alternative:</p>
+                  <p className="text-sm mt-1">{simulationResult.safeAlternative}</p>
+                </div>
+              )}
             </div>
             
             <Separator />
@@ -397,7 +481,7 @@ const RiskSimulator = () => {
 
       {/* Reset Simulation Alert */}
       <AlertDialog open={resetModalOpen} onOpenChange={setResetModalOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-dark-card border-dark-border">
           <AlertDialogHeader>
             <AlertDialogTitle>Reset Simulation</AlertDialogTitle>
             <AlertDialogDescription>
@@ -413,7 +497,7 @@ const RiskSimulator = () => {
 
       {/* Confirm Transaction Alert */}
       <AlertDialog open={confirmModalOpen} onOpenChange={setConfirmModalOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-dark-card border-dark-border">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Transaction</AlertDialogTitle>
             <AlertDialogDescription>
@@ -431,6 +515,64 @@ const RiskSimulator = () => {
             <AlertDialogAction onClick={handleConfirmTransaction}>
               <Check className="mr-2 h-4 w-4" />
               Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Risk Details Modal */}
+      <AlertDialog open={riskDetailsOpen} onOpenChange={setRiskDetailsOpen}>
+        <AlertDialogContent className="bg-dark-card border-dark-border max-w-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center">
+              <AlertTriangle className={`mr-2 h-5 w-5 ${getRiskTextColor(simulationResult?.privacyRisk || 'medium')}`} />
+              Privacy Risk Assessment
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <Badge className={`inline-flex my-2 ${getRiskBadgeStyle(simulationResult?.privacyRisk || 'medium')}`}>
+                <span className="capitalize">{simulationResult?.privacyRisk}</span> Risk Level
+              </Badge>
+              
+              <div className="mt-4 space-y-4">
+                <div>
+                  <h4 className="font-medium text-white mb-1">Issue Summary:</h4>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    {simulationResult?.reasons.map((reason, i) => (
+                      <li key={i}>{reason}</li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-white mb-1">Impact:</h4>
+                  <p className="text-sm">
+                    {simulationResult?.privacyRisk === 'high' 
+                      ? 'This transaction could significantly compromise your privacy by linking your different wallet activities and potentially revealing your identity.' 
+                      : 'This transaction has some privacy concerns that could leak information about your wallet structure and usage patterns.'}
+                  </p>
+                </div>
+                
+                <div className="p-3 rounded-md bg-dark-lighter">
+                  <h4 className="font-medium text-white mb-1">Recommendations:</h4>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    {simulationResult?.recommendations.map((rec, i) => (
+                      <li key={i}>{rec}</li>
+                    ))}
+                  </ul>
+                </div>
+                
+                {simulationResult?.safeAlternative && (
+                  <div className="p-3 rounded-md border border-primary/30 bg-primary/5">
+                    <h4 className="font-medium text-primary mb-1">Suggested Alternative Approach:</h4>
+                    <p className="text-sm">{simulationResult.safeAlternative}</p>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogAction onClick={() => setRiskDetailsOpen(false)}>
+              I understand the risks
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

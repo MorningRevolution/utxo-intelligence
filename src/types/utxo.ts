@@ -41,6 +41,7 @@ export interface SimulationResult {
   privacyRisk: 'low' | 'medium' | 'high';
   reasons: string[];
   recommendations: string[];
+  safeAlternative?: string | null;
 }
 
 export interface Report {

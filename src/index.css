@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -45,10 +46,10 @@
   }
 
   .dark {
-    --background: 240 10% 7%; /* Dark background */
+    --background: 240 10% 7%; /* Improved dark background */
     --foreground: 210 40% 98%;
 
-    --card: 240 10% 10%; /* Dark card */
+    --card: 240 10% 10%; /* Improved dark card */
     --card-foreground: 210 40% 98%;
 
     --popover: 240 10% 7%;
@@ -61,7 +62,7 @@
     --secondary-foreground: 210 40% 98%;
 
     --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted-foreground: 215 20.2% 70%; /* Improved visibility */
 
     --accent: 29 98% 54%; /* Bitcoin orange */
     --accent-foreground: 0 0% 100%;
@@ -69,7 +70,7 @@
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
+    --border: 217.2 32.6% 24%; /* Better contrast border */
     --input: 217.2 32.6% 17.5%;
     --ring: 29 98% 54%; /* Bitcoin orange */
     
@@ -79,7 +80,7 @@
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 10% 12%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 240 10% 12%;
+    --sidebar-border: 240 10% 16%; /* Better contrast */
     --sidebar-ring: 29 98% 54%; /* Bitcoin orange */
   }
 }
@@ -91,5 +92,15 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+  
+  /* Improved text legibility */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight text-foreground;
+  }
+  
+  /* Improved card styling */
+  .card-enhanced {
+    @apply bg-dark-card border border-dark-border shadow-md;
   }
 }

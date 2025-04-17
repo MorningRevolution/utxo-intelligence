@@ -1,4 +1,3 @@
-
 import { UTXO, WalletData, Tag, Transaction } from '../types/utxo';
 
 export const mockTags: Tag[] = [
@@ -9,6 +8,9 @@ export const mockTags: Tag[] = [
   { id: '5', name: 'Donation', color: '#ef4444' },
   { id: '6', name: 'Coinjoin', color: '#6366f1' },
   { id: '7', name: 'Savings', color: '#ec4899' },
+  { id: '8', name: 'Bull KYC', color: '#2dd4bf' },
+  { id: '9', name: 'Gift', color: '#f97316' },
+  { id: '10', name: 'P2P', color: '#a855f7' },
 ];
 
 export const mockUTXOs: UTXO[] = [
@@ -19,7 +21,7 @@ export const mockUTXOs: UTXO[] = [
     amount: 0.25,
     confirmations: 145,
     scriptPubKey: '00141a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r',
-    tags: ['Exchange'],
+    tags: ['Exchange', 'Bull KYC'],
     createdAt: '2023-10-12T14:32:11Z',
     privacyRisk: 'high'
   },
@@ -87,7 +89,7 @@ export const mockUTXOs: UTXO[] = [
     scriptPubKey: '00147g8h9i0j1k2l3m4n5o6p7q8r',
     tags: ['Coinjoin'],
     createdAt: '2023-12-12T03:45:21Z',
-    privacyRisk: 'high'
+    privacyRisk: 'low'
   },
   {
     txid: '8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a',
@@ -96,7 +98,7 @@ export const mockUTXOs: UTXO[] = [
     amount: 0.08,
     confirmations: 267,
     scriptPubKey: '00148h9i0j1k2l3m4n5o6p7q8r',
-    tags: ['Exchange'],
+    tags: ['Exchange', 'Bull KYC'],
     createdAt: '2023-10-30T16:22:38Z',
     privacyRisk: 'high'
   },
@@ -107,7 +109,7 @@ export const mockUTXOs: UTXO[] = [
     amount: 0.12,
     confirmations: 78,
     scriptPubKey: '00149i0j1k2l3m4n5o6p7q8r',
-    tags: ['Personal'],
+    tags: ['Personal', 'Gift'],
     createdAt: '2024-01-25T09:11:53Z',
     privacyRisk: 'medium'
   },
@@ -121,6 +123,50 @@ export const mockUTXOs: UTXO[] = [
     tags: ['Mining'],
     createdAt: '2023-11-18T05:37:42Z',
     privacyRisk: 'low'
+  },
+  {
+    txid: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0',
+    vout: 1,
+    address: 'bc1qw3e4r5t6y7u8i9o0p1a2s3d4f5g6h7j8k9l0',
+    amount: 0.17,
+    confirmations: 324,
+    scriptPubKey: '0014a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5',
+    tags: ['P2P'],
+    createdAt: '2023-08-22T13:19:27Z',
+    privacyRisk: 'medium'
+  },
+  {
+    txid: 'b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1',
+    vout: 2,
+    address: 'bc1q3e4r5t6y7u8i9o0p1a2s3d4f5g6h7j8k9l0z',
+    amount: 0.42,
+    confirmations: 175,
+    scriptPubKey: '0014b2c3d4e5f6g7h8i9j0k1l2m3n4o5',
+    tags: ['Coinjoin'],
+    createdAt: '2023-12-05T18:02:13Z',
+    privacyRisk: 'low'
+  },
+  {
+    txid: 'c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2',
+    vout: 0,
+    address: 'bc1qe4r5t6y7u8i9o0p1a2s3d4f5g6h7j8k9l0z1',
+    amount: 0.22,
+    confirmations: 97,
+    scriptPubKey: '0014c3d4e5f6g7h8i9j0k1l2m3n4o5',
+    tags: ['Gift'],
+    createdAt: '2024-01-30T20:45:18Z',
+    privacyRisk: 'low'
+  },
+  {
+    txid: 'd4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3',
+    vout: 3,
+    address: 'bc1qr5t6y7u8i9o0p1a2s3d4f5g6h7j8k9l0z1x2',
+    amount: 0.63,
+    confirmations: 284,
+    scriptPubKey: '0014d4e5f6g7h8i9j0k1l2m3n4o5',
+    tags: ['Savings', 'P2P'],
+    createdAt: '2023-09-10T08:33:51Z',
+    privacyRisk: 'medium'
   }
 ];
 
@@ -169,7 +215,6 @@ export const mockTransactions: Transaction[] = [
   }
 ];
 
-// AI Assistant recommendations based on wallet analysis
 export const mockPrivacyRecommendations: string[] = [
   "Consider using a Coinjoin transaction for your high-risk UTXOs to improve privacy",
   "Avoid reusing addresses for better transaction privacy",
@@ -178,7 +223,9 @@ export const mockPrivacyRecommendations: string[] = [
   "Consider using PayJoin for everyday transactions to improve transaction graph privacy",
   "Use a privacy-focused wallet that supports advanced features like coin selection",
   "Be cautious when dealing with exchange-tagged UTXOs as they can be linked to your identity",
-  "When possible, batch multiple payments into a single transaction to reduce blockchain footprint"
+  "When possible, batch multiple payments into a single transaction to reduce blockchain footprint",
+  "Avoid combining UTXOs with different tags or origins in the same transaction",
+  "Consider waiting for additional confirmations before spending high-risk UTXOs"
 ];
 
 export const mockWalletJson = `{
