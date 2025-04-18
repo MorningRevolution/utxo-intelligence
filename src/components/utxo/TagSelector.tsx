@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Tag as TagIcon } from "lucide-react";
+import { Check, Plus, Tag as TagIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
