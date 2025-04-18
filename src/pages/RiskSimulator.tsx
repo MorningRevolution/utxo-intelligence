@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; 
 import { Button } from "@/components/ui/button";
@@ -216,7 +217,7 @@ const RiskSimulator = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-card border-dark-border shadow-lg">
+        <Card className="bg-card border-border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>Transaction Inputs</span>
@@ -243,7 +244,7 @@ const RiskSimulator = () => {
                 {selectedUTXOs.map((utxo) => (
                   <div 
                     key={utxo.txid + "-" + utxo.vout}
-                    className="flex items-center justify-between p-2 rounded-md bg-dark-lighter"
+                    className="flex items-center justify-between p-2 rounded-md bg-muted"
                   >
                     <div className="flex flex-col">
                       <div className="font-mono text-xs text-muted-foreground">
@@ -273,14 +274,14 @@ const RiskSimulator = () => {
             {selectedUTXOs.length > 0 && (
               <div className="mt-2">
                 {hasMixedTagWarning() && (
-                  <div className="flex items-center gap-2 p-2 rounded bg-amber-500/10 mb-2 text-amber-400 text-xs">
+                  <div className="flex items-center gap-2 p-2 rounded bg-amber-500/10 mb-2 text-amber-500 text-xs">
                     <AlertTriangle className="h-4 w-4 flex-shrink-0" />
                     <p>Mixing KYC and non-KYC UTXOs may compromise your privacy</p>
                   </div>
                 )}
                 
                 {hasDateDiversityWarning() && (
-                  <div className="flex items-center gap-2 p-2 rounded bg-amber-500/10 mb-2 text-amber-400 text-xs">
+                  <div className="flex items-center gap-2 p-2 rounded bg-amber-500/10 mb-2 text-amber-500 text-xs">
                     <AlertTriangle className="h-4 w-4 flex-shrink-0" />
                     <p>Large time diversity between UTXOs may reveal spending patterns</p>
                   </div>
@@ -298,7 +299,7 @@ const RiskSimulator = () => {
               </div>
             )}
             
-            <div className="mt-4 pt-4 border-t border-dark-border">
+            <div className="mt-4 pt-4 border-t border-border">
               <div className="flex justify-between">
                 <span>Total Input:</span>
                 <span className="font-medium">{formatBTC(totalInputAmount)}</span>
@@ -307,7 +308,7 @@ const RiskSimulator = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-dark-border shadow-lg">
+        <Card className="bg-card border-border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>Transaction Outputs</span>
@@ -319,7 +320,7 @@ const RiskSimulator = () => {
               {outputs.map((output, index) => (
                 <div 
                   key={index}
-                  className="p-3 rounded-md border border-dark-border bg-dark-lighter"
+                  className="p-3 rounded-md border border-border bg-muted"
                 >
                   <div className="flex justify-between mb-2">
                     <Label htmlFor={`address-${index}`} className="text-sm">
@@ -369,7 +370,7 @@ const RiskSimulator = () => {
               Add Output
             </Button>
             
-            <div className="pt-4 border-t border-dark-border space-y-2">
+            <div className="pt-4 border-t border-border space-y-2">
               <div className="flex justify-between">
                 <span>Total Output:</span>
                 <span>{formatBTC(totalOutputAmount)}</span>
@@ -397,7 +398,7 @@ const RiskSimulator = () => {
       </div>
 
       {simulationResult && (
-        <Card className="mt-6 bg-card border-dark-border shadow-lg">
+        <Card className="mt-6 bg-card border-border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center">
@@ -442,7 +443,7 @@ const RiskSimulator = () => {
             
             <Separator />
             
-            <div className="rounded-md border border-dark-border p-4">
+            <div className="rounded-md border border-border p-4 bg-muted/50">
               <div className="flex items-center mb-2">
                 <AlertTriangle 
                   className={`mr-2 h-5 w-5 ${getRiskTextColor(simulationResult.privacyRisk)}`} 
@@ -475,7 +476,7 @@ const RiskSimulator = () => {
       )}
 
       <AlertDialog open={resetModalOpen} onOpenChange={setResetModalOpen}>
-        <AlertDialogContent className="bg-card border-dark-border">
+        <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
             <AlertDialogTitle>Reset Simulation</AlertDialogTitle>
             <AlertDialogDescription>
@@ -490,7 +491,7 @@ const RiskSimulator = () => {
       </AlertDialog>
 
       <AlertDialog open={confirmModalOpen} onOpenChange={setConfirmModalOpen}>
-        <AlertDialogContent className="bg-card border-dark-border">
+        <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Transaction</AlertDialogTitle>
             <AlertDialogDescription>
@@ -513,8 +514,8 @@ const RiskSimulator = () => {
         </AlertDialogContent>
       </AlertDialog>
       
-      <AlertDialog open={riskDetailsOpen} onOpenChange={setRiskDetailsOpen}>
-        <AlertDialogContent className="bg-card border-dark-border max-w-xl">
+      <AlertDialog open={riskDetailsOpen} onOpenChange={handleRiskDetailsClose}>
+        <AlertDialogContent className="bg-card border-border max-w-xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center">
               <AlertTriangle className={`mr-2 h-5 w-5 ${getRiskTextColor(simulationResult?.privacyRisk || 'medium')}`} />
@@ -544,7 +545,7 @@ const RiskSimulator = () => {
                   </p>
                 </div>
                 
-                <div className="p-3 rounded-md bg-dark-lighter">
+                <div className="p-3 rounded-md bg-muted">
                   <h4 className="font-medium text-foreground mb-1">Recommendations:</h4>
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     {simulationResult?.recommendations.map((rec, i) => (

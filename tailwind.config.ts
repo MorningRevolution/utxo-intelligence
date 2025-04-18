@@ -64,20 +64,20 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				bitcoin: {
-					DEFAULT: '#f7931a',
+					DEFAULT: '#f7931a',  // Bitcoin orange - unchanged
 					dark: '#e57c12',
 					light: '#ffba61',
 				},
 				risk: {
-					low: '#4ade80',    // Green
-					medium: '#fbbf24', // Amber
+					low: '#22c55e',    // Green
+					medium: '#f59e0b', // Amber
 					high: '#ef4444',   // Red
 				},
-				dark: {
-					DEFAULT: '#1c1c1e',    // Updated from #121212 to charcoal
-					lighter: '#24242c',    // Adjusted to match new charcoal
-					light: '#2d2d2d',
-					card: '#2c2c34'        // Adjusted card background
+				light: {
+					DEFAULT: '#f9f9f9',    // New light background
+					card: '#ffffff',       // Card background
+					muted: '#f1f1f1',      // Muted background
+					border: '#e5e5e5'      // Light border
 				}
 			},
 			borderRadius: {
