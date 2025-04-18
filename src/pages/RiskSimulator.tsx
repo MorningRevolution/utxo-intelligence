@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; 
 import { Button } from "@/components/ui/button";
@@ -143,7 +142,7 @@ const RiskSimulator = () => {
   };
 
   const handleRiskDetailsClose = () => {
-    setRiskDetailsOpen(false); // This ensures the modal closes
+    setRiskDetailsOpen(false);
   };
 
   const goToUtxoTable = () => {
@@ -496,7 +495,7 @@ const RiskSimulator = () => {
             <AlertDialogTitle>Confirm Transaction</AlertDialogTitle>
             <AlertDialogDescription>
               {simulationResult?.privacyRisk === 'high' ? (
-                <div className="flex items-center text-red-500 mb-2">
+                <div className="flex items-center text-destructive mb-2">
                   <AlertTriangle className="mr-2 h-5 w-5" />
                   <span>This transaction has high privacy risks.</span>
                 </div>
@@ -522,13 +521,13 @@ const RiskSimulator = () => {
           }
         }}
       >
-        <AlertDialogContent className="bg-card border-border max-w-xl">
+        <AlertDialogContent className="bg-card text-foreground border-border max-w-xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center">
               <AlertTriangle className={`mr-2 h-5 w-5 ${getRiskTextColor(simulationResult?.privacyRisk || 'medium')}`} />
               Privacy Risk Assessment
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-foreground/80">
               <Badge className={`inline-flex my-2 ${getRiskBadgeStyle(simulationResult?.privacyRisk || 'medium')}`}>
                 <span className="capitalize">{simulationResult?.privacyRisk}</span> Risk Level
               </Badge>
@@ -536,7 +535,7 @@ const RiskSimulator = () => {
               <div className="mt-4 space-y-4">
                 <div>
                   <h4 className="font-medium text-foreground mb-1">Issue Summary:</h4>
-                  <ul className="list-disc list-inside space-y-1 text-sm">
+                  <ul className="list-disc list-inside space-y-1 text-sm text-foreground/90">
                     {simulationResult?.reasons.map((reason, i) => (
                       <li key={i}>{reason}</li>
                     ))}
@@ -545,7 +544,7 @@ const RiskSimulator = () => {
                 
                 <div>
                   <h4 className="font-medium text-foreground mb-1">Impact:</h4>
-                  <p className="text-sm">
+                  <p className="text-sm text-foreground/90">
                     {simulationResult?.privacyRisk === 'high' 
                       ? 'This transaction could significantly compromise your privacy by linking your different wallet activities and potentially revealing your identity.' 
                       : 'This transaction has some privacy concerns that could leak information about your wallet structure and usage patterns.'}
@@ -554,7 +553,7 @@ const RiskSimulator = () => {
                 
                 <div className="p-3 rounded-md bg-muted">
                   <h4 className="font-medium text-foreground mb-1">Recommendations:</h4>
-                  <ul className="list-disc list-inside space-y-1 text-sm">
+                  <ul className="list-disc list-inside space-y-1 text-sm text-foreground/90">
                     {simulationResult?.recommendations.map((rec, i) => (
                       <li key={i}>{rec}</li>
                     ))}
@@ -564,7 +563,7 @@ const RiskSimulator = () => {
                 {simulationResult?.safeAlternative && (
                   <div className="p-3 rounded-md border border-primary/30 bg-primary/5">
                     <h4 className="font-medium text-primary mb-1">Suggested Alternative Approach:</h4>
-                    <p className="text-sm">{simulationResult.safeAlternative}</p>
+                    <p className="text-sm text-foreground/90">{simulationResult.safeAlternative}</p>
                   </div>
                 )}
               </div>

@@ -6,13 +6,13 @@
 @layer base {
   :root {
     --background: 0 0% 98%; /* #f9f9f9 */
-    --foreground: 0 0% 20%; /* #333333 */
+    --foreground: 0 0% 10%; /* #1a1a1a */
 
     --card: 0 0% 100%; /* #ffffff */
-    --card-foreground: 0 0% 20%; /* #333333 */
+    --card-foreground: 0 0% 10%; /* #1a1a1a */
 
     --popover: 0 0% 100%; /* #ffffff */
-    --popover-foreground: 0 0% 20%; /* #333333 */
+    --popover-foreground: 0 0% 10%; /* #1a1a1a */
 
     --primary: 29 98% 54%; /* Bitcoin orange #f7931a */
     --primary-foreground: 0 0% 100%; /* White */
@@ -85,5 +85,10 @@
   /* Improved card styling */
   .card-enhanced {
     @apply bg-card border border-border shadow-sm;
+  }
+
+  /* Fix for legacy text-white classes */
+  .text-white {
+    @apply text-foreground;
   }
 }

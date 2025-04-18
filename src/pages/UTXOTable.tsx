@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom"; 
 import { 
@@ -43,7 +42,6 @@ const UTXOTable = () => {
   });
   const [detailsUtxo, setDetailsUtxo] = useState<UTXO | null>(null);
 
-  // Redirect if no wallet is loaded
   if (!hasWallet) {
     navigate("/wallet-import");
     toast({
@@ -56,14 +54,12 @@ const UTXOTable = () => {
     if (!walletData) return [];
 
     return walletData.utxos.filter(utxo => {
-      // Filter by search term
       const matchesSearch = 
         searchTerm === "" || 
         utxo.txid.toLowerCase().includes(searchTerm.toLowerCase()) ||
         utxo.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
         utxo.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
       
-      // Filter by selected tags
       const matchesTags = 
         selectedTags.length === 0 || 
         selectedTags.some(tagId => {
@@ -71,7 +67,6 @@ const UTXOTable = () => {
           return tagName && utxo.tags.includes(tagName);
         });
       
-      // Filter by risk level
       const matchesRisk = 
         selectedRisk.length === 0 || 
         selectedRisk.includes(utxo.privacyRisk);
@@ -90,7 +85,6 @@ const UTXOTable = () => {
           : b.confirmations - a.confirmations;
       }
       
-      // String comparison for other fields
       const aValue = String(a[sortConfig.key]);
       const bValue = String(b[sortConfig.key]);
       
@@ -139,7 +133,7 @@ const UTXOTable = () => {
   if (!walletData) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
-        <p className="text-white mb-4">No wallet data available.</p>
+        <p className="text-foreground mb-4">No wallet data available.</p>
         <Button onClick={() => navigate("/wallet-import")}>Import Wallet</Button>
       </div>
     );
@@ -148,7 +142,7 @@ const UTXOTable = () => {
   return (
     <div className="container px-2 md:px-4 py-6">
       <div className="flex flex-col md:flex-row justify-between gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-white">UTXO Table</h1>
+        <h1 className="text-2xl font-bold text-foreground">UTXO Table</h1>
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -161,7 +155,7 @@ const UTXOTable = () => {
         </div>
       </div>
 
-      <div className="bg-dark-card rounded-lg shadow-lg p-4 mb-8">
+      <div className="bg-card rounded-lg shadow-lg p-4 mb-8">
         <div className="flex flex-col md:flex-row gap-4 mb-4">
           <div className="flex-1">
             <Input
@@ -180,7 +174,7 @@ const UTXOTable = () => {
                   Tags
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuContent align="end" className="w-[200px] bg-card text-foreground">
                 {tags.map((tag) => (
                   <DropdownMenuItem 
                     key={tag.id}
@@ -210,7 +204,7 @@ const UTXOTable = () => {
                   Risk
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="bg-card text-foreground">
                 {['low', 'medium', 'high'].map((risk) => (
                   <DropdownMenuItem
                     key={risk}
@@ -241,7 +235,7 @@ const UTXOTable = () => {
           </div>
         </div>
 
-        <div className="rounded-md border border-dark-border">
+        <div className="rounded-md border border-border">
           <Table>
             <TableCaption>
               {filteredUtxos.length} of {walletData.utxos.length} UTXOs • Total Balance: {formatBTC(walletData.totalBalance)}
@@ -279,7 +273,7 @@ const UTXOTable = () => {
             <TableBody>
               {filteredUtxos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={6} className="text-center py-8 text-foreground">
                     No UTXOs matching the current filters
                   </TableCell>
                 </TableRow>
@@ -298,8 +292,10 @@ const UTXOTable = () => {
                           return tag ? (
                             <Badge 
                               key={index}
-                              style={{ backgroundColor: tag.color }} 
-                              className="text-white"
+                              style={{ 
+                                backgroundColor: tag.color, 
+                                color: '#ffffff' 
+                              }} 
                             >
                               {tagName}
                             </Badge>
@@ -323,13 +319,12 @@ const UTXOTable = () => {
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" className="bg-card text-foreground">
                           <DropdownMenuItem onClick={() => handleViewDetails(utxo)}>
                             <Info className="mr-2 h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
                           <DropdownMenuItem>
-                            <Tag className="mr-2 h-4 w-4" />
                             <TagSelector 
                               utxoId={utxo.txid}
                               onSelect={(tagId) => handleTagSelection(utxo.txid, tagId)}
@@ -352,10 +347,10 @@ const UTXOTable = () => {
       </div>
 
       <Dialog open={!!detailsUtxo} onOpenChange={(open) => !open && setDetailsUtxo(null)}>
-        <DialogContent>
+        <DialogContent className="bg-card text-foreground">
           <DialogHeader>
             <DialogTitle>UTXO Details</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-muted-foreground">
               Detailed information about this UTXO
             </DialogDescription>
           </DialogHeader>
@@ -365,19 +360,19 @@ const UTXOTable = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Transaction ID</Label>
-                  <div className="font-mono text-xs mt-1 bg-dark-lighter p-2 rounded overflow-x-auto">
+                  <div className="font-mono text-xs mt-1 bg-muted p-2 rounded overflow-x-auto text-foreground">
                     {detailsUtxo.txid}
                   </div>
                 </div>
                 <div>
                   <Label>Output Index</Label>
-                  <div className="font-mono text-sm mt-1">{detailsUtxo.vout}</div>
+                  <div className="font-mono text-sm mt-1 text-foreground">{detailsUtxo.vout}</div>
                 </div>
               </div>
               
               <div>
                 <Label>Address</Label>
-                <div className="font-mono text-xs mt-1 bg-dark-lighter p-2 rounded overflow-x-auto">
+                <div className="font-mono text-xs mt-1 bg-muted p-2 rounded overflow-x-auto text-foreground">
                   {detailsUtxo.address}
                 </div>
               </div>
@@ -385,17 +380,17 @@ const UTXOTable = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Amount</Label>
-                  <div className="font-mono text-sm mt-1">{formatBTC(detailsUtxo.amount)}</div>
+                  <div className="font-mono text-sm mt-1 text-foreground">{formatBTC(detailsUtxo.amount)}</div>
                 </div>
                 <div>
                   <Label>Confirmations</Label>
-                  <div className="font-mono text-sm mt-1">{detailsUtxo.confirmations}</div>
+                  <div className="font-mono text-sm mt-1 text-foreground">{detailsUtxo.confirmations}</div>
                 </div>
               </div>
               
               <div>
                 <Label>Script Pubkey</Label>
-                <div className="font-mono text-xs mt-1 bg-dark-lighter p-2 rounded overflow-x-auto">
+                <div className="font-mono text-xs mt-1 bg-muted p-2 rounded overflow-x-auto text-foreground">
                   {detailsUtxo.scriptPubKey}
                 </div>
               </div>
@@ -426,7 +421,7 @@ const UTXOTable = () => {
                 <Label>Privacy Risk</Label>
                 <div className="flex items-center mt-1">
                   <div className={`w-3 h-3 rounded-full ${getRiskColor(detailsUtxo.privacyRisk)}`}></div>
-                  <span className="ml-2 capitalize">{detailsUtxo.privacyRisk}</span>
+                  <span className="ml-2 capitalize text-foreground">{detailsUtxo.privacyRisk}</span>
                 </div>
               </div>
             </div>
