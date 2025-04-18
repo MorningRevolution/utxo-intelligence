@@ -1,6 +1,6 @@
 
-import { useEffect, useState } from "react";
-import { Check, Plus, Tag as TagIcon } from "lucide-react";
+import { useState } from "react";
+import { Tag as TagIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useWallet } from "@/store/WalletContext";
 import { cn } from "@/lib/utils";
@@ -22,7 +21,7 @@ interface TagSelectorProps {
 
 export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) => {
   const { tags, addTag, removeTagFromUTXO } = useWallet();
-  const [open, setOpen] = useState(false);
+  const [showTagDialog, setShowTagDialog] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#3b82f6");
 
@@ -36,12 +35,12 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
       
       addTag(newTag);
       setNewTagName("");
-      onSelect(newTag.id); // Apply the new tag immediately
+      onSelect(newTag.id);
     }
   };
 
-  const handleRemoveTag = (tagId: string, tagName: string) => {
-    removeTagFromUTXO(utxoId, tagId);
+  const handleClose = () => {
+    setShowTagDialog(false);
   };
 
   const handleTagKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -51,29 +50,21 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
   };
 
   const availableColors = [
-    "#3b82f6", // blue
-    "#10b981", // green
-    "#8b5cf6", // purple
-    "#f59e0b", // amber
-    "#ef4444", // red
-    "#6366f1", // indigo
-    "#ec4899", // pink
-    "#f97316", // orange
-    "#06b6d4", // cyan
-    "#14b8a6", // teal
+    "#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444",
+    "#6366f1", "#ec4899", "#f97316", "#06b6d4", "#14b8a6",
   ];
 
   return (
     <>
-      <div onClick={() => setOpen(true)} className="flex items-center cursor-pointer">
+      <div onClick={() => setShowTagDialog(true)} className="flex items-center cursor-pointer">
         <TagIcon className="h-4 w-4 mr-1" />
         <span>Manage Tags</span>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="bg-card border-border">
+      <Dialog open={showTagDialog} onOpenChange={setShowTagDialog}>
+        <DialogContent className="bg-background">
           <DialogHeader>
-            <DialogTitle>Manage Tags</DialogTitle>
+            <DialogTitle className="text-foreground">Manage Tags</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4 py-2">
@@ -150,9 +141,7 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
           </div>
           
           <DialogFooter>
-            <Button onClick={() => setOpen(false)}>
-              Done
-            </Button>
+            <Button onClick={handleClose}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
