@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/store/WalletContext";
@@ -42,7 +44,7 @@ const RiskSimulator = () => {
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [riskDetailsOpen, setRiskDetailsOpen] = useState(false);
 
-  // Clean up modal state when navigating away
+  // Clean up modal states when navigating away
   useEffect(() => {
     return () => {
       setRiskDetailsOpen(false);
@@ -129,6 +131,7 @@ const RiskSimulator = () => {
 
     setSimulationResult(result);
 
+    // Only open the risk details modal if the simulation resulted in medium or high risk
     if (result.privacyRisk === 'high' || result.privacyRisk === 'medium') {
       setRiskDetailsOpen(true);
     } else {
@@ -493,7 +496,7 @@ const RiskSimulator = () => {
 
       <AlertDialog 
         open={resetModalOpen} 
-        onOpenChange={(open) => setResetModalOpen(open)}
+        onOpenChange={setResetModalOpen}
       >
         <AlertDialogContent className="bg-card text-foreground border-border">
           <AlertDialogHeader>
@@ -511,7 +514,7 @@ const RiskSimulator = () => {
 
       <AlertDialog 
         open={confirmModalOpen} 
-        onOpenChange={(open) => setConfirmModalOpen(open)}
+        onOpenChange={setConfirmModalOpen}
       >
         <AlertDialogContent className="bg-card text-foreground border-border">
           <AlertDialogHeader>
@@ -536,10 +539,10 @@ const RiskSimulator = () => {
         </AlertDialogContent>
       </AlertDialog>
       
-      {/* Replace Alert Dialog with proper Dialog for risk details */}
+      {/* Fixed Risk Details Dialog with proper Description */}
       <Dialog 
         open={riskDetailsOpen} 
-        onOpenChange={(open) => setRiskDetailsOpen(open)}
+        onOpenChange={setRiskDetailsOpen}
       >
         <DialogContent className="bg-card text-foreground border-border max-w-xl">
           <DialogHeader>
@@ -547,6 +550,9 @@ const RiskSimulator = () => {
               <AlertTriangle className={`mr-2 h-5 w-5 ${getRiskTextColor(simulationResult?.privacyRisk || 'medium')}`} />
               Privacy Risk Assessment
             </DialogTitle>
+            <DialogDescription>
+              Review the privacy implications of your transaction before proceeding
+            </DialogDescription>
           </DialogHeader>
           
           <div className="text-foreground/80">

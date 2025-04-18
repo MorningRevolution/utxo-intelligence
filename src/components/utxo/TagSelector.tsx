@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,7 @@ interface TagSelectorProps {
 
 export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) => {
   const { tags, addTag } = useWallet();
-  const [showTagDialog, setShowTagDialog] = useState(false);
+  const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#3b82f6");
 
@@ -52,24 +53,21 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
 
   return (
     <>
-      <div onClick={() => setShowTagDialog(true)} className="flex items-center cursor-pointer">
+      <div onClick={() => setIsTagDialogOpen(true)} className="flex items-center cursor-pointer">
         <TagIcon className="h-4 w-4 mr-1" />
         <span>Manage Tags</span>
       </div>
 
       <Dialog 
-        open={showTagDialog} 
-        onOpenChange={(open) => {
-          setShowTagDialog(open);
-          // Reset form if closing
-          if (!open) {
-            setNewTagName("");
-          }
-        }}
+        open={isTagDialogOpen}
+        onOpenChange={setIsTagDialogOpen}
       >
         <DialogContent className="bg-background text-foreground">
           <DialogHeader>
             <DialogTitle>Manage Tags</DialogTitle>
+            <DialogDescription>
+              Assign tags to your UTXOs for better organization
+            </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-2">
@@ -146,7 +144,7 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
           </div>
           
           <DialogFooter>
-            <Button onClick={() => setShowTagDialog(false)}>Done</Button>
+            <Button onClick={() => setIsTagDialogOpen(false)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
