@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom"; 
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom"; 
 import { 
   Table, TableBody, TableCaption, TableCell, 
   TableHead, TableHeader, TableRow 
@@ -17,7 +17,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -31,6 +30,7 @@ import { UTXO } from "@/types/utxo";
 
 const UTXOTable = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { walletData, tags, tagUTXO, hasWallet, selectUTXO } = useWallet();
   const [searchTerm, setSearchTerm] = useState("");
@@ -41,6 +41,12 @@ const UTXOTable = () => {
     direction: 'desc'
   });
   const [detailsUtxo, setDetailsUtxo] = useState<UTXO | null>(null);
+
+  useEffect(() => {
+    return () => {
+      setDetailsUtxo(null);
+    };
+  }, [location.pathname]);
 
   if (!hasWallet) {
     navigate("/wallet-import");
@@ -346,13 +352,15 @@ const UTXOTable = () => {
         </div>
       </div>
 
-      <Dialog open={!!detailsUtxo} onOpenChange={(open) => !open && setDetailsUtxo(null)}>
-        <DialogContent className="bg-card text-foreground">
+      <Dialog 
+        open={!!detailsUtxo} 
+        onOpenChange={(open) => {
+          if (!open) setDetailsUtxo(null);
+        }}
+      >
+        <DialogContent className="bg-card text-foreground border-border">
           <DialogHeader>
             <DialogTitle>UTXO Details</DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Detailed information about this UTXO
-            </DialogDescription>
           </DialogHeader>
           
           {detailsUtxo && (

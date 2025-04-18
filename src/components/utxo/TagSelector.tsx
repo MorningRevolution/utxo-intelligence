@@ -20,7 +20,7 @@ interface TagSelectorProps {
 }
 
 export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) => {
-  const { tags, addTag, removeTagFromUTXO } = useWallet();
+  const { tags, addTag } = useWallet();
   const [showTagDialog, setShowTagDialog] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#3b82f6");
@@ -37,10 +37,6 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
       setNewTagName("");
       onSelect(newTag.id);
     }
-  };
-
-  const handleClose = () => {
-    setShowTagDialog(false);
   };
 
   const handleTagKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -61,10 +57,19 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
         <span>Manage Tags</span>
       </div>
 
-      <Dialog open={showTagDialog} onOpenChange={setShowTagDialog}>
-        <DialogContent className="bg-background">
+      <Dialog 
+        open={showTagDialog} 
+        onOpenChange={(open) => {
+          setShowTagDialog(open);
+          // Reset form if closing
+          if (!open) {
+            setNewTagName("");
+          }
+        }}
+      >
+        <DialogContent className="bg-background text-foreground">
           <DialogHeader>
-            <DialogTitle className="text-foreground">Manage Tags</DialogTitle>
+            <DialogTitle>Manage Tags</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4 py-2">
@@ -141,7 +146,7 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
           </div>
           
           <DialogFooter>
-            <Button onClick={handleClose}>Done</Button>
+            <Button onClick={() => setShowTagDialog(false)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate, useLocation } from "react-router-dom"; 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/store/WalletContext";
 import { formatBTC, calculateTransactionPrivacyRisk, getRiskColor, getRiskTextColor, getRiskBadgeStyle } from "@/utils/utxo-utils";
@@ -24,6 +31,7 @@ import { Check, Info, Trash, AlertTriangle, ArrowRight, Eye, RefreshCcw, Shield,
 
 const RiskSimulator = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { selectedUTXOs, hasWallet, clearSelectedUTXOs, preselectedForSimulation, setPreselectedForSimulation } = useWallet();
   const [outputs, setOutputs] = useState<{ address: string; amount: number }[]>([
@@ -33,6 +41,15 @@ const RiskSimulator = () => {
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [riskDetailsOpen, setRiskDetailsOpen] = useState(false);
+
+  // Clean up modal state when navigating away
+  useEffect(() => {
+    return () => {
+      setRiskDetailsOpen(false);
+      setConfirmModalOpen(false);
+      setResetModalOpen(false);
+    };
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!hasWallet) {
@@ -474,11 +491,14 @@ const RiskSimulator = () => {
         </Card>
       )}
 
-      <AlertDialog open={resetModalOpen} onOpenChange={setResetModalOpen}>
-        <AlertDialogContent className="bg-card border-border">
+      <AlertDialog 
+        open={resetModalOpen} 
+        onOpenChange={(open) => setResetModalOpen(open)}
+      >
+        <AlertDialogContent className="bg-card text-foreground border-border">
           <AlertDialogHeader>
             <AlertDialogTitle>Reset Simulation</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-foreground/80">
               This will clear all selected UTXOs and outputs. Are you sure you want to reset the simulation?
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -489,11 +509,14 @@ const RiskSimulator = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={confirmModalOpen} onOpenChange={setConfirmModalOpen}>
-        <AlertDialogContent className="bg-card border-border">
+      <AlertDialog 
+        open={confirmModalOpen} 
+        onOpenChange={(open) => setConfirmModalOpen(open)}
+      >
+        <AlertDialogContent className="bg-card text-foreground border-border">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Transaction</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-foreground/80">
               {simulationResult?.privacyRisk === 'high' ? (
                 <div className="flex items-center text-destructive mb-2">
                   <AlertTriangle className="mr-2 h-5 w-5" />
@@ -513,69 +536,68 @@ const RiskSimulator = () => {
         </AlertDialogContent>
       </AlertDialog>
       
-      <AlertDialog 
+      {/* Replace Alert Dialog with proper Dialog for risk details */}
+      <Dialog 
         open={riskDetailsOpen} 
-        onOpenChange={(open) => {
-          if (!open) {
-            handleRiskDetailsClose();
-          }
-        }}
+        onOpenChange={(open) => setRiskDetailsOpen(open)}
       >
-        <AlertDialogContent className="bg-card text-foreground border-border max-w-xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center">
+        <DialogContent className="bg-card text-foreground border-border max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
               <AlertTriangle className={`mr-2 h-5 w-5 ${getRiskTextColor(simulationResult?.privacyRisk || 'medium')}`} />
               Privacy Risk Assessment
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-foreground/80">
-              <Badge className={`inline-flex my-2 ${getRiskBadgeStyle(simulationResult?.privacyRisk || 'medium')}`}>
-                <span className="capitalize">{simulationResult?.privacyRisk}</span> Risk Level
-              </Badge>
-              
-              <div className="mt-4 space-y-4">
-                <div>
-                  <h4 className="font-medium text-foreground mb-1">Issue Summary:</h4>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-foreground/90">
-                    {simulationResult?.reasons.map((reason, i) => (
-                      <li key={i}>{reason}</li>
-                    ))}
-                  </ul>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium text-foreground mb-1">Impact:</h4>
-                  <p className="text-sm text-foreground/90">
-                    {simulationResult?.privacyRisk === 'high' 
-                      ? 'This transaction could significantly compromise your privacy by linking your different wallet activities and potentially revealing your identity.' 
-                      : 'This transaction has some privacy concerns that could leak information about your wallet structure and usage patterns.'}
-                  </p>
-                </div>
-                
-                <div className="p-3 rounded-md bg-muted">
-                  <h4 className="font-medium text-foreground mb-1">Recommendations:</h4>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-foreground/90">
-                    {simulationResult?.recommendations.map((rec, i) => (
-                      <li key={i}>{rec}</li>
-                    ))}
-                  </ul>
-                </div>
-                
-                {simulationResult?.safeAlternative && (
-                  <div className="p-3 rounded-md border border-primary/30 bg-primary/5">
-                    <h4 className="font-medium text-primary mb-1">Suggested Alternative Approach:</h4>
-                    <p className="text-sm text-foreground/90">{simulationResult.safeAlternative}</p>
-                  </div>
-                )}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="text-foreground/80">
+            <Badge className={`inline-flex my-2 ${getRiskBadgeStyle(simulationResult?.privacyRisk || 'medium')}`}>
+              <span className="capitalize">{simulationResult?.privacyRisk}</span> Risk Level
+            </Badge>
+            
+            <div className="mt-4 space-y-4">
+              <div>
+                <h4 className="font-medium text-foreground mb-1">Issue Summary:</h4>
+                <ul className="list-disc list-inside space-y-1 text-sm text-foreground/90">
+                  {simulationResult?.reasons.map((reason, i) => (
+                    <li key={i}>{reason}</li>
+                  ))}
+                </ul>
               </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogAction onClick={handleRiskDetailsClose}>
+              
+              <div>
+                <h4 className="font-medium text-foreground mb-1">Impact:</h4>
+                <p className="text-sm text-foreground/90">
+                  {simulationResult?.privacyRisk === 'high' 
+                    ? 'This transaction could significantly compromise your privacy by linking your different wallet activities and potentially revealing your identity.' 
+                    : 'This transaction has some privacy concerns that could leak information about your wallet structure and usage patterns.'}
+                </p>
+              </div>
+              
+              <div className="p-3 rounded-md bg-muted">
+                <h4 className="font-medium text-foreground mb-1">Recommendations:</h4>
+                <ul className="list-disc list-inside space-y-1 text-sm text-foreground/90">
+                  {simulationResult?.recommendations.map((rec, i) => (
+                    <li key={i}>{rec}</li>
+                  ))}
+                </ul>
+              </div>
+              
+              {simulationResult?.safeAlternative && (
+                <div className="mt-3 p-3 rounded-md border border-primary/30 bg-primary/5">
+                  <h4 className="font-medium text-primary mb-1">Suggested Alternative Approach:</h4>
+                  <p className="text-sm text-foreground/90">{simulationResult.safeAlternative}</p>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter className="gap-2">
+            <Button onClick={handleRiskDetailsClose}>
               I understand the risks
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
