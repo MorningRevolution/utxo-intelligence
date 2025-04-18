@@ -174,10 +174,10 @@ const RiskSimulator = () => {
     
     if (diffDays === 0) return "Same day";
     if (diffDays === 1) return "1 day";
-    if (diffDays < 7) return ${diffDays} days;
-    if (diffDays < 30) return ${Math.floor(diffDays/7)} weeks;
-    if (diffDays < 365) return ${Math.floor(diffDays/30)} months;
-    return ${Math.floor(diffDays/365)} years;
+    if (diffDays < 7) return `${diffDays} days`;
+    if (diffDays < 30) return `${Math.floor(diffDays/7)} weeks`;
+    if (diffDays < 365) return `${Math.floor(diffDays/30)} months`;
+    return `${Math.floor(diffDays/365)} years`;
   };
 
   const getUniqueTags = () => {
@@ -267,7 +267,7 @@ const RiskSimulator = () => {
                         {utxo.txid.substring(0, 8)}...{utxo.txid.substring(utxo.txid.length - 8)}
                       </div>
                       <div className="flex items-center">
-                        <div className={w-2 h-2 rounded-full ${getRiskColor(utxo.privacyRisk)} mr-2}></div>
+                        <div className={`w-2 h-2 rounded-full ${getRiskColor(utxo.privacyRisk)} mr-2`}></div>
                         <span className="text-sm">{formatBTC(utxo.amount)}</span>
                         <span className="ml-2 text-xs text-muted-foreground flex items-center">
                           <Calendar className="h-3 w-3 mr-1" />
@@ -339,7 +339,7 @@ const RiskSimulator = () => {
                   className="p-3 rounded-md border border-border bg-muted"
                 >
                   <div className="flex justify-between mb-2">
-                    <Label htmlFor={address-${index}} className="text-sm">
+                    <Label htmlFor={`address-${index}`} className="text-sm">
                       Output {index + 1}
                     </Label>
                     {outputs.length > 1 && (
@@ -355,7 +355,7 @@ const RiskSimulator = () => {
                   </div>
                   <div className="space-y-2">
                     <Input
-                      id={address-${index}}
+                      id={`address-${index}`}
                       placeholder="Address"
                       value={output.address}
                       onChange={(e) => handleOutputChange(index, 'address', e.target.value)}
@@ -363,7 +363,7 @@ const RiskSimulator = () => {
                     />
                     <div className="flex gap-2">
                       <Input
-                        id={amount-${index}}
+                        id={`amount-${index}`}
                         type="number"
                         step="0.00000001"
                         min="0"
@@ -421,7 +421,7 @@ const RiskSimulator = () => {
                 <Shield className="mr-2 h-5 w-5" />
                 <span>Privacy Analysis Results</span>
               </div>
-              <Badge className={ml-auto px-3 py-1 ${getRiskBadgeStyle(simulationResult.privacyRisk)}}>
+              <Badge className={`ml-auto px-3 py-1 ${getRiskBadgeStyle(simulationResult.privacyRisk)}`}>
                 <span className="capitalize">{simulationResult.privacyRisk}</span> Risk
               </Badge>
             </CardTitle>
@@ -462,7 +462,7 @@ const RiskSimulator = () => {
             <div className="rounded-md border border-border p-4 bg-muted/50">
               <div className="flex items-center mb-2">
                 <AlertTriangle 
-                  className={mr-2 h-5 w-5 ${getRiskTextColor(simulationResult.privacyRisk)}} 
+                  className={`mr-2 h-5 w-5 ${getRiskTextColor(simulationResult.privacyRisk)}`} 
                 />
                 <h3 className="text-lg font-medium">Privacy Implications</h3>
               </div>
@@ -537,64 +537,64 @@ const RiskSimulator = () => {
       </AlertDialog>
       
       {/* Replace Alert Dialog with proper Dialog for risk details */}
-     
-   <Dialog open={riskDetailsOpen} onOpenChange={setRiskDetailsOpen}>
-        <DialogContent className="bg-white text-[#1a1a1a] border border-border max-w-xl">
+      <Dialog 
+        open={riskDetailsOpen} 
+        onOpenChange={(open) => setRiskDetailsOpen(open)}
+      >
+        <DialogContent className="bg-card text-foreground border-border max-w-xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center text-[#1a1a1a]">
+            <DialogTitle className="flex items-center">
               <AlertTriangle className={`mr-2 h-5 w-5 ${getRiskTextColor(simulationResult?.privacyRisk || 'medium')}`} />
               Privacy Risk Assessment
             </DialogTitle>
           </DialogHeader>
-
-          <div className="text-[#4a4a4a]">
+          
+          <div className="text-foreground/80">
             <Badge className={`inline-flex my-2 ${getRiskBadgeStyle(simulationResult?.privacyRisk || 'medium')}`}>
               <span className="capitalize">{simulationResult?.privacyRisk}</span> Risk Level
             </Badge>
-
+            
             <div className="mt-4 space-y-4">
               <div>
-                <h4 className="font-medium text-[#1a1a1a] mb-1">Issue Summary:</h4>
-                <ul className="list-disc list-inside space-y-1 text-sm">
+                <h4 className="font-medium text-foreground mb-1">Issue Summary:</h4>
+                <ul className="list-disc list-inside space-y-1 text-sm text-foreground/90">
                   {simulationResult?.reasons.map((reason, i) => (
                     <li key={i}>{reason}</li>
                   ))}
                 </ul>
               </div>
-
+              
               <div>
-                <h4 className="font-medium text-[#1a1a1a] mb-1">Impact:</h4>
-                <p className="text-sm">
-                  {simulationResult?.privacyRisk === 'high'
-                    ? 'This transaction could significantly compromise your privacy by linking your different wallet activities and potentially revealing your identity.'
+                <h4 className="font-medium text-foreground mb-1">Impact:</h4>
+                <p className="text-sm text-foreground/90">
+                  {simulationResult?.privacyRisk === 'high' 
+                    ? 'This transaction could significantly compromise your privacy by linking your different wallet activities and potentially revealing your identity.' 
                     : 'This transaction has some privacy concerns that could leak information about your wallet structure and usage patterns.'}
                 </p>
               </div>
-
-              <div className="p-3 rounded-md bg-muted border border-border">
-                <h4 className="font-medium text-[#1a1a1a] mb-1">Recommendations:</h4>
-                <ul className="list-disc list-inside space-y-1 text-sm">
+              
+              <div className="p-3 rounded-md bg-muted">
+                <h4 className="font-medium text-foreground mb-1">Recommendations:</h4>
+                <ul className="list-disc list-inside space-y-1 text-sm text-foreground/90">
                   {simulationResult?.recommendations.map((rec, i) => (
                     <li key={i}>{rec}</li>
                   ))}
                 </ul>
               </div>
-
+              
               {simulationResult?.safeAlternative && (
-                <div className="mt-3 p-3 rounded-md border border-primary/30 bg-primary/10">
+                <div className="mt-3 p-3 rounded-md border border-primary/30 bg-primary/5">
                   <h4 className="font-medium text-primary mb-1">Suggested Alternative Approach:</h4>
-                  <p className="text-sm">{simulationResult.safeAlternative}</p>
+                  <p className="text-sm text-foreground/90">{simulationResult.safeAlternative}</p>
                 </div>
               )}
             </div>
           </div>
-
+          
           <DialogFooter className="gap-2">
-            <DialogClose asChild>
-              <Button className="bg-primary text-white">
-                I understand the risks
-              </Button>
-            </DialogClose>
+            <Button onClick={handleRiskDetailsClose}>
+              I understand the risks
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
