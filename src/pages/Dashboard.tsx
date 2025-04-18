@@ -1,4 +1,5 @@
 
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Wallet, 
@@ -10,7 +11,8 @@ import {
   CreditCard,
   Tag,
   Eye,
-  Shield
+  Shield,
+  ChevronRight // Added for consistency
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,11 +40,9 @@ const Dashboard = () => {
 
   return (
     <div className="container py-6">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8">
-        <div className="flex items-center">
-          <Shield className="h-10 w-10 text-bitcoin mr-3" />
-          <h1 className="text-3xl font-bold text-white">UTXO Intelligence</h1>
-        </div>
+      <div className="flex items-center mb-8">
+        <Shield className="h-10 w-10 text-bitcoin mr-3" />
+        <h1 className="text-3xl font-bold text-foreground">UTXO Intelligence</h1>
       </div>
 
       {!hasWallet ? (

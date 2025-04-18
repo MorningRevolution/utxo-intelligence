@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Bot, Send, User, Shield, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,7 +22,6 @@ const defaultMessages: Message[] = [
   }
 ];
 
-// Predefined responses for demonstration
 const getAIResponse = (message: string, walletData: any): Message => {
   const lowerMsg = message.toLowerCase();
   let response = "I'm sorry, I'm just a prototype assistant and don't have enough information to answer that question.";
@@ -44,7 +42,6 @@ const getAIResponse = (message: string, walletData: any): Message => {
     if (walletData) {
       response = `Your wallet "${walletData.name}" contains ${walletData.utxos.length} UTXOs with a total balance of ${formatBTC(walletData.totalBalance)}. `;
       
-      // Count UTXOs by privacy risk
       const highRisk = walletData.utxos.filter(u => u.privacyRisk === 'high').length;
       const mediumRisk = walletData.utxos.filter(u => u.privacyRisk === 'medium').length;
       const lowRisk = walletData.utxos.filter(u => u.privacyRisk === 'low').length;
@@ -69,7 +66,6 @@ const AIAssistant = () => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when messages update
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -77,7 +73,6 @@ const AIAssistant = () => {
   const handleSendMessage = () => {
     if (!input.trim()) return;
     
-    // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -88,7 +83,6 @@ const AIAssistant = () => {
     setInput('');
     setIsLoading(true);
     
-    // Simulate AI thinking time
     setTimeout(() => {
       const aiResponse = getAIResponse(input, walletData);
       setMessages(prev => [...prev, aiResponse]);
@@ -104,7 +98,6 @@ const AIAssistant = () => {
   };
 
   const renderMessageContent = (content: string) => {
-    // Simple markdown-like formatting
     return content.split('\n').map((line, i) => (
       <p key={i} className={i > 0 ? 'mt-2' : ''}>
         {line}
@@ -116,7 +109,7 @@ const AIAssistant = () => {
     <div className="container px-2 md:px-4 py-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-center mb-6">
         <Bot className="h-8 w-8 text-bitcoin mr-3" />
-        <h1 className="text-2xl font-bold text-white">AI Assistant</h1>
+        <h1 className="text-2xl font-bold text-foreground">AI Assistant</h1>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -87,9 +87,9 @@ const WalletImport = () => {
 
   return (
     <div className="container mx-auto max-w-4xl">
-      <div className="flex items-center justify-center mb-8">
+      <div className="flex items-center mb-8">
         <Shield className="h-10 w-10 text-bitcoin mr-3" />
-        <h1 className="text-3xl font-bold text-white">Wallet Import</h1>
+        <h1 className="text-3xl font-bold text-foreground">Wallet Import</h1>
       </div>
       
       <Card className="bg-dark-card border-dark-border shadow-lg">

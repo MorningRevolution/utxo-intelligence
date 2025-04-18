@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -12,20 +11,15 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/store/WalletContext";
-import { createDownloadableJSON, createDownloadableCSV, formatBTC, getRiskColor, calculatePrivacyScore } from "@/utils/utxo-utils";
-import { Progress } from "@/components/ui/progress";
-import { Report } from "@/types/utxo";
+import { 
+  createDownloadableJSON, 
+  createDownloadableCSV, 
+  formatBTC, 
+  getRiskColor, 
+  calculatePrivacyScore 
+} from "@/utils/utxo-utils";
 
 const ReportExport = () => {
   const navigate = useNavigate();
@@ -97,18 +91,9 @@ const ReportExport = () => {
 
   return (
     <div className="container px-2 md:px-4 py-6">
-      <div className="flex flex-col md:flex-row justify-between gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-white">Report & Export</h1>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate("/utxo-table")}
-          >
-            <Eye className="mr-2 h-4 w-4" />
-            UTXO Table
-          </Button>
-        </div>
+      <div className="flex items-center mb-6">
+        <FileText className="h-10 w-10 text-bitcoin mr-3" />
+        <h1 className="text-2xl font-bold text-foreground">Report & Export</h1>
       </div>
 
       {/* Wallet Summary Card */}
