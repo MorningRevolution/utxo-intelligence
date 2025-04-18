@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -13,6 +14,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/store/WalletContext";
+import { Progress } from "@/components/ui/progress";
+import { 
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { 
   createDownloadableJSON, 
   createDownloadableCSV, 
@@ -20,6 +31,7 @@ import {
   getRiskColor, 
   calculatePrivacyScore 
 } from "@/utils/utxo-utils";
+import { Report } from "@/types/utxo";
 
 const ReportExport = () => {
   const navigate = useNavigate();
