@@ -52,14 +52,26 @@ module.exports = {
           foreground: "hsl(var(--card-foreground))",
         },
         // Custom colors for the app with improved contrast
-        "dark": "#1c1c1e", // Changed from #121212 to charcoal
-        "dark-lighter": "#24242c", // Adjusted to match new charcoal
-        "dark-card": "#2c2c34", // Adjusted card background
-        "dark-border": "#3a3a44", // Improved border contrast
-        "bitcoin": "#f7931a",
+        sidebar: {
+          DEFAULT: "hsl(var(--sidebar-background))",
+          foreground: "hsl(var(--sidebar-foreground))",
+          primary: "hsl(var(--sidebar-primary))",
+          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
+          accent: "hsl(var(--sidebar-accent))",
+          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
+          border: "hsl(var(--sidebar-border))",
+          ring: "hsl(var(--sidebar-ring))",
+        },
+        bitcoin: "#f7931a",
         "risk-low": "#22c55e", // Slightly brighter green for better contrast
         "risk-medium": "#f59e0b", // amber
         "risk-high": "#ef4444", // red
+        light: {
+          DEFAULT: "#f9f9f9",    // Light background
+          card: "#ffffff",       // Card background
+          muted: "#f1f1f1",      // Muted background
+          border: "#e5e5e5"      // Light border
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

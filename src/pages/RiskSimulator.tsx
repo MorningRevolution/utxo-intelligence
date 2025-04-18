@@ -143,7 +143,7 @@ const RiskSimulator = () => {
   };
 
   const handleRiskDetailsClose = () => {
-    setRiskDetailsOpen(false);
+    setRiskDetailsOpen(false); // This ensures the modal closes
   };
 
   const goToUtxoTable = () => {
@@ -514,7 +514,14 @@ const RiskSimulator = () => {
         </AlertDialogContent>
       </AlertDialog>
       
-      <AlertDialog open={riskDetailsOpen} onOpenChange={handleRiskDetailsClose}>
+      <AlertDialog 
+        open={riskDetailsOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            handleRiskDetailsClose();
+          }
+        }}
+      >
         <AlertDialogContent className="bg-card border-border max-w-xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center">

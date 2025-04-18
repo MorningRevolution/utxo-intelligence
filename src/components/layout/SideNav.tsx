@@ -77,7 +77,7 @@ export function SideNav() {
 
       <div 
         className={cn(
-          "fixed top-0 left-0 h-full w-64 bg-dark-card text-white shadow-lg transition-transform duration-300 ease-in-out z-40",
+          "fixed top-0 left-0 h-full w-64 bg-sidebar shadow-lg transition-transform duration-300 ease-in-out z-40",
           isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
@@ -105,8 +105,8 @@ export function SideNav() {
                   className={cn(
                     "flex items-center px-4 py-2 rounded-md transition-colors",
                     location.pathname === route.path
-                      ? "bg-bitcoin text-white"
-                      : "text-gray-300 hover:bg-dark-lighter hover:text-white",
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     route.disabled && "opacity-50 cursor-not-allowed pointer-events-none"
                   )}
                   onClick={(e) => {
@@ -126,7 +126,7 @@ export function SideNav() {
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-4">
-          <div className="text-sm text-gray-400 text-center">
+          <div className="text-sm text-muted-foreground text-center">
             <p>UTXO Intelligence</p>
             <p>v0.1.0 (Demo)</p>
           </div>
