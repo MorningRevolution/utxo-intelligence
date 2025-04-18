@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Bot, Send, User, Shield, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -107,8 +108,8 @@ const AIAssistant = () => {
 
   return (
     <div className="container px-2 md:px-4 py-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-center mb-6">
-        <Bot className="h-8 w-8 text-bitcoin mr-3" />
+      <div className="flex items-center mb-6">
+        <Bot className="h-10 w-10 text-bitcoin mr-3" />
         <h1 className="text-2xl font-bold text-foreground">AI Assistant</h1>
       </div>
       
