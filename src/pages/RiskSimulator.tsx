@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; 
 import { Button } from "@/components/ui/button";
@@ -35,7 +34,6 @@ const RiskSimulator = () => {
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [riskDetailsOpen, setRiskDetailsOpen] = useState(false);
 
-  // Redirect if no wallet is loaded
   useEffect(() => {
     if (!hasWallet) {
       navigate("/wallet-import");
@@ -46,19 +44,16 @@ const RiskSimulator = () => {
     }
   }, [hasWallet, navigate, toast]);
 
-  // Auto-simulate transaction with preselected UTXOs on first load
   useEffect(() => {
     if (preselectedForSimulation && selectedUTXOs.length >= 2 && outputs[0].address) {
-      // Only run once when component mounts with preselected UTXOs
       simulateTransaction();
-      // Mark as handled so it doesn't run again
       setPreselectedForSimulation(false);
     }
   }, [preselectedForSimulation, selectedUTXOs]);
 
   const totalInputAmount = selectedUTXOs.reduce((sum, utxo) => sum + utxo.amount, 0);
   const totalOutputAmount = outputs.reduce((sum, output) => sum + (output.amount || 0), 0);
-  const estimatedFeeRate = 0.0001; // Simplified fee estimation
+  const estimatedFeeRate = 0.0001;
   const estimatedFee = selectedUTXOs.length * estimatedFeeRate;
   const changeAmount = Math.max(0, totalInputAmount - totalOutputAmount - estimatedFee);
 
@@ -117,11 +112,9 @@ const RiskSimulator = () => {
 
     setSimulationResult(result);
 
-    // Show risk details modal for medium/high risk
     if (result.privacyRisk === 'high' || result.privacyRisk === 'medium') {
       setRiskDetailsOpen(true);
     } else {
-      // Show toast for low risk
       toast({
         title: "Low Privacy Risk",
         description: "This transaction appears to maintain good privacy",
@@ -141,7 +134,6 @@ const RiskSimulator = () => {
   };
 
   const handleConfirmTransaction = () => {
-    // In a real app, this would create and broadcast the transaction
     toast({
       title: "Transaction Simulated",
       description: "In a full implementation, this would broadcast the transaction.",
@@ -149,17 +141,14 @@ const RiskSimulator = () => {
     setConfirmModalOpen(false);
   };
 
-  // Fixed: Make this function properly close the risk details modal and clear state
   const handleRiskDetailsClose = () => {
     setRiskDetailsOpen(false);
-    // No need to reset other states as user may want to continue working with the simulation
   };
 
   const goToUtxoTable = () => {
     navigate("/utxo-table");
   };
 
-  // Helper function to get a human readable date difference
   const getDateDiff = (date1: string, date2: string) => {
     const d1 = new Date(date1);
     const d2 = new Date(date2);
@@ -174,7 +163,6 @@ const RiskSimulator = () => {
     return `${Math.floor(diffDays/365)} years`;
   };
 
-  // Get all unique tags from selected UTXOs
   const getUniqueTags = () => {
     const tags = new Set<string>();
     selectedUTXOs.forEach(utxo => {
@@ -183,7 +171,6 @@ const RiskSimulator = () => {
     return Array.from(tags);
   };
 
-  // Check if there are significant date differences in UTXOs
   const hasDateDiversityWarning = () => {
     if (selectedUTXOs.length <= 1) return false;
     
@@ -191,15 +178,12 @@ const RiskSimulator = () => {
     const minDate = Math.min(...dates);
     const maxDate = Math.max(...dates);
     
-    // Warn if UTXOs span more than 90 days
     return (maxDate - minDate) > 90 * 24 * 60 * 60 * 1000;
   };
 
-  // Check if there are mixed tags that could compromise privacy
   const hasMixedTagWarning = () => {
     const tags = getUniqueTags();
     
-    // Check for specific risky combinations
     const hasKYC = tags.some(tag => tag === 'Exchange' || tag === 'Bull KYC');
     const hasPersonal = tags.some(tag => ['Personal', 'Gift', 'P2P'].includes(tag));
     
@@ -232,7 +216,6 @@ const RiskSimulator = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Input UTXOs */}
         <Card className="bg-card border-dark-border shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -289,7 +272,6 @@ const RiskSimulator = () => {
             
             {selectedUTXOs.length > 0 && (
               <div className="mt-2">
-                {/* Warnings section */}
                 {hasMixedTagWarning() && (
                   <div className="flex items-center gap-2 p-2 rounded bg-amber-500/10 mb-2 text-amber-400 text-xs">
                     <AlertTriangle className="h-4 w-4 flex-shrink-0" />
@@ -304,7 +286,6 @@ const RiskSimulator = () => {
                   </div>
                 )}
                 
-                {/* Tags summary */}
                 <div className="mt-3 flex items-center gap-1">
                   <Tags className="h-4 w-4 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">Tags: </span>
@@ -326,7 +307,6 @@ const RiskSimulator = () => {
           </CardContent>
         </Card>
 
-        {/* Output addresses */}
         <Card className="bg-card border-dark-border shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -416,7 +396,6 @@ const RiskSimulator = () => {
         </Card>
       </div>
 
-      {/* Simulation Results */}
       {simulationResult && (
         <Card className="mt-6 bg-card border-dark-border shadow-lg">
           <CardHeader>
@@ -495,7 +474,6 @@ const RiskSimulator = () => {
         </Card>
       )}
 
-      {/* Reset Simulation Alert */}
       <AlertDialog open={resetModalOpen} onOpenChange={setResetModalOpen}>
         <AlertDialogContent className="bg-card border-dark-border">
           <AlertDialogHeader>
@@ -511,7 +489,6 @@ const RiskSimulator = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Confirm Transaction Alert */}
       <AlertDialog open={confirmModalOpen} onOpenChange={setConfirmModalOpen}>
         <AlertDialogContent className="bg-card border-dark-border">
           <AlertDialogHeader>
@@ -536,7 +513,6 @@ const RiskSimulator = () => {
         </AlertDialogContent>
       </AlertDialog>
       
-      {/* Risk Details Modal - Fixed to properly close when clicked */}
       <AlertDialog open={riskDetailsOpen} onOpenChange={setRiskDetailsOpen}>
         <AlertDialogContent className="bg-card border-dark-border max-w-xl">
           <AlertDialogHeader>

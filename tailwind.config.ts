@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -73,10 +74,10 @@ export default {
 					high: '#ef4444',   // Red
 				},
 				dark: {
-					DEFAULT: '#121212',
-					lighter: '#1e1e1e',
+					DEFAULT: '#1c1c1e',    // Updated from #121212 to charcoal
+					lighter: '#24242c',    // Adjusted to match new charcoal
 					light: '#2d2d2d',
-					card: '#252525'
+					card: '#2c2c34'        // Adjusted card background
 				}
 			},
 			borderRadius: {
