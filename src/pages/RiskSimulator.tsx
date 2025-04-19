@@ -539,7 +539,7 @@ const RiskSimulator = () => {
         </AlertDialogContent>
       </AlertDialog>
       
-      {/* Fixed Risk Details Dialog with proper Description */}
+      {/* Risk Details Dialog with proper state management */}
       <Dialog 
         open={riskDetailsOpen} 
         onOpenChange={setRiskDetailsOpen}

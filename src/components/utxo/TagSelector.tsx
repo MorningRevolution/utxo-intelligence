@@ -46,6 +46,10 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
     }
   };
 
+  const handleCloseDialog = () => {
+    setIsTagDialogOpen(false);
+  };
+
   const availableColors = [
     "#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444",
     "#6366f1", "#ec4899", "#f97316", "#06b6d4", "#14b8a6",
@@ -53,7 +57,13 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
 
   return (
     <>
-      <div onClick={() => setIsTagDialogOpen(true)} className="flex items-center cursor-pointer">
+      <div 
+        onClick={(e) => {
+          e.stopPropagation(); // Prevent event bubbling to parent dropdown
+          setIsTagDialogOpen(true);
+        }} 
+        className="flex items-center cursor-pointer"
+      >
         <TagIcon className="h-4 w-4 mr-1" />
         <span>Manage Tags</span>
       </div>
@@ -144,7 +154,7 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
           </div>
           
           <DialogFooter>
-            <Button onClick={() => setIsTagDialogOpen(false)}>Done</Button>
+            <Button onClick={handleCloseDialog}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
