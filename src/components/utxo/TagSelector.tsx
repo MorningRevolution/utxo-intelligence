@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Check, Plus, Tag as TagIcon } from "lucide-react";
 import {
@@ -28,14 +27,13 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#3b82f6");
 
-  // Clean up dialog state and any stuck overlays when navigating away
+  // Clean up dialog state and restore scroll on navigation
   useEffect(() => {
     setIsTagDialogOpen(false);
-    // Ensure no stuck overlays
     document.body.style.overflow = 'auto';
   }, [location.pathname]);
 
-  // Ensure dialog cleanup when closed
+  // Safety cleanup when dialog closes
   useEffect(() => {
     if (!isTagDialogOpen) {
       document.body.style.overflow = 'auto';
@@ -49,11 +47,9 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
         name: newTagName.trim(),
         color: newTagColor,
       };
-      
       addTag(newTag);
       setNewTagName("");
       onSelect(newTag.id);
-      // Don't close dialog - allow multiple selections
     }
   };
 
@@ -65,13 +61,12 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
 
   const handleCloseDialog = () => {
     setIsTagDialogOpen(false);
-    // Ensure cleanup
     document.body.style.overflow = 'auto';
   };
 
   const handleTagSelect = (tagId: string) => {
     onSelect(tagId);
-    // Don't close dialog - allow multiple selections
+    // Explicitly not closing dialog to allow multiple selections
   };
 
   const availableColors = [
@@ -83,7 +78,7 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
     <>
       <div 
         onClick={(e) => {
-          e.stopPropagation(); // Prevent event bubbling to parent dropdown
+          e.stopPropagation();
           setIsTagDialogOpen(true);
         }} 
         className="flex items-center cursor-pointer"
@@ -97,7 +92,6 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
         onOpenChange={(open) => {
           setIsTagDialogOpen(open);
           if (!open) {
-            // Ensure any stuck states are cleared
             document.body.style.overflow = 'auto';
           }
         }}

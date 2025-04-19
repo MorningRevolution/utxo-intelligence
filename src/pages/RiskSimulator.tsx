@@ -159,6 +159,7 @@ const RiskSimulator = () => {
 
   const handleRiskDetailsClose = () => {
     setRiskDetailsOpen(false);
+    document.body.style.overflow = 'auto';
   };
 
   const goToUtxoTable = () => {
