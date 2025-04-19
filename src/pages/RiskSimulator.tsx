@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ const RiskSimulator = () => {
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [riskDetailsOpen, setRiskDetailsOpen] = useState(false);
 
+  // Cleanup modals on route change
   useEffect(() => {
     setRiskDetailsOpen(false);
     setConfirmModalOpen(false);
@@ -60,9 +62,22 @@ const RiskSimulator = () => {
   }, [hasWallet, navigate, toast]);
 
   useEffect(() => {
+    // Only simulate transaction on initial load if preselected, but don't open risk details modal
     if (preselectedForSimulation && selectedUTXOs.length >= 2 && outputs[0].address) {
-      simulateTransaction();
+      const result = calculateTransactionPrivacyRisk(
+        selectedUTXOs,
+        outputs.map(o => o.address)
+      );
+      setSimulationResult(result);
       setPreselectedForSimulation(false);
+      
+      // Don't open risk details modal automatically - let user click simulate
+      if (result.privacyRisk === 'low') {
+        toast({
+          title: "Low Privacy Risk",
+          description: "This transaction appears to maintain good privacy",
+        });
+      }
     }
   }, [preselectedForSimulation, selectedUTXOs]);
 
@@ -127,6 +142,7 @@ const RiskSimulator = () => {
 
     setSimulationResult(result);
 
+    // Only open risk details modal on user-initiated simulation with medium/high risk
     if (result.privacyRisk === 'high' || result.privacyRisk === 'medium') {
       setRiskDetailsOpen(true);
     } else {
@@ -536,9 +552,7 @@ const RiskSimulator = () => {
       
       <Dialog 
         open={riskDetailsOpen} 
-        onOpenChange={(open) => {
-          setRiskDetailsOpen(open);
-        }}
+        onOpenChange={setRiskDetailsOpen}
       >
         <DialogContent className="bg-card text-foreground border-border max-w-xl">
           <DialogHeader>

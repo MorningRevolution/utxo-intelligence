@@ -81,9 +81,7 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
 
       <Dialog 
         open={isTagDialogOpen}
-        onOpenChange={(open) => {
-          setIsTagDialogOpen(open);
-        }}
+        onOpenChange={setIsTagDialogOpen}
       >
         <DialogContent className="bg-background text-foreground">
           <DialogHeader>
