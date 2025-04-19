@@ -42,7 +42,8 @@ const DialogContent = React.forwardRef<
       )}
       // Ensure Dialog doesn't close on outside click unless explicitly intended
       onPointerDownOutside={(e) => {
-        // Allow closing on backdrop click but prevent closing when clicking inside dialog content
+        // Don't prevent the default event handler - this allows dialog to close on backdrop click
+        // but we'll ensure proper cleanup when that happens via onOpenChange
         if (props.onPointerDownOutside) {
           props.onPointerDownOutside(e);
         }

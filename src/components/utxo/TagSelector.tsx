@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Check, Plus, Tag as TagIcon } from "lucide-react";
 import {
   Dialog,
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWallet } from "@/store/WalletContext";
 import { cn } from "@/lib/utils";
+import { useLocation } from "react-router-dom";
 
 interface TagSelectorProps {
   utxoId: string;
@@ -22,9 +23,24 @@ interface TagSelectorProps {
 
 export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) => {
   const { tags, addTag } = useWallet();
+  const location = useLocation();
   const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#3b82f6");
+
+  // Clean up dialog state and any stuck overlays when navigating away
+  useEffect(() => {
+    setIsTagDialogOpen(false);
+    // Ensure no stuck overlays
+    document.body.style.overflow = 'auto';
+  }, [location.pathname]);
+
+  // Ensure dialog cleanup when closed
+  useEffect(() => {
+    if (!isTagDialogOpen) {
+      document.body.style.overflow = 'auto';
+    }
+  }, [isTagDialogOpen]);
 
   const handleAddTag = () => {
     if (newTagName.trim()) {
@@ -37,6 +53,7 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
       addTag(newTag);
       setNewTagName("");
       onSelect(newTag.id);
+      // Don't close dialog - allow multiple selections
     }
   };
 
@@ -48,6 +65,13 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
 
   const handleCloseDialog = () => {
     setIsTagDialogOpen(false);
+    // Ensure cleanup
+    document.body.style.overflow = 'auto';
+  };
+
+  const handleTagSelect = (tagId: string) => {
+    onSelect(tagId);
+    // Don't close dialog - allow multiple selections
   };
 
   const availableColors = [
@@ -70,7 +94,13 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
 
       <Dialog 
         open={isTagDialogOpen}
-        onOpenChange={setIsTagDialogOpen}
+        onOpenChange={(open) => {
+          setIsTagDialogOpen(open);
+          if (!open) {
+            // Ensure any stuck states are cleared
+            document.body.style.overflow = 'auto';
+          }
+        }}
       >
         <DialogContent className="bg-background text-foreground">
           <DialogHeader>
@@ -93,7 +123,7 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
                       "flex items-center justify-between p-2 rounded-md cursor-pointer hover:bg-muted/50",
                       isSelected && "bg-muted"
                     )}
-                    onClick={() => onSelect(tag.id)}
+                    onClick={() => handleTagSelect(tag.id)}
                   >
                     <div className="flex items-center">
                       <div 

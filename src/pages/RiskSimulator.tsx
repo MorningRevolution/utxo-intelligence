@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { Button } from "@/components/ui/button";
@@ -44,13 +43,11 @@ const RiskSimulator = () => {
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [riskDetailsOpen, setRiskDetailsOpen] = useState(false);
 
-  // Clean up modal states when navigating away
   useEffect(() => {
-    return () => {
-      setRiskDetailsOpen(false);
-      setConfirmModalOpen(false);
-      setResetModalOpen(false);
-    };
+    setRiskDetailsOpen(false);
+    setConfirmModalOpen(false);
+    setResetModalOpen(false);
+    document.body.style.overflow = 'auto';
   }, [location.pathname]);
 
   useEffect(() => {
@@ -131,7 +128,6 @@ const RiskSimulator = () => {
 
     setSimulationResult(result);
 
-    // Only open the risk details modal if the simulation resulted in medium or high risk
     if (result.privacyRisk === 'high' || result.privacyRisk === 'medium') {
       setRiskDetailsOpen(true);
     } else {
@@ -539,10 +535,14 @@ const RiskSimulator = () => {
         </AlertDialogContent>
       </AlertDialog>
       
-      {/* Risk Details Dialog with proper state management */}
       <Dialog 
         open={riskDetailsOpen} 
-        onOpenChange={setRiskDetailsOpen}
+        onOpenChange={(open) => {
+          setRiskDetailsOpen(open);
+          if (!open) {
+            document.body.style.overflow = 'auto';
+          }
+        }}
       >
         <DialogContent className="bg-card text-foreground border-border max-w-xl">
           <DialogHeader>
