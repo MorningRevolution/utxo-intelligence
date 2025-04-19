@@ -47,7 +47,6 @@ const RiskSimulator = () => {
     setRiskDetailsOpen(false);
     setConfirmModalOpen(false);
     setResetModalOpen(false);
-    document.body.style.overflow = 'auto';
   }, [location.pathname]);
 
   useEffect(() => {
@@ -159,7 +158,6 @@ const RiskSimulator = () => {
 
   const handleRiskDetailsClose = () => {
     setRiskDetailsOpen(false);
-    document.body.style.overflow = 'auto';
   };
 
   const goToUtxoTable = () => {
@@ -540,9 +538,6 @@ const RiskSimulator = () => {
         open={riskDetailsOpen} 
         onOpenChange={(open) => {
           setRiskDetailsOpen(open);
-          if (!open) {
-            document.body.style.overflow = 'auto';
-          }
         }}
       >
         <DialogContent className="bg-card text-foreground border-border max-w-xl">

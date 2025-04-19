@@ -27,18 +27,10 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#3b82f6");
 
-  // Clean up dialog state and restore scroll on navigation
+  // Fallback cleanup for route changes
   useEffect(() => {
     setIsTagDialogOpen(false);
-    document.body.style.overflow = 'auto';
   }, [location.pathname]);
-
-  // Safety cleanup when dialog closes
-  useEffect(() => {
-    if (!isTagDialogOpen) {
-      document.body.style.overflow = 'auto';
-    }
-  }, [isTagDialogOpen]);
 
   const handleAddTag = () => {
     if (newTagName.trim()) {
@@ -50,6 +42,7 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
       addTag(newTag);
       setNewTagName("");
       onSelect(newTag.id);
+      // Keep dialog open for multiple selections
     }
   };
 
@@ -61,7 +54,6 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
 
   const handleCloseDialog = () => {
     setIsTagDialogOpen(false);
-    document.body.style.overflow = 'auto';
   };
 
   const handleTagSelect = (tagId: string) => {
@@ -91,9 +83,6 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
         open={isTagDialogOpen}
         onOpenChange={(open) => {
           setIsTagDialogOpen(open);
-          if (!open) {
-            document.body.style.overflow = 'auto';
-          }
         }}
       >
         <DialogContent className="bg-background text-foreground">
