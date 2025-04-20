@@ -1,5 +1,4 @@
-
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, useRef, ReactNode, useEffect, useCallback } from 'react';
 import { WalletData, UTXO, Tag, Transaction, Report } from '../types/utxo';
 import { mockWalletData, mockTags } from '../data/mockData';
 
@@ -29,13 +28,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [selectedUTXOs, setSelectedUTXOs] = useState<UTXO[]>([]);
   const [preselectedForSimulation, setPreselectedForSimulation] = useState<boolean>(false);
   
-  const importWallet = (data: WalletData) => {
+  const preselectionDoneRef = useRef<boolean>(false);
+  
+  const importWallet = useCallback((data: WalletData) => {
     setWalletData(data);
     setPreselectedForSimulation(false);
-  };
+    preselectionDoneRef.current = false;
+  }, []);
 
   useEffect(() => {
-    if (walletData && !preselectedForSimulation) {
+    if (walletData && !preselectionDoneRef.current && !preselectedForSimulation) {
       const kycUtxo = walletData.utxos.find(utxo => 
         utxo.tags.includes('Exchange') || utxo.tags.includes('Bull KYC')
       );
@@ -57,6 +59,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       if (preselectUtxos.length >= 2) {
         setSelectedUTXOs(preselectUtxos);
         setPreselectedForSimulation(true);
+        preselectionDoneRef.current = true;
       }
     }
   }, [walletData, preselectedForSimulation]);
@@ -86,7 +89,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   };
 
   const addTag = (tag: Tag) => {
-    setTags([...tags, tag]);
+    setTags(prevTags => [...prevTags, tag]);
   };
 
   const tagUTXO = (utxoId: string, tagId: string) => {
@@ -133,30 +136,32 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const selectUTXO = (utxo: UTXO) => {
+  const selectUTXO = useCallback((utxo: UTXO) => {
     if (!selectedUTXOs.some(u => u.txid === utxo.txid && u.vout === utxo.vout)) {
       console.log('Adding UTXO to simulation:', utxo);
       setSelectedUTXOs(prev => {
         const newSelected = [...prev, utxo];
         console.log('New selectedUTXOs length:', newSelected.length);
+        console.log('Selected UTXOs IDs:', newSelected.map(u => `${u.txid.substring(0, 6)}...${u.vout}`));
         return newSelected;
       });
     } else {
       console.log('UTXO already in simulation:', utxo);
     }
-  };
+  }, [selectedUTXOs]);
 
-  const deselectUTXO = (utxo: UTXO) => {
-    setSelectedUTXOs(selectedUTXOs.filter(u => 
-      !(u.txid === utxo.txid && u.vout === utxo.vout)
-    ));
-  };
+  const deselectUTXO = useCallback((utxo: UTXO) => {
+    setSelectedUTXOs(prevSelected => 
+      prevSelected.filter(u => !(u.txid === utxo.txid && u.vout === utxo.vout))
+    );
+  }, []);
 
-  const clearSelectedUTXOs = () => {
+  const clearSelectedUTXOs = useCallback(() => {
+    console.log('Clearing all selected UTXOs');
     setSelectedUTXOs([]);
-  };
+  }, []);
 
-  const generateReport = (): Report => {
+  const generateReport = () => {
     if (!walletData) {
       throw new Error("No wallet data available");
     }
@@ -218,26 +223,26 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  const contextValue = {
+    walletData,
+    tags,
+    selectedUTXOs,
+    importWallet,
+    importFromJson,
+    addTag,
+    tagUTXO,
+    removeTagFromUTXO,
+    selectUTXO,
+    deselectUTXO,
+    clearSelectedUTXOs,
+    generateReport,
+    hasWallet: !!walletData,
+    preselectedForSimulation,
+    setPreselectedForSimulation
+  };
+
   return (
-    <WalletContext.Provider
-      value={{
-        walletData,
-        tags,
-        selectedUTXOs,
-        importWallet,
-        importFromJson,
-        addTag,
-        tagUTXO,
-        removeTagFromUTXO,
-        selectUTXO,
-        deselectUTXO,
-        clearSelectedUTXOs,
-        generateReport,
-        hasWallet: !!walletData,
-        preselectedForSimulation,
-        setPreselectedForSimulation
-      }}
-    >
+    <WalletContext.Provider value={contextValue}>
       {children}
     </WalletContext.Provider>
   );

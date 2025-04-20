@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { 
@@ -56,13 +55,15 @@ const UTXOTable = () => {
     };
   }, [location.pathname]);
 
-  if (!hasWallet) {
-    navigate("/wallet-import");
-    toast({
-      title: "No wallet loaded",
-      description: "Please import a wallet first",
-    });
-  }
+  useEffect(() => {
+    if (!hasWallet) {
+      navigate("/wallet-import");
+      toast({
+        title: "No wallet loaded",
+        description: "Please import a wallet first",
+      });
+    }
+  }, [hasWallet, navigate, toast]);
 
   const filteredUtxos = useMemo(() => {
     if (!walletData) return [];
@@ -131,11 +132,27 @@ const UTXOTable = () => {
   };
 
   const handleAddToSimulation = (utxo: UTXO) => {
-    selectUTXO(utxo);
-    toast({
-      title: "UTXO added to simulation",
-      description: "Navigate to Risk Simulator to analyze transaction privacy",
-    });
+    const isAlreadySelected = selectedUTXOs.some(
+      u => u.txid === utxo.txid && u.vout === utxo.vout
+    );
+    
+    if (!isAlreadySelected) {
+      console.log('UTXOTable: Adding to simulation:', utxo.txid.substring(0, 8), 'vout:', utxo.vout);
+      console.log('Current selected UTXOs before adding:', selectedUTXOs.length);
+      
+      selectUTXO(utxo);
+      
+      toast({
+        title: "UTXO added to simulation",
+        description: "Navigate to Risk Simulator to analyze transaction privacy",
+      });
+    } else {
+      console.log('UTXOTable: UTXO already in simulation:', utxo.txid.substring(0, 8));
+      toast({
+        title: "Already selected",
+        description: "This UTXO is already in the simulation",
+      });
+    }
   };
 
   const clearFilters = () => {

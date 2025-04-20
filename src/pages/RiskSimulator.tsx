@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,31 +69,30 @@ const RiskSimulator = () => {
     }
   }, [hasWallet, navigate, toast]);
 
-  // Handle automatic simulation when preselected is true and has selectedUTXOs
+  // Improved useEffect for preselected simulation - avoid stale closures
   useEffect(() => {
+    // Only run simulation if preselectedForSimulation is true and we have at least 2 UTXOs
     if (preselectedForSimulation && selectedUTXOs.length >= 2 && outputs[0].address) {
-      // Create a stable dependency array by using a specific condition
-      const simulateOnce = () => {
-        const result = calculateTransactionPrivacyRisk(
-          selectedUTXOs,
-          outputs.map(o => o.address)
-        );
-        setSimulationResult(result);
-        setPreselectedForSimulation(false);
-        
-        // Don't open risk details modal automatically
-        if (result.privacyRisk === 'low') {
-          toast({
-            title: "Low Privacy Risk",
-            description: "This transaction appears to maintain good privacy",
-          });
-        }
-      };
+      console.log('Running preselected simulation with UTXOs:', selectedUTXOs.length);
+      console.log('Selected UTXO IDs:', selectedUTXOs.map(u => `${u.txid.substring(0, 6)}...${u.vout}`));
       
-      simulateOnce();
+      // Run simulation with latest state
+      const result = calculateTransactionPrivacyRisk(
+        selectedUTXOs,
+        outputs.map(o => o.address)
+      );
+      
+      setSimulationResult(result);
+      setPreselectedForSimulation(false);
+      
+      if (result.privacyRisk === 'low') {
+        toast({
+          title: "Low Privacy Risk",
+          description: "This transaction appears to maintain good privacy",
+        });
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preselectedForSimulation]);
+  }, [preselectedForSimulation, selectedUTXOs, outputs, setPreselectedForSimulation, toast]);
 
   const totalInputAmount = selectedUTXOs.reduce((sum, utxo) => sum + utxo.amount, 0);
   const totalOutputAmount = outputs.reduce((sum, output) => sum + (output.amount || 0), 0);
@@ -122,7 +120,14 @@ const RiskSimulator = () => {
     setOutputs(newOutputs);
   };
 
-  const simulateTransaction = () => {
+  // Improved simulateTransaction to always use latest selectedUTXOs state
+  const simulateTransaction = useCallback(() => {
+    // Re-access the selectedUTXOs from context to ensure we have latest state
+    const { selectedUTXOs } = useWallet();
+    
+    console.log('Simulating transaction with UTXOs:', selectedUTXOs.length);
+    console.log('Current UTXOs in simulation:', selectedUTXOs.map(u => `${u.txid.substring(0, 6)}...${u.vout}`));
+    
     if (selectedUTXOs.length === 0) {
       toast({
         variant: "destructive",
@@ -141,7 +146,10 @@ const RiskSimulator = () => {
       return;
     }
 
-    if (totalOutputAmount + estimatedFee > totalInputAmount) {
+    const currentTotalInputAmount = selectedUTXOs.reduce((sum, utxo) => sum + utxo.amount, 0);
+    const currentEstimatedFee = selectedUTXOs.length * estimatedFeeRate;
+    
+    if (totalOutputAmount + currentEstimatedFee > currentTotalInputAmount) {
       toast({
         variant: "destructive",
         title: "Insufficient funds",
@@ -157,7 +165,7 @@ const RiskSimulator = () => {
 
     setSimulationResult(result);
     console.log("Simulation result:", result);
-    console.log("Selected UTXOs used:", selectedUTXOs);
+    console.log("Selected UTXOs used for simulation:", selectedUTXOs.length);
 
     // Only open risk details modal on user-initiated simulation with medium/high risk
     if (result.privacyRisk === 'high' || result.privacyRisk === 'medium') {
@@ -168,7 +176,7 @@ const RiskSimulator = () => {
         description: "This transaction appears to maintain good privacy",
       });
     }
-  };
+  }, [outputs, toast]);
 
   const handleResetSimulation = () => {
     clearSelectedUTXOs();
