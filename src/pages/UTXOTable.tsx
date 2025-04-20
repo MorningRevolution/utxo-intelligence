@@ -128,6 +128,9 @@ const UTXOTable = () => {
       title: "UTXO added to simulation",
       description: "Navigate to Risk Simulator to analyze transaction privacy",
     });
+    
+    // Optionally navigate to the risk simulator
+    // navigate("/risk-simulator");
   };
 
   const clearFilters = () => {
