@@ -43,9 +43,10 @@ const UTXOTable = () => {
     walletData, 
     tags, 
     tagUTXO, 
-    hasWallet, 
+    hasWallet,
+    selectedUTXOs,
     isUTXOSelected,
-    toggleUTXOSelection 
+    toggleUTXOSelection
   } = useWallet();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -144,7 +145,7 @@ const UTXOTable = () => {
     toggleUTXOSelection(utxo);
     
     toast({
-      title: "UTXO added to simulation",
+      title: "UTXO Selection Updated",
       description: "Navigate to Risk Simulator to analyze transaction privacy",
     });
   };
@@ -310,7 +311,7 @@ const UTXOTable = () => {
                     <TableRow key={utxo.txid + "-" + utxo.vout}>
                       <TableCell className="font-mono">
                         <div className="flex items-center gap-2">
-                          {isSelected && (
+                          {isUTXOSelected(utxo) && (
                             <div className="bg-green-500/10 text-green-500 p-1 rounded">
                               <Check className="h-4 w-4" />
                             </div>
@@ -503,7 +504,7 @@ const UTXOTable = () => {
                 </div>
               </div>
               
-              {!selectedUTXOs.some(u => u.txid === detailsUtxo.txid && u.vout === detailsUtxo.vout) ? (
+              {!isUTXOSelected(detailsUtxo) ? (
                 <Button 
                   onClick={() => {
                     handleAddToSimulation(detailsUtxo);

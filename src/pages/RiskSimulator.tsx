@@ -38,6 +38,7 @@ const RiskSimulator = () => {
     selectedUTXOs, 
     hasWallet,
     isUTXOSelected,
+    toggleUTXOSelection,
     clearSelectedUTXOs, 
     preselectedForSimulation, 
     setPreselectedForSimulation 

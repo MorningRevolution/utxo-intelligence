@@ -168,15 +168,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [selectedUTXOs]);
 
   const toggleUTXOSelection = useCallback((utxo: UTXO) => {
-    const isSelected = isUTXOSelected(utxo);
-    console.log(`Toggling UTXO selection: ${utxo.txid.substring(0, 6)}... Current state: ${isSelected}`);
+    console.log(`Toggling UTXO selection: ${utxo.txid.substring(0, 6)}...`);
     
-    if (isSelected) {
-      deselectUTXO(utxo);
-    } else {
-      selectUTXO(utxo);
-    }
-  }, [isUTXOSelected, selectUTXO, deselectUTXO]);
+    setSelectedUTXOs(prev => {
+      const isSelected = prev.some(u => u.txid === utxo.txid && u.vout === utxo.vout);
+      console.log(`UTXO is currently selected: ${isSelected}`);
+      
+      if (isSelected) {
+        console.log('Removing UTXO from selection');
+        return prev.filter(u => !(u.txid === utxo.txid && u.vout === utxo.vout));
+      } else {
+        console.log('Adding UTXO to selection');
+        return [...prev, utxo];
+      }
+    });
+  }, []);
 
   const generateReport = () => {
     if (!walletData) {
