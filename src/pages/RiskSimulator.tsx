@@ -36,7 +36,8 @@ const RiskSimulator = () => {
   const { toast } = useToast();
   const { 
     selectedUTXOs, 
-    hasWallet, 
+    hasWallet,
+    isUTXOSelected,
     clearSelectedUTXOs, 
     preselectedForSimulation, 
     setPreselectedForSimulation 
@@ -50,7 +51,6 @@ const RiskSimulator = () => {
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [riskDetailsOpen, setRiskDetailsOpen] = useState(false);
 
-  // Cleanup modals on route changes
   useEffect(() => {
     return () => {
       setRiskDetailsOpen(false);
@@ -69,14 +69,11 @@ const RiskSimulator = () => {
     }
   }, [hasWallet, navigate, toast]);
 
-  // Improved useEffect for preselected simulation - avoid stale closures
   useEffect(() => {
-    // Only run simulation if preselectedForSimulation is true and we have at least 2 UTXOs
     if (preselectedForSimulation && selectedUTXOs.length >= 2 && outputs[0].address) {
       console.log('Running preselected simulation with UTXOs:', selectedUTXOs.length);
       console.log('Selected UTXO IDs:', selectedUTXOs.map(u => `${u.txid.substring(0, 6)}...${u.vout}`));
       
-      // Run simulation with latest state
       const result = calculateTransactionPrivacyRisk(
         selectedUTXOs,
         outputs.map(o => o.address)
@@ -120,11 +117,7 @@ const RiskSimulator = () => {
     setOutputs(newOutputs);
   };
 
-  // Improved simulateTransaction to always use latest selectedUTXOs state
   const simulateTransaction = useCallback(() => {
-    // Re-access the selectedUTXOs from context to ensure we have latest state
-    const { selectedUTXOs } = useWallet();
-    
     console.log('Simulating transaction with UTXOs:', selectedUTXOs.length);
     console.log('Current UTXOs in simulation:', selectedUTXOs.map(u => `${u.txid.substring(0, 6)}...${u.vout}`));
     
@@ -167,7 +160,6 @@ const RiskSimulator = () => {
     console.log("Simulation result:", result);
     console.log("Selected UTXOs used for simulation:", selectedUTXOs.length);
 
-    // Only open risk details modal on user-initiated simulation with medium/high risk
     if (result.privacyRisk === 'high' || result.privacyRisk === 'medium') {
       setRiskDetailsOpen(true);
     } else {

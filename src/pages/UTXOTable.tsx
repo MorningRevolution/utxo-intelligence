@@ -39,7 +39,14 @@ const UTXOTable = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { walletData, tags, tagUTXO, removeTagFromUTXO, hasWallet, selectUTXO, selectedUTXOs } = useWallet();
+  const { 
+    walletData, 
+    tags, 
+    tagUTXO, 
+    hasWallet, 
+    isUTXOSelected,
+    toggleUTXOSelection 
+  } = useWallet();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedRisk, setSelectedRisk] = useState<string[]>([]);
@@ -132,27 +139,14 @@ const UTXOTable = () => {
   };
 
   const handleAddToSimulation = (utxo: UTXO) => {
-    const isAlreadySelected = selectedUTXOs.some(
-      u => u.txid === utxo.txid && u.vout === utxo.vout
-    );
+    console.log('UTXOTable: Adding to simulation:', utxo.txid.substring(0, 8), 'vout:', utxo.vout);
     
-    if (!isAlreadySelected) {
-      console.log('UTXOTable: Adding to simulation:', utxo.txid.substring(0, 8), 'vout:', utxo.vout);
-      console.log('Current selected UTXOs before adding:', selectedUTXOs.length);
-      
-      selectUTXO(utxo);
-      
-      toast({
-        title: "UTXO added to simulation",
-        description: "Navigate to Risk Simulator to analyze transaction privacy",
-      });
-    } else {
-      console.log('UTXOTable: UTXO already in simulation:', utxo.txid.substring(0, 8));
-      toast({
-        title: "Already selected",
-        description: "This UTXO is already in the simulation",
-      });
-    }
+    toggleUTXOSelection(utxo);
+    
+    toast({
+      title: "UTXO added to simulation",
+      description: "Navigate to Risk Simulator to analyze transaction privacy",
+    });
   };
 
   const clearFilters = () => {
@@ -310,9 +304,7 @@ const UTXOTable = () => {
                 </TableRow>
               ) : (
                 filteredUtxos.map((utxo) => {
-                  const isSelected = selectedUTXOs.some(
-                    u => u.txid === utxo.txid && u.vout === utxo.vout
-                  );
+                  const isSelected = isUTXOSelected(utxo);
 
                   return (
                     <TableRow key={utxo.txid + "-" + utxo.vout}>

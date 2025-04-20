@@ -14,6 +14,8 @@ interface WalletContextType {
   selectUTXO: (utxo: UTXO) => void;
   deselectUTXO: (utxo: UTXO) => void;
   clearSelectedUTXOs: () => void;
+  isUTXOSelected: (utxo: UTXO) => boolean;
+  toggleUTXOSelection: (utxo: UTXO) => void;
   generateReport: () => Report;
   hasWallet: boolean;
   preselectedForSimulation: boolean;
@@ -161,6 +163,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setSelectedUTXOs([]);
   }, []);
 
+  const isUTXOSelected = useCallback((utxo: UTXO): boolean => {
+    return selectedUTXOs.some(u => u.txid === utxo.txid && u.vout === utxo.vout);
+  }, [selectedUTXOs]);
+
+  const toggleUTXOSelection = useCallback((utxo: UTXO) => {
+    const isSelected = isUTXOSelected(utxo);
+    console.log(`Toggling UTXO selection: ${utxo.txid.substring(0, 6)}... Current state: ${isSelected}`);
+    
+    if (isSelected) {
+      deselectUTXO(utxo);
+    } else {
+      selectUTXO(utxo);
+    }
+  }, [isUTXOSelected, selectUTXO, deselectUTXO]);
+
   const generateReport = () => {
     if (!walletData) {
       throw new Error("No wallet data available");
@@ -235,6 +252,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     selectUTXO,
     deselectUTXO,
     clearSelectedUTXOs,
+    isUTXOSelected,
+    toggleUTXOSelection,
     generateReport,
     hasWallet: !!walletData,
     preselectedForSimulation,
