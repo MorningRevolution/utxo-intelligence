@@ -1,6 +1,12 @@
 import { createContext, useContext, useState, useRef, ReactNode, useEffect, useCallback } from 'react';
 import { WalletData, UTXO, Tag, Transaction, Report } from '../types/utxo';
 import { mockWalletData, mockTags } from '../data/mockData';
+import { 
+  isUTXOInSelection, 
+  addUTXOToSelection, 
+  removeUTXOFromSelection, 
+  toggleUTXOInSelection 
+} from '../utils/utxoSelectionUtils';
 
 interface WalletContextType {
   walletData: WalletData | null;
@@ -139,23 +145,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   };
 
   const selectUTXO = useCallback((utxo: UTXO) => {
-    if (!selectedUTXOs.some(u => u.txid === utxo.txid && u.vout === utxo.vout)) {
-      console.log('Adding UTXO to simulation:', utxo);
-      setSelectedUTXOs(prev => {
-        const newSelected = [...prev, utxo];
-        console.log('New selectedUTXOs length:', newSelected.length);
-        console.log('Selected UTXOs IDs:', newSelected.map(u => `${u.txid.substring(0, 6)}...${u.vout}`));
-        return newSelected;
-      });
-    } else {
-      console.log('UTXO already in simulation:', utxo);
-    }
-  }, [selectedUTXOs]);
+    setSelectedUTXOs(prev => addUTXOToSelection(prev, utxo));
+  }, []);
 
   const deselectUTXO = useCallback((utxo: UTXO) => {
-    setSelectedUTXOs(prevSelected => 
-      prevSelected.filter(u => !(u.txid === utxo.txid && u.vout === utxo.vout))
-    );
+    setSelectedUTXOs(prev => removeUTXOFromSelection(prev, utxo));
   }, []);
 
   const clearSelectedUTXOs = useCallback(() => {
@@ -164,24 +158,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const isUTXOSelected = useCallback((utxo: UTXO): boolean => {
-    return selectedUTXOs.some(u => u.txid === utxo.txid && u.vout === utxo.vout);
+    return isUTXOInSelection(selectedUTXOs, utxo);
   }, [selectedUTXOs]);
 
   const toggleUTXOSelection = useCallback((utxo: UTXO) => {
     console.log(`Toggling UTXO selection: ${utxo.txid.substring(0, 6)}...`);
-    
-    setSelectedUTXOs(prev => {
-      const isSelected = prev.some(u => u.txid === utxo.txid && u.vout === utxo.vout);
-      console.log(`UTXO is currently selected: ${isSelected}`);
-      
-      if (isSelected) {
-        console.log('Removing UTXO from selection');
-        return prev.filter(u => !(u.txid === utxo.txid && u.vout === utxo.vout));
-      } else {
-        console.log('Adding UTXO to selection');
-        return [...prev, utxo];
-      }
-    });
+    setSelectedUTXOs(prev => toggleUTXOInSelection(prev, utxo));
   }, []);
 
   const generateReport = () => {
