@@ -27,12 +27,19 @@ import { TagSelector } from "@/components/utxo/TagSelector";
 import { formatBTC, formatTxid, getRiskColor } from "@/utils/utxo-utils";
 import { ArrowUpDown, Filter, MoreVertical, Tag, Eye, Info, Bookmark } from "lucide-react";
 import { UTXO } from "@/types/utxo";
+import { Check } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const UTXOTable = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { walletData, tags, tagUTXO, hasWallet, selectUTXO } = useWallet();
+  const { walletData, tags, tagUTXO, hasWallet, selectUTXO, selectedUTXOs } = useWallet();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedRisk, setSelectedRisk] = useState<string[]>([]);
@@ -284,68 +291,98 @@ const UTXOTable = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredUtxos.map((utxo) => (
-                  <TableRow key={utxo.txid + "-" + utxo.vout}>
-                    <TableCell className="font-mono">
-                      {formatTxid(utxo.txid)}
-                    </TableCell>
-                    <TableCell>{formatBTC(utxo.amount)}</TableCell>
-                    <TableCell>{utxo.confirmations}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {utxo.tags.map((tagName, index) => {
-                          const tag = tags.find(t => t.name === tagName);
-                          return tag ? (
-                            <Badge 
-                              key={index}
-                              style={{ 
-                                backgroundColor: tag.color, 
-                                color: '#ffffff' 
-                              }} 
-                            >
-                              {tagName}
-                            </Badge>
-                          ) : null;
-                        })}
-                        {utxo.tags.length === 0 && (
-                          <span className="text-muted-foreground text-sm">No tags</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <div className={`w-3 h-3 rounded-full ${getRiskColor(utxo.privacyRisk)}`}></div>
-                        <span className="ml-2 capitalize">{utxo.privacyRisk}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-card text-foreground">
-                          <DropdownMenuItem onClick={() => handleViewDetails(utxo)}>
-                            <Info className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <TagSelector 
-                              utxoId={utxo.txid}
-                              onSelect={(tagId) => handleTagSelection(utxo.txid, tagId)}
-                              utxoTags={utxo.tags}
-                            />
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAddToSimulation(utxo)}>
-                            <Bookmark className="mr-2 h-4 w-4" />
-                            Add to Simulation
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
+                filteredUtxos.map((utxo) => {
+                  const isSelected = selectedUTXOs.some(
+                    u => u.txid === utxo.txid && u.vout === utxo.vout
+                  );
+
+                  return (
+                    <TableRow key={utxo.txid + "-" + utxo.vout}>
+                      <TableCell className="font-mono">
+                        <div className="flex items-center gap-2">
+                          {isSelected && (
+                            <div className="bg-green-500/10 text-green-500 p-1 rounded">
+                              <Check className="h-4 w-4" />
+                            </div>
+                          )}
+                          {formatTxid(utxo.txid)}
+                        </div>
+                      </TableCell>
+                      <TableCell>{formatBTC(utxo.amount)}</TableCell>
+                      <TableCell>{utxo.confirmations}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {utxo.tags.map((tagName, index) => {
+                            const tag = tags.find(t => t.name === tagName);
+                            return tag ? (
+                              <Badge 
+                                key={index}
+                                style={{ 
+                                  backgroundColor: tag.color, 
+                                  color: '#ffffff' 
+                                }} 
+                              >
+                                {tagName}
+                              </Badge>
+                            ) : null;
+                          })}
+                          {utxo.tags.length === 0 && (
+                            <span className="text-muted-foreground text-sm">No tags</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <div className={`w-3 h-3 rounded-full ${getRiskColor(utxo.privacyRisk)}`}></div>
+                          <span className="ml-2 capitalize">{utxo.privacyRisk}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-card text-foreground">
+                            <DropdownMenuItem onClick={() => handleViewDetails(utxo)}>
+                              <Info className="mr-2 h-4 w-4" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <TagSelector 
+                                utxoId={utxo.txid}
+                                onSelect={(tagId) => handleTagSelection(utxo.txid, tagId)}
+                                utxoTags={utxo.tags}
+                              />
+                            </DropdownMenuItem>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div>
+                                    <DropdownMenuItem 
+                                      onClick={() => !isSelected && handleAddToSimulation(utxo)}
+                                      disabled={isSelected}
+                                      className={isSelected ? "cursor-not-allowed opacity-50" : ""}
+                                    >
+                                      <Bookmark className="mr-2 h-4 w-4" />
+                                      Add to Simulation
+                                    </DropdownMenuItem>
+                                  </div>
+                                </TooltipTrigger>
+                                {isSelected && (
+                                  <TooltipContent>
+                                    <p>Already added to simulation</p>
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
+                            </TooltipProvider>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

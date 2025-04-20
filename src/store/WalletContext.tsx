@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { WalletData, UTXO, Tag, Transaction, Report } from '../types/utxo';
 import { mockWalletData, mockTags } from '../data/mockData';
@@ -31,7 +30,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   
   const importWallet = (data: WalletData) => {
     setWalletData(data);
-    // We only want to set this to false when explicitly importing a new wallet
     setPreselectedForSimulation(false);
   };
 
@@ -135,9 +133,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   };
 
   const selectUTXO = (utxo: UTXO) => {
-    // Ensure we don't add duplicates by checking if the UTXO already exists
     if (!selectedUTXOs.some(u => u.txid === utxo.txid && u.vout === utxo.vout)) {
-      setSelectedUTXOs(prev => [...prev, utxo]);
+      console.log('Adding UTXO to simulation:', utxo);
+      setSelectedUTXOs(prev => {
+        const newSelected = [...prev, utxo];
+        console.log('New selectedUTXOs length:', newSelected.length);
+        return newSelected;
+      });
     }
   };
 
