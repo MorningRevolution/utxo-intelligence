@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Check, Plus, Tag as TagIcon } from "lucide-react";
 import {
@@ -18,18 +19,26 @@ interface TagSelectorProps {
   utxoId: string;
   onSelect: (tagId: string) => void;
   utxoTags: string[];
+  trigger?: React.ReactNode;
 }
 
-export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) => {
+export const TagSelector = ({ 
+  utxoId, 
+  onSelect, 
+  utxoTags, 
+  trigger 
+}: TagSelectorProps) => {
   const { tags, addTag } = useWallet();
   const location = useLocation();
   const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#3b82f6");
-
+  
   // Fallback cleanup for route changes
   useEffect(() => {
-    setIsTagDialogOpen(false);
+    return () => {
+      setIsTagDialogOpen(false);
+    };
   }, [location.pathname]);
 
   const handleAddTag = () => {
@@ -66,22 +75,34 @@ export const TagSelector = ({ utxoId, onSelect, utxoTags }: TagSelectorProps) =>
     "#6366f1", "#ec4899", "#f97316", "#06b6d4", "#14b8a6",
   ];
 
+  const defaultTrigger = (
+    <div 
+      onClick={() => setIsTagDialogOpen(true)} 
+      className="flex items-center cursor-pointer"
+    >
+      <TagIcon className="h-4 w-4 mr-1" />
+      <span>Manage Tags</span>
+    </div>
+  );
+
   return (
     <>
-      <div 
-        onClick={(e) => {
+      {trigger ? (
+        <div onClick={(e) => {
           e.stopPropagation();
+          e.preventDefault();
           setIsTagDialogOpen(true);
-        }} 
-        className="flex items-center cursor-pointer"
-      >
-        <TagIcon className="h-4 w-4 mr-1" />
-        <span>Manage Tags</span>
-      </div>
+        }}>
+          {trigger}
+        </div>
+      ) : defaultTrigger}
 
       <Dialog 
         open={isTagDialogOpen}
-        onOpenChange={setIsTagDialogOpen}
+        onOpenChange={(open) => {
+          // Only allow closing through explicit actions
+          if (!open) setIsTagDialogOpen(false);
+        }}
       >
         <DialogContent className="bg-background text-foreground">
           <DialogHeader>

@@ -35,7 +35,14 @@ const RiskSimulator = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { selectedUTXOs, hasWallet, clearSelectedUTXOs, preselectedForSimulation, setPreselectedForSimulation } = useWallet();
+  const { 
+    selectedUTXOs, 
+    hasWallet, 
+    clearSelectedUTXOs, 
+    preselectedForSimulation, 
+    setPreselectedForSimulation 
+  } = useWallet();
+  
   const [outputs, setOutputs] = useState<{ address: string; amount: number }[]>([
     { address: "bc1qu6jf0q7cjmj9pz4ymmwdj6tt4rdh2z9vqzt3xw", amount: 0.1 }
   ]);
@@ -44,11 +51,13 @@ const RiskSimulator = () => {
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [riskDetailsOpen, setRiskDetailsOpen] = useState(false);
 
-  // Cleanup modals on route change
+  // Cleanup modals on route changes
   useEffect(() => {
-    setRiskDetailsOpen(false);
-    setConfirmModalOpen(false);
-    setResetModalOpen(false);
+    return () => {
+      setRiskDetailsOpen(false);
+      setConfirmModalOpen(false);
+      setResetModalOpen(false);
+    };
   }, [location.pathname]);
 
   useEffect(() => {
@@ -61,25 +70,31 @@ const RiskSimulator = () => {
     }
   }, [hasWallet, navigate, toast]);
 
+  // Handle automatic simulation when preselected is true and has selectedUTXOs
   useEffect(() => {
-    // Only simulate transaction on initial load if preselected, but don't open risk details modal
     if (preselectedForSimulation && selectedUTXOs.length >= 2 && outputs[0].address) {
-      const result = calculateTransactionPrivacyRisk(
-        selectedUTXOs,
-        outputs.map(o => o.address)
-      );
-      setSimulationResult(result);
-      setPreselectedForSimulation(false);
+      // Create a stable dependency array by using a specific condition
+      const simulateOnce = () => {
+        const result = calculateTransactionPrivacyRisk(
+          selectedUTXOs,
+          outputs.map(o => o.address)
+        );
+        setSimulationResult(result);
+        setPreselectedForSimulation(false);
+        
+        // Don't open risk details modal automatically
+        if (result.privacyRisk === 'low') {
+          toast({
+            title: "Low Privacy Risk",
+            description: "This transaction appears to maintain good privacy",
+          });
+        }
+      };
       
-      // Don't open risk details modal automatically - let user click simulate
-      if (result.privacyRisk === 'low') {
-        toast({
-          title: "Low Privacy Risk",
-          description: "This transaction appears to maintain good privacy",
-        });
-      }
+      simulateOnce();
     }
-  }, [preselectedForSimulation, selectedUTXOs]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preselectedForSimulation]);
 
   const totalInputAmount = selectedUTXOs.reduce((sum, utxo) => sum + utxo.amount, 0);
   const totalOutputAmount = outputs.reduce((sum, output) => sum + (output.amount || 0), 0);
@@ -141,6 +156,8 @@ const RiskSimulator = () => {
     );
 
     setSimulationResult(result);
+    console.log("Simulation result:", result);
+    console.log("Selected UTXOs used:", selectedUTXOs);
 
     // Only open risk details modal on user-initiated simulation with medium/high risk
     if (result.privacyRisk === 'high' || result.privacyRisk === 'medium') {

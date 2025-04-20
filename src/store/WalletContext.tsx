@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { WalletData, UTXO, Tag, Transaction, Report } from '../types/utxo';
 import { mockWalletData, mockTags } from '../data/mockData';
@@ -140,6 +141,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         console.log('New selectedUTXOs length:', newSelected.length);
         return newSelected;
       });
+    } else {
+      console.log('UTXO already in simulation:', utxo);
     }
   };
 

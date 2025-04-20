@@ -1,3 +1,4 @@
+
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { 
@@ -39,7 +40,7 @@ const UTXOTable = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { walletData, tags, tagUTXO, hasWallet, selectUTXO, selectedUTXOs } = useWallet();
+  const { walletData, tags, tagUTXO, removeTagFromUTXO, hasWallet, selectUTXO, selectedUTXOs } = useWallet();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedRisk, setSelectedRisk] = useState<string[]>([]);
@@ -349,11 +350,22 @@ const UTXOTable = () => {
                               <Info className="mr-2 h-4 w-4" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                              }}
+                            >
                               <TagSelector 
                                 utxoId={utxo.txid}
                                 onSelect={(tagId) => handleTagSelection(utxo.txid, tagId)}
                                 utxoTags={utxo.tags}
+                                trigger={
+                                  <div className="flex items-center w-full">
+                                    <Tag className="mr-2 h-4 w-4" />
+                                    <span>Manage Tags</span>
+                                  </div>
+                                }
                               />
                             </DropdownMenuItem>
                             <TooltipProvider>
@@ -366,7 +378,7 @@ const UTXOTable = () => {
                                       className={isSelected ? "cursor-not-allowed opacity-50" : ""}
                                     >
                                       <Bookmark className="mr-2 h-4 w-4" />
-                                      Add to Simulation
+                                      {isSelected ? "Already in Simulation" : "Add to Simulation"}
                                     </DropdownMenuItem>
                                   </div>
                                 </TooltipTrigger>
@@ -442,7 +454,7 @@ const UTXOTable = () => {
               
               <div>
                 <Label>Tags</Label>
-                <div className="flex flex-wrap gap-2 mt-1">
+                <div className="flex flex-wrap gap-2 mt-1 items-center">
                   {detailsUtxo.tags.length > 0 ? (
                     detailsUtxo.tags.map((tagName, index) => {
                       const tag = tags.find(t => t.name === tagName);
@@ -459,6 +471,18 @@ const UTXOTable = () => {
                   ) : (
                     <span className="text-muted-foreground">No tags assigned</span>
                   )}
+                  
+                  <TagSelector
+                    utxoId={detailsUtxo.txid}
+                    onSelect={(tagId) => handleTagSelection(detailsUtxo.txid, tagId)}
+                    utxoTags={detailsUtxo.tags}
+                    trigger={
+                      <Button variant="outline" size="sm" className="ml-2">
+                        <Tag className="mr-2 h-3 w-3" />
+                        Manage
+                      </Button>
+                    }
+                  />
                 </div>
               </div>
               
@@ -469,6 +493,27 @@ const UTXOTable = () => {
                   <span className="ml-2 capitalize text-foreground">{detailsUtxo.privacyRisk}</span>
                 </div>
               </div>
+              
+              {!selectedUTXOs.some(u => u.txid === detailsUtxo.txid && u.vout === detailsUtxo.vout) ? (
+                <Button 
+                  onClick={() => {
+                    handleAddToSimulation(detailsUtxo);
+                  }}
+                  className="w-full"
+                >
+                  <Bookmark className="mr-2 h-4 w-4" />
+                  Add to Simulation
+                </Button>
+              ) : (
+                <Button 
+                  disabled
+                  variant="outline"
+                  className="w-full cursor-not-allowed"
+                >
+                  <Check className="mr-2 h-4 w-4" />
+                  Already in Simulation
+                </Button>
+              )}
             </div>
           )}
           
