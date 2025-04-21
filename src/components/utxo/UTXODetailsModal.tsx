@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,17 +55,21 @@ export const UTXODetailsModal = ({
   };
 
   return (
-    <>
-      {open && utxo && (
-        <Dialog open={open} onOpenChange={handleOpenChange}>
-          <DialogContent className="bg-card text-foreground border-border">
-            <DialogHeader>
-              <DialogTitle>UTXO Details</DialogTitle>
-              <DialogDescription>
-                View and manage details for this UTXO
-              </DialogDescription>
-            </DialogHeader>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="bg-card text-foreground border-border">
+        <DialogHeader>
+          <DialogTitle>UTXO Details</DialogTitle>
+          <DialogDescription>
+            View and manage details for this UTXO
+          </DialogDescription>
+        </DialogHeader>
 
+        {!utxo ? (
+          <div className="py-6 text-center text-muted-foreground">
+            No UTXO selected.
+          </div>
+        ) : (
+          <>
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -181,9 +186,9 @@ export const UTXODetailsModal = ({
             <DialogFooter>
               <Button onClick={() => onOpenChange(false)}>Close</Button>
             </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-    </>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 };
