@@ -38,7 +38,6 @@ const UTXOTable = () => {
     tags, 
     tagUTXO, 
     hasWallet,
-    selectedUTXOs,
     isUTXOSelected,
     toggleUTXOSelection
   } = useWallet();
@@ -53,6 +52,7 @@ const UTXOTable = () => {
 
   useEffect(() => {
     return () => {
+      console.log("UTXOTable: Component unmounting, clearing state");
       setDetailsUtxo(null);
     };
   }, [location.pathname]);

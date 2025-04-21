@@ -29,7 +29,7 @@ export const UTXODetailsModal = ({
   onOpenChange,
   onTagUpdate,
 }: UTXODetailsModalProps) => {
-  const { isUTXOSelected, toggleUTXOSelection } = useWallet();
+  const { isUTXOSelected, toggleUTXOSelection, tags } = useWallet();
 
   const handleTagSelection = (utxoId: string, tagId: string) => {
     if (onTagUpdate && tagId && utxoId) {

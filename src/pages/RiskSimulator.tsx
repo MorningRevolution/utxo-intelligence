@@ -66,6 +66,7 @@ const RiskSimulator = () => {
 
   useEffect(() => {
     return () => {
+      console.log("RiskSimulator: Component unmounting, clearing modal states");
       setRiskDetailsOpen(false);
       setConfirmModalOpen(false);
       setResetModalOpen(false);
