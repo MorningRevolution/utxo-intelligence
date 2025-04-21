@@ -130,6 +130,7 @@ const UTXOTable = () => {
   };
 
   const handleViewDetails = (utxo: UTXO) => {
+    console.log("UTXOTable: Opening details modal for:", utxo.txid.substring(0, 8));
     setDetailsUtxo(utxo);
   };
 
@@ -409,7 +410,10 @@ const UTXOTable = () => {
         utxo={detailsUtxo}
         open={!!detailsUtxo} 
         onOpenChange={(open) => {
-          if (!open) setDetailsUtxo(null);
+          if (!open) {
+            console.log("UTXOTable: Closing details modal, clearing state");
+            setDetailsUtxo(null);
+          }
         }}
         onTagUpdate={handleTagSelection}
       />

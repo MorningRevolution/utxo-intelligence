@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { Button } from "@/components/ui/button";
@@ -38,7 +37,9 @@ const RiskSimulator = () => {
   const { 
     selectedUTXOs, 
     hasWallet,
-    clearSelectedUTXOs 
+    clearSelectedUTXOs,
+    isUTXOSelected,
+    toggleUTXOSelection
   } = useWallet();
 
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
@@ -91,6 +92,11 @@ const RiskSimulator = () => {
     setResetModalOpen(false);
   };
 
+  const handleToggleUTXO = (utxo) => {
+    console.log("RiskSimulator: Toggling UTXO", utxo.txid.substring(0, 8));
+    toggleUTXOSelection(utxo);
+  };
+
   const handleConfirmTransaction = () => {
     toast({
       title: "Transaction Simulated",
@@ -133,7 +139,6 @@ const RiskSimulator = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Input Card */}
         <Card className="bg-card border-border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -225,7 +230,6 @@ const RiskSimulator = () => {
           </CardContent>
         </Card>
 
-        {/* Output Card */}
         <Card className="bg-card border-border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -393,7 +397,6 @@ const RiskSimulator = () => {
         </Card>
       )}
 
-      {/* Alert Dialogs */}
       <AlertDialog 
         open={resetModalOpen} 
         onOpenChange={setResetModalOpen}

@@ -29,7 +29,7 @@ export const UTXODetailsModal = ({
   onOpenChange,
   onTagUpdate,
 }: UTXODetailsModalProps) => {
-  const { tags, isUTXOSelected, toggleUTXOSelection } = useWallet();
+  const { isUTXOSelected, toggleUTXOSelection } = useWallet();
 
   const handleTagSelection = (utxoId: string, tagId: string) => {
     if (onTagUpdate && tagId && utxoId) {
@@ -37,14 +37,25 @@ export const UTXODetailsModal = ({
     }
   };
 
-  const handleAddToSimulation = (utxo: UTXO) => {
+  const handleToggleSelection = (utxo: UTXO) => {
     toggleUTXOSelection(utxo);
+    console.log("UTXODetailsModal: Toggled UTXO selection", utxo.txid.substring(0, 6));
   };
 
+  // If no UTXO, don't render the dialog content
   if (!utxo) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog 
+      open={open} 
+      onOpenChange={(newOpen) => {
+        onOpenChange(newOpen);
+        // If dialog is closing, ensure state is cleared in parent
+        if (!newOpen) {
+          console.log("UTXODetailsModal: Dialog closing");
+        }
+      }}
+    >
       <DialogContent className="bg-card text-foreground border-border">
         <DialogHeader>
           <DialogTitle>UTXO Details</DialogTitle>
@@ -145,9 +156,7 @@ export const UTXODetailsModal = ({
 
           {!isUTXOSelected(utxo) ? (
             <Button
-              onClick={() => {
-                handleAddToSimulation(utxo);
-              }}
+              onClick={() => handleToggleSelection(utxo)}
               className="w-full"
             >
               <Bookmark className="mr-2 h-4 w-4" />
@@ -155,12 +164,12 @@ export const UTXODetailsModal = ({
             </Button>
           ) : (
             <Button
-              disabled
+              onClick={() => handleToggleSelection(utxo)}
               variant="outline"
-              className="w-full cursor-not-allowed"
+              className="w-full"
             >
               <Check className="mr-2 h-4 w-4" />
-              Already in Simulation
+              Remove from Simulation
             </Button>
           )}
         </div>
