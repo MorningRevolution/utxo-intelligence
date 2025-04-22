@@ -1,5 +1,5 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, Component, ErrorInfo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,11 +17,51 @@ import { formatBTC, getRiskColor } from "@/utils/utxo-utils";
 import { UTXO } from "@/types/utxo";
 import { Bookmark, Check, Tag } from "lucide-react";
 
+// Error boundary component for the dialog content
+class DialogErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    console.error("Dialog render error", error, errorInfo);
+  }
+
+  render(): React.ReactNode {
+    if (this.state.hasError) {
+      return (
+        <div className="p-6 text-destructive">
+          <h3 className="font-medium">Something went wrong</h3>
+          <p className="text-sm text-muted-foreground">
+            There was an error rendering this dialog. Please try again or contact support.
+          </p>
+          <Button 
+            className="mt-4" 
+            variant="outline" 
+            onClick={() => this.setState({ hasError: false })}
+          >
+            Try again
+          </Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 interface UTXODetailsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   utxoId: string | null;
-  onTagUpdate?: (utxoId: string, tagId: string) => void;
+  onTagUpdate?: (utxoId: string, tagId: string | null) => void;
 }
 
 export const UTXODetailsModal = ({
@@ -49,10 +89,10 @@ export const UTXODetailsModal = ({
     }
   }, [open, utxoId]);
 
-  const handleTagSelection = (utxoId: string, tagId: string) => {
+  const handleTagSelection = (utxoId: string, tagId: string | null) => {
     if (!selectedUTXO) return;
     
-    if (onTagUpdate && tagId && utxoId) {
+    if (onTagUpdate && utxoId) {
       onTagUpdate(utxoId, tagId);
       console.log("UTXODetailsModal: Tag updated for UTXO", utxoId.substring(0, 6));
     }
@@ -79,137 +119,139 @@ export const UTXODetailsModal = ({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="bg-card text-foreground border-border">
-        <DialogHeader>
-          <DialogTitle>UTXO Details</DialogTitle>
-          <DialogDescription>
-            View and manage details for this UTXO
-          </DialogDescription>
-        </DialogHeader>
+        <DialogErrorBoundary>
+          <DialogHeader>
+            <DialogTitle>UTXO Details</DialogTitle>
+            <DialogDescription>
+              View and manage details for this UTXO
+            </DialogDescription>
+          </DialogHeader>
 
-        {!selectedUTXO ? (
-          <div className="py-6 text-center text-muted-foreground">
-            No UTXO selected.
-          </div>
-        ) : (
-          <>
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Transaction ID</Label>
-                  <div className="font-mono text-xs mt-1 bg-muted p-2 rounded overflow-x-auto text-foreground">
-                    {selectedUTXO.txid}
-                  </div>
-                </div>
-                <div>
-                  <Label>Output Index</Label>
-                  <div className="font-mono text-sm mt-1 text-foreground">
-                    {selectedUTXO.vout}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <Label>Address</Label>
-                <div className="font-mono text-xs mt-1 bg-muted p-2 rounded overflow-x-auto text-foreground">
-                  {selectedUTXO.address}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Amount</Label>
-                  <div className="font-mono text-sm mt-1 text-foreground">
-                    {formatBTC(selectedUTXO.amount)}
-                  </div>
-                </div>
-                <div>
-                  <Label>Confirmations</Label>
-                  <div className="font-mono text-sm mt-1 text-foreground">
-                    {selectedUTXO.confirmations}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <Label>Script Pubkey</Label>
-                <div className="font-mono text-xs mt-1 bg-muted p-2 rounded overflow-x-auto text-foreground">
-                  {selectedUTXO.scriptPubKey}
-                </div>
-              </div>
-
-              <div>
-                <Label>Tags</Label>
-                <div className="flex flex-wrap gap-2 mt-1 items-center">
-                  {selectedUTXO.tags.length > 0 ? (
-                    selectedUTXO.tags.map((tagName, index) => {
-                      const tag = tags.find((t) => t.name === tagName);
-                      return tag ? (
-                        <Badge
-                          key={index}
-                          style={{ backgroundColor: tag.color }}
-                          className="text-white"
-                        >
-                          {tagName}
-                        </Badge>
-                      ) : null;
-                    })
-                  ) : (
-                    <span className="text-muted-foreground">No tags assigned</span>
-                  )}
-
-                  <TagSelector
-                    utxoId={selectedUTXO.txid}
-                    onSelect={(tagId) => handleTagSelection(selectedUTXO.txid, tagId)}
-                    utxoTags={selectedUTXO.tags}
-                    trigger={
-                      <Button variant="outline" size="sm" className="ml-2">
-                        <Tag className="mr-2 h-3 w-3" />
-                        Manage
-                      </Button>
-                    }
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label>Privacy Risk</Label>
-                <div className="flex items-center mt-1">
-                  <div
-                    className={`w-3 h-3 rounded-full ${getRiskColor(
-                      selectedUTXO.privacyRisk
-                    )}`}
-                  ></div>
-                  <span className="ml-2 capitalize text-foreground">
-                    {selectedUTXO.privacyRisk}
-                  </span>
-                </div>
-              </div>
-
-              {!isUTXOSelected(selectedUTXO) ? (
-                <Button
-                  onClick={() => handleToggleSelection(selectedUTXO)}
-                  className="w-full"
-                >
-                  <Bookmark className="mr-2 h-4 w-4" />
-                  Add to Simulation
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => handleToggleSelection(selectedUTXO)}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <Check className="mr-2 h-4 w-4" />
-                  Remove from Simulation
-                </Button>
-              )}
+          {!selectedUTXO ? (
+            <div className="py-6 text-center text-muted-foreground">
+              No UTXO selected.
             </div>
+          ) : (
+            <>
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Transaction ID</Label>
+                    <div className="font-mono text-xs mt-1 bg-muted p-2 rounded overflow-x-auto text-foreground">
+                      {selectedUTXO.txid}
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Output Index</Label>
+                    <div className="font-mono text-sm mt-1 text-foreground">
+                      {selectedUTXO.vout}
+                    </div>
+                  </div>
+                </div>
 
-            <DialogFooter>
-              <Button onClick={() => onOpenChange(false)}>Close</Button>
-            </DialogFooter>
-          </>
-        )}
+                <div>
+                  <Label>Address</Label>
+                  <div className="font-mono text-xs mt-1 bg-muted p-2 rounded overflow-x-auto text-foreground">
+                    {selectedUTXO.address}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Amount</Label>
+                    <div className="font-mono text-sm mt-1 text-foreground">
+                      {formatBTC(selectedUTXO.amount)}
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Confirmations</Label>
+                    <div className="font-mono text-sm mt-1 text-foreground">
+                      {selectedUTXO.confirmations}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Script Pubkey</Label>
+                  <div className="font-mono text-xs mt-1 bg-muted p-2 rounded overflow-x-auto text-foreground">
+                    {selectedUTXO.scriptPubKey}
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Tags</Label>
+                  <div className="flex flex-wrap gap-2 mt-1 items-center">
+                    {selectedUTXO.tags.length > 0 ? (
+                      selectedUTXO.tags.map((tagName, index) => {
+                        const tag = tags.find((t) => t.name === tagName);
+                        return tag ? (
+                          <Badge
+                            key={index}
+                            style={{ backgroundColor: tag.color }}
+                            className="text-white"
+                          >
+                            {tagName}
+                          </Badge>
+                        ) : null;
+                      })
+                    ) : (
+                      <span className="text-muted-foreground">No tags assigned</span>
+                    )}
+
+                    <TagSelector
+                      utxoId={selectedUTXO.txid}
+                      onSelect={(tagId) => handleTagSelection(selectedUTXO.txid, tagId)}
+                      utxoTags={selectedUTXO.tags}
+                      trigger={
+                        <Button variant="outline" size="sm" className="ml-2" tabIndex={0} data-testid="tag-selector-trigger">
+                          <Tag className="mr-2 h-3 w-3" />
+                          Manage
+                        </Button>
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Privacy Risk</Label>
+                  <div className="flex items-center mt-1">
+                    <div
+                      className={`w-3 h-3 rounded-full ${getRiskColor(
+                        selectedUTXO.privacyRisk
+                      )}`}
+                    ></div>
+                    <span className="ml-2 capitalize text-foreground">
+                      {selectedUTXO.privacyRisk}
+                    </span>
+                  </div>
+                </div>
+
+                {!isUTXOSelected(selectedUTXO) ? (
+                  <Button
+                    onClick={() => handleToggleSelection(selectedUTXO)}
+                    className="w-full"
+                  >
+                    <Bookmark className="mr-2 h-4 w-4" />
+                    Add to Simulation
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => handleToggleSelection(selectedUTXO)}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <Check className="mr-2 h-4 w-4" />
+                    Remove from Simulation
+                  </Button>
+                )}
+              </div>
+
+              <DialogFooter>
+                <Button onClick={() => onOpenChange(false)}>Close</Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogErrorBoundary>
       </DialogContent>
     </Dialog>
   );

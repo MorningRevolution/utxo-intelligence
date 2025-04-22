@@ -8,21 +8,16 @@ import { cn } from "@/lib/utils";
 import { useLocation } from "react-router-dom";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   AlertDialog,
   AlertDialogContent,
   AlertDialogTitle,
   AlertDialogFooter,
+  AlertDialogDescription,
 } from "@/components/ui/alert-dialog";
 
 interface TagSelectorProps {
   utxoId: string;
-  onSelect: (tagId: string) => void;
+  onSelect: (tagId: string | null) => void;
   utxoTags: string[];
   trigger?: React.ReactNode;
 }
@@ -67,7 +62,17 @@ export const TagSelector = ({
   };
 
   const handleTagSelect = (tagId: string) => {
-    onSelect(tagId);
+    // Find if this tag is already assigned
+    const tag = tags.find(t => t.id === tagId);
+    if (tag && utxoTags.includes(tag.name)) {
+      // Tag already assigned, so unassign it (pass null to indicate removal)
+      onSelect(null);
+      console.log("TagSelector: Removing tag:", tag.name);
+    } else {
+      // Tag not assigned, so assign it
+      onSelect(tagId);
+      console.log("TagSelector: Adding tag:", tag?.name);
+    }
     // Explicitly not closing dialog to allow multiple selections
   };
 
@@ -77,7 +82,7 @@ export const TagSelector = ({
   ];
 
   const defaultTrigger = (
-    <div className="flex items-center cursor-pointer">
+    <div className="flex items-center cursor-pointer" tabIndex={0} data-testid="tag-selector-default-trigger">
       <TagIcon className="h-4 w-4 mr-1" />
       <span>Manage Tags</span>
     </div>
@@ -94,6 +99,14 @@ export const TagSelector = ({
           setIsOpen(true);
         }}
         className="cursor-pointer"
+        data-testid="tag-selector-wrapper"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setIsOpen(true);
+          }
+        }}
       >
         {trigger ? trigger : defaultTrigger}
       </div>
@@ -102,8 +115,13 @@ export const TagSelector = ({
         <AlertDialogContent 
           className="bg-background text-foreground p-4 border border-border shadow-md w-72 max-w-[95vw]"
           onClick={(e) => e.stopPropagation()}
+          data-testid="tag-selector-dialog"
+          tabIndex={0}
         >
           <AlertDialogTitle className="font-medium text-foreground">Manage Tags</AlertDialogTitle>
+          <AlertDialogDescription className="sr-only">
+            Manage tags for the selected UTXO. You can add new tags or remove existing ones.
+          </AlertDialogDescription>
           
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-1 gap-2">
@@ -122,6 +140,14 @@ export const TagSelector = ({
                           isSelected && "bg-muted"
                         )}
                         onClick={() => handleTagSelect(tag.id)}
+                        data-testid={`tag-item-${tag.id}`}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleTagSelect(tag.id);
+                          }
+                        }}
                       >
                         <div className="flex items-center">
                           <div 
@@ -154,6 +180,8 @@ export const TagSelector = ({
                   className="flex-1 bg-background text-foreground"
                   onKeyPress={handleTagKeyPress}
                   onClick={(e) => e.stopPropagation()}
+                  data-testid="tag-name-input"
+                  tabIndex={0}
                 />
                 
                 <div className="flex items-center gap-2">
@@ -170,6 +198,14 @@ export const TagSelector = ({
                           e.stopPropagation();
                           setNewTagColor(color);
                         }}
+                        data-testid={`tag-color-${color.substring(1)}`}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setNewTagColor(color);
+                          }
+                        }}
                       />
                     ))}
                   </div>
@@ -181,6 +217,8 @@ export const TagSelector = ({
                       e.stopPropagation();
                       handleAddTag();
                     }}
+                    data-testid="add-tag-button"
+                    tabIndex={0}
                   >
                     <Plus className="h-4 w-4 mr-1" />
                     Add
@@ -198,6 +236,8 @@ export const TagSelector = ({
                 e.stopPropagation();
                 setIsOpen(false);
               }}
+              data-testid="tag-selector-close"
+              tabIndex={0}
             >
               Done
             </Button>
