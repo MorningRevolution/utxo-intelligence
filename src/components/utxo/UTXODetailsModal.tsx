@@ -73,6 +73,7 @@ export const UTXODetailsModal = ({
     }
   };
 
+  // Always render the Dialog component, never conditionally render it
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="bg-card text-foreground border-border">
