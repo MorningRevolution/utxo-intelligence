@@ -1,3 +1,4 @@
+
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { 
@@ -48,12 +49,14 @@ const UTXOTable = () => {
     key: 'amount',
     direction: 'desc'
   });
-  const [detailsUtxo, setDetailsUtxo] = useState<UTXO | null>(null);
+  const [detailsUtxoId, setDetailsUtxoId] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     return () => {
       console.log("UTXOTable: Component unmounting, clearing state");
-      setDetailsUtxo(null);
+      setDetailsUtxoId(null);
+      setModalOpen(false);
     };
   }, [location.pathname]);
 
@@ -131,7 +134,16 @@ const UTXOTable = () => {
 
   const handleViewDetails = (utxo: UTXO) => {
     console.log("UTXOTable: Opening details modal for:", utxo.txid.substring(0, 8));
-    setDetailsUtxo(utxo);
+    setDetailsUtxoId(utxo.txid);
+    setModalOpen(true);
+  };
+
+  const handleModalOpenChange = (open: boolean) => {
+    setModalOpen(open);
+    if (!open) {
+      console.log("UTXOTable: Closing details modal, clearing state");
+      setDetailsUtxoId(null);
+    }
   };
 
   const handleAddToSimulation = (utxo: UTXO) => {
@@ -407,14 +419,9 @@ const UTXOTable = () => {
       </div>
 
       <UTXODetailsModal 
-        utxo={detailsUtxo}
-        open={!!detailsUtxo} 
-        onOpenChange={(open) => {
-          if (!open) {
-            console.log("UTXOTable: Closing details modal, clearing state");
-            setDetailsUtxo(null);
-          }
-        }}
+        utxoId={detailsUtxoId}
+        open={modalOpen} 
+        onOpenChange={handleModalOpenChange}
         onTagUpdate={handleTagSelection}
       />
     </div>
