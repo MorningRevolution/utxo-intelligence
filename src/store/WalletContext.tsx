@@ -163,7 +163,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const toggleUTXOSelection = useCallback((utxo: UTXO) => {
     console.log(`Toggling UTXO selection: ${utxo.txid.substring(0, 6)}...`);
-    setSelectedUTXOs(prev => toggleUTXOInSelection(prev, utxo));
+    setSelectedUTXOs(prev => {
+      const newSelection = toggleUTXOInSelection(prev, utxo);
+      console.log("Toggled:", utxo.txid, "Now selected:", newSelection.length);
+      return newSelection;
+    });
   }, []);
 
   const generateReport = () => {

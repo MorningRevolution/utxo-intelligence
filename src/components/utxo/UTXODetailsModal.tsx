@@ -30,6 +30,8 @@ export const UTXODetailsModal = ({
   utxoId,
   onTagUpdate,
 }: UTXODetailsModalProps) => {
+  console.count("UTXODetailsModal render");
+  
   const { isUTXOSelected, toggleUTXOSelection, tags, walletData } = useWallet();
   
   // Look up the UTXO from the wallet context based on utxoId
@@ -64,7 +66,7 @@ export const UTXODetailsModal = ({
   };
 
   const handleOpenChange = (newOpen: boolean) => {
-    console.log("UTXODetailsModal: Dialog state changing to:", newOpen);
+    console.log("Dialog onOpenChange:", newOpen);
     onOpenChange(newOpen);
     
     // If dialog is closing, ensure we log it
