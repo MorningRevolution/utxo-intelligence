@@ -106,6 +106,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const tagName = tags.find(t => t.id === tagId)?.name;
     if (!tagName) return;
     
+    console.log(`WalletContext: Tagging UTXO ${utxoId.substring(0, 6)} with tag: ${tagName}`);
+    
+    const utxoBeforeUpdate = walletData.utxos.find(utxo => utxo.txid === utxoId);
+    console.log(`UTXO before tagging: ${utxoBeforeUpdate?.txid.substring(0, 6)}, Tags: ${utxoBeforeUpdate?.tags.join(', ')}`);
+    
     const updatedUtxos = walletData.utxos.map(utxo => {
       if (utxo.txid === utxoId) {
         return {
@@ -115,6 +120,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
       return utxo;
     });
+    
+    const updatedUtxo = updatedUtxos.find(utxo => utxo.txid === utxoId);
+    console.log(`UTXO after tagging: ${updatedUtxo?.txid.substring(0, 6)}, Tags: ${updatedUtxo?.tags.join(', ')}`);
     
     setWalletData({
       ...walletData,
@@ -128,6 +136,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const tagName = tags.find(t => t.id === tagId)?.name;
     if (!tagName) return;
     
+    console.log(`WalletContext: Removing tag ${tagName} from UTXO ${utxoId.substring(0, 6)}`);
+    
+    const utxoBeforeUpdate = walletData.utxos.find(utxo => utxo.txid === utxoId);
+    console.log(`UTXO before tag removal: ${utxoBeforeUpdate?.txid.substring(0, 6)}, Tags: ${utxoBeforeUpdate?.tags.join(', ')}`);
+    
     const updatedUtxos = walletData.utxos.map(utxo => {
       if (utxo.txid === utxoId) {
         return {
@@ -137,6 +150,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
       return utxo;
     });
+    
+    const updatedUtxo = updatedUtxos.find(utxo => utxo.txid === utxoId);
+    console.log(`UTXO after tag removal: ${updatedUtxo?.txid.substring(0, 6)}, Tags: ${updatedUtxo?.tags.join(', ')}`);
     
     setWalletData({
       ...walletData,

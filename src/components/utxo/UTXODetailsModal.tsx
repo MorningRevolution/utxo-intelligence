@@ -1,7 +1,6 @@
 
 import React, { useEffect, Component, ErrorInfo } from "react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -10,11 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { TagSelector } from "@/components/utxo/TagSelector";
 import { useWallet } from "@/store/WalletContext";
-import { formatBTC, getRiskColor } from "@/utils/utxo-utils";
 import { UTXO } from "@/types/utxo";
-import { Bookmark, Check } from "lucide-react";
 
 // Error boundary component for the dialog content
 class DialogErrorBoundary extends Component<
@@ -71,7 +67,7 @@ export const UTXODetailsModal = ({
 }: UTXODetailsModalProps) => {
   console.count("UTXODetailsModal render");
   
-  const { isUTXOSelected, toggleUTXOSelection, tags, walletData } = useWallet();
+  const { walletData } = useWallet();
   
   // Look up the UTXO from the wallet context based on utxoId
   const selectedUTXO = React.useMemo(() => {
@@ -85,24 +81,16 @@ export const UTXODetailsModal = ({
       console.log("UTXODetailsModal: Dialog closed, resetting internal state");
     } else {
       console.log("UTXODetailsModal: Dialog opened with UTXO ID:", utxoId?.substring(0, 6));
+      
+      // Debug log for selectedUTXO
+      if (selectedUTXO) {
+        console.log("Selected UTXO:", {
+          id: selectedUTXO.txid.substring(0, 6),
+          tags: selectedUTXO.tags
+        });
+      }
     }
-  }, [open, utxoId]);
-
-  const handleTagSelection = (utxoId: string, tagId: string | null) => {
-    if (!selectedUTXO) return;
-    
-    if (onTagUpdate && utxoId) {
-      onTagUpdate(utxoId, tagId);
-      console.log("UTXODetailsModal: Tag updated for UTXO", utxoId.substring(0, 6), "tagId:", tagId);
-    }
-  };
-
-  const handleToggleSelection = (utxo: UTXO) => {
-    if (!selectedUTXO) return;
-    
-    toggleUTXOSelection(utxo);
-    console.log("UTXODetailsModal: Toggled UTXO selection", utxo.txid.substring(0, 6));
-  };
+  }, [open, utxoId, selectedUTXO]);
 
   const handleOpenChange = (newOpen: boolean) => {
     console.log("Dialog onOpenChange:", newOpen);
@@ -119,146 +107,20 @@ export const UTXODetailsModal = ({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="bg-card text-foreground border-border">
         <DialogErrorBoundary>
-          <DialogHeader>
-            <DialogTitle>UTXO Details</DialogTitle>
-            <DialogDescription>
-              View and manage details for this UTXO
-            </DialogDescription>
-          </DialogHeader>
-
-          {!selectedUTXO ? (
-            <div className="py-6 text-center text-muted-foreground">
-              No UTXO selected.
-            </div>
-          ) : (
-            <>
-              <div className="space-y-4 py-4">
-                {/* Using try/catch to capture any UI rendering errors */}
-                {(() => {
-                  try {
-                    return (
-                      <>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label>Transaction ID</Label>
-                            <div className="font-mono text-xs mt-1 bg-muted p-2 rounded overflow-x-auto text-foreground">
-                              {selectedUTXO.txid}
-                            </div>
-                          </div>
-                          <div>
-                            <Label>Output Index</Label>
-                            <div className="font-mono text-sm mt-1 text-foreground">
-                              {selectedUTXO.vout}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label>Address</Label>
-                          <div className="font-mono text-xs mt-1 bg-muted p-2 rounded overflow-x-auto text-foreground">
-                            {selectedUTXO.address}
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label>Amount</Label>
-                            <div className="font-mono text-sm mt-1 text-foreground">
-                              {formatBTC(selectedUTXO.amount)}
-                            </div>
-                          </div>
-                          <div>
-                            <Label>Confirmations</Label>
-                            <div className="font-mono text-sm mt-1 text-foreground">
-                              {selectedUTXO.confirmations}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label>Script Pubkey</Label>
-                          <div className="font-mono text-xs mt-1 bg-muted p-2 rounded overflow-x-auto text-foreground">
-                            {selectedUTXO.scriptPubKey}
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label>Tags</Label>
-                          <div className="mt-1">
-                            {/* TEMPORARY: Replace complex UI with simple text for debugging */}
-                            <div className="text-muted-foreground" data-testid="simplified-tag-display">
-                              {selectedUTXO.tags.length > 0 
-                                ? `Tags: ${selectedUTXO.tags.join(', ')}` 
-                                : 'No tags assigned'}
-                            </div>
-                            
-                            <div className="mt-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  console.log("Opening tag selector");
-                                }}
-                                data-testid="simplified-tag-trigger"
-                              >
-                                Manage Tags
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label>Privacy Risk</Label>
-                          <div className="flex items-center mt-1">
-                            <div
-                              className={`w-3 h-3 rounded-full ${getRiskColor(
-                                selectedUTXO.privacyRisk
-                              )}`}
-                            ></div>
-                            <span className="ml-2 capitalize text-foreground">
-                              {selectedUTXO.privacyRisk}
-                            </span>
-                          </div>
-                        </div>
-
-                        {!isUTXOSelected(selectedUTXO) ? (
-                          <Button
-                            onClick={() => handleToggleSelection(selectedUTXO)}
-                            className="w-full"
-                          >
-                            <Bookmark className="mr-2 h-4 w-4" />
-                            Add to Simulation
-                          </Button>
-                        ) : (
-                          <Button
-                            onClick={() => handleToggleSelection(selectedUTXO)}
-                            variant="outline"
-                            className="w-full"
-                          >
-                            <Check className="mr-2 h-4 w-4" />
-                            Remove from Simulation
-                          </Button>
-                        )}
-                      </>
-                    );
-                  } catch (error) {
-                    console.error("UTXO Modal Error", error);
-                    return (
-                      <div className="p-4 text-destructive border border-destructive rounded">
-                        <h3 className="font-medium">Rendering Error</h3>
-                        <p>There was an error displaying the UTXO details.</p>
-                      </div>
-                    );
-                  }
-                })()}
+          {/* TEMPORARY MINIMAL CONTENT FOR DEBUGGING */}
+          <div className="p-4 border border-blue-500 bg-blue-50 text-blue-900 rounded-md">
+            <h3 className="font-bold mb-2">Debug Mode</h3>
+            <div>UTXO ID: {utxoId || 'None'}</div>
+            {selectedUTXO && (
+              <div className="mt-2">
+                <div>Amount: {selectedUTXO.amount}</div>
+                <div>Tags: {selectedUTXO.tags.join(', ') || 'None'}</div>
               </div>
-
-              <DialogFooter>
-                <Button onClick={() => onOpenChange(false)}>Close</Button>
-              </DialogFooter>
-            </>
-          )}
+            )}
+            <div className="mt-4">
+              <Button onClick={() => handleOpenChange(false)}>Close</Button>
+            </div>
+          </div>
         </DialogErrorBoundary>
       </DialogContent>
     </Dialog>

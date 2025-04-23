@@ -27,18 +27,23 @@ export const TagSelector = ({
   utxoTags, 
   trigger 
 }: TagSelectorProps) => {
-  const { tags, addTag } = useWallet();
+  const { tags, addTag, walletData } = useWallet();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#3b82f6");
   
-  // Fallback cleanup for route changes
+  const isDebugDisabled = true; // TEMPORARY DEBUG FLAG
+  
   useEffect(() => {
+    console.log("TagSelector mounted for UTXO:", utxoId?.substring(0, 6));
+    console.log("Current tags for this UTXO:", utxoTags);
+    
     return () => {
       setIsOpen(false);
+      console.log("TagSelector unmounted");
     };
-  }, [location.pathname]);
+  }, [utxoId, utxoTags, location.pathname]);
 
   const handleAddTag = () => {
     if (newTagName.trim()) {
@@ -49,9 +54,15 @@ export const TagSelector = ({
       };
       addTag(newTag);
       setNewTagName("");
-      onSelect(newTag.id);
+      
       console.log("TagSelector: Added new tag:", newTag.name);
-      // Keep dialog open for multiple selections
+      console.log("Calling onSelect with new tag ID:", newTag.id);
+      onSelect(newTag.id);
+      
+      if (walletData) {
+        const updatedUtxo = walletData.utxos.find(u => u.txid === utxoId);
+        console.log("Updated UTXO tags after add:", updatedUtxo?.tags);
+      }
     }
   };
 
@@ -62,19 +73,31 @@ export const TagSelector = ({
   };
 
   const handleTagSelect = (tagId: string) => {
-    // Find if this tag is already assigned
     const tag = tags.find(t => t.id === tagId);
+    
     if (tag && utxoTags.includes(tag.name)) {
-      // Tag already assigned, so unassign it
       console.log("TagSelector: Removing tag:", tag.name);
       onSelect(null);
     } else {
-      // Tag not assigned, so assign it
       console.log("TagSelector: Adding tag:", tag?.name);
       onSelect(tagId);
     }
-    // Explicitly not closing dialog to allow multiple selections
+    
+    setTimeout(() => {
+      if (walletData) {
+        const updatedUtxo = walletData.utxos.find(u => u.txid === utxoId);
+        console.log("Updated UTXO tags after selection:", updatedUtxo?.tags);
+      }
+    }, 0);
   };
+
+  if (isDebugDisabled) {
+    return (
+      <div className="p-2 border border-amber-300 bg-amber-50 text-amber-800 rounded-md">
+        <p className="text-xs">TagSelector temporarily disabled for debugging</p>
+      </div>
+    );
+  }
 
   const availableColors = [
     "#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444",
@@ -88,14 +111,13 @@ export const TagSelector = ({
     </div>
   );
 
-  // Using AlertDialog instead of Dialog to avoid nesting issues
-  // AlertDialog uses a different context than Dialog
   return (
     <>
       <div 
         onClick={(e) => {
           e.stopPropagation();
           e.preventDefault();
+          console.log("TagSelector trigger clicked");
           setIsOpen(true);
         }}
         className="cursor-pointer"
@@ -234,6 +256,7 @@ export const TagSelector = ({
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
+                console.log("TagSelector dialog closing via Done button");
                 setIsOpen(false);
               }}
               data-testid="tag-selector-close"
