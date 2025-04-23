@@ -1,56 +1,8 @@
 
-import React, { useEffect, useState, Component, ErrorInfo } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useWallet } from "@/store/WalletContext";
 import { UTXO } from "@/types/utxo";
-
-// Error boundary component for the dialog content
-class DialogErrorBoundary extends Component<
-  { children: React.ReactNode },
-  { hasError: boolean }
-> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(): { hasError: boolean } {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error("Dialog render error", error, errorInfo);
-  }
-
-  render(): React.ReactNode {
-    if (this.state.hasError) {
-      return (
-        <div className="p-6 text-destructive">
-          <h3 className="font-medium">Something went wrong</h3>
-          <p className="text-sm text-muted-foreground">
-            There was an error rendering this dialog. Please try again or contact support.
-          </p>
-          <Button 
-            className="mt-4" 
-            variant="outline" 
-            onClick={() => this.setState({ hasError: false })}
-          >
-            Try again
-          </Button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
 
 interface UTXODetailsModalProps {
   open: boolean;
@@ -98,27 +50,43 @@ export const UTXODetailsModal = ({
     console.log("Dialog onOpenChange:", newOpen);
     onOpenChange(newOpen);
     
-    // If dialog is closing, ensure we log it
     if (!newOpen) {
       console.log("UTXODetailsModal: Dialog closing, parent will clear state");
     }
   };
 
-  // Always render the Dialog component, never conditionally render it
+  if (!open) return null;
+
   return (
-    <div className="pointer-events-auto"> {/* Added to test event layering */}
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="bg-card text-foreground border-border">
-          <DialogHeader>
-            <DialogTitle>Test Modal</DialogTitle>
-          </DialogHeader>
-          <p>Test Count: {count}</p>
-          <Button onClick={() => setCount(count + 1)}>Increment</Button>
-          <div className="mt-2 p-2 border border-blue-200 rounded">
-            <p>UTXO ID: {utxoId || 'None'}</p>
-          </div>
-        </DialogContent>
-      </Dialog>
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      onClick={() => handleOpenChange(false)}
+    >
+      <div 
+        className="bg-card text-foreground border-border p-6 rounded-lg shadow-lg max-w-lg w-full mx-4 relative"
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          className="absolute right-4 top-4 text-gray-500 hover:text-gray-700"
+          onClick={() => handleOpenChange(false)}
+        >
+          ×
+        </button>
+
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold leading-none tracking-tight">
+            Test Modal
+          </h2>
+        </div>
+
+        <p>Test Count: {count}</p>
+        <Button onClick={() => setCount(count + 1)}>Increment</Button>
+        
+        <div className="mt-2 p-2 border border-blue-200 rounded">
+          <p>UTXO ID: {utxoId || 'None'}</p>
+        </div>
+      </div>
     </div>
   );
 };
+
