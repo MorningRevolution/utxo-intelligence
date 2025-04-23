@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Check, Plus, Tag as TagIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,6 +50,7 @@ export const TagSelector = ({
       addTag(newTag);
       setNewTagName("");
       onSelect(newTag.id);
+      console.log("TagSelector: Added new tag:", newTag.name);
       // Keep dialog open for multiple selections
     }
   };
@@ -65,13 +65,13 @@ export const TagSelector = ({
     // Find if this tag is already assigned
     const tag = tags.find(t => t.id === tagId);
     if (tag && utxoTags.includes(tag.name)) {
-      // Tag already assigned, so unassign it (pass null to indicate removal)
-      onSelect(null);
+      // Tag already assigned, so unassign it
       console.log("TagSelector: Removing tag:", tag.name);
+      onSelect(null);
     } else {
       // Tag not assigned, so assign it
-      onSelect(tagId);
       console.log("TagSelector: Adding tag:", tag?.name);
+      onSelect(tagId);
     }
     // Explicitly not closing dialog to allow multiple selections
   };
