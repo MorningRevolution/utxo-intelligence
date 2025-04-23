@@ -1,5 +1,5 @@
 
-import React, { useEffect, Component, ErrorInfo } from "react";
+import React, { useEffect, useState, Component, ErrorInfo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -66,8 +66,10 @@ export const UTXODetailsModal = ({
   onTagUpdate,
 }: UTXODetailsModalProps) => {
   console.count("UTXODetailsModal render");
+  console.log("Modal open:", open);
   
   const { walletData } = useWallet();
+  const [count, setCount] = useState(0);
   
   // Look up the UTXO from the wallet context based on utxoId
   const selectedUTXO = React.useMemo(() => {
@@ -104,25 +106,19 @@ export const UTXODetailsModal = ({
 
   // Always render the Dialog component, never conditionally render it
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="bg-card text-foreground border-border">
-        <DialogErrorBoundary>
-          {/* TEMPORARY MINIMAL CONTENT FOR DEBUGGING */}
-          <div className="p-4 border border-blue-500 bg-blue-50 text-blue-900 rounded-md">
-            <h3 className="font-bold mb-2">Debug Mode</h3>
-            <div>UTXO ID: {utxoId || 'None'}</div>
-            {selectedUTXO && (
-              <div className="mt-2">
-                <div>Amount: {selectedUTXO.amount}</div>
-                <div>Tags: {selectedUTXO.tags.join(', ') || 'None'}</div>
-              </div>
-            )}
-            <div className="mt-4">
-              <Button onClick={() => handleOpenChange(false)}>Close</Button>
-            </div>
+    <div className="pointer-events-auto"> {/* Added to test event layering */}
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="bg-card text-foreground border-border">
+          <DialogHeader>
+            <DialogTitle>Test Modal</DialogTitle>
+          </DialogHeader>
+          <p>Test Count: {count}</p>
+          <Button onClick={() => setCount(count + 1)}>Increment</Button>
+          <div className="mt-2 p-2 border border-blue-200 rounded">
+            <p>UTXO ID: {utxoId || 'None'}</p>
           </div>
-        </DialogErrorBoundary>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
