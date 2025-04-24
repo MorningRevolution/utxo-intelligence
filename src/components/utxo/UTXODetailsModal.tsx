@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/store/WalletContext";
@@ -24,20 +23,17 @@ export const UTXODetailsModal = ({
   const { walletData } = useWallet();
   const [count, setCount] = useState(0);
   
-  // Look up the UTXO from the wallet context based on utxoId
   const selectedUTXO = React.useMemo(() => {
     if (!utxoId || !walletData) return null;
     return walletData.utxos.find(u => u.txid === utxoId) || null;
   }, [utxoId, walletData]);
 
-  // Reset internal state when open state or utxoId changes
   useEffect(() => {
     if (!open) {
       console.log("UTXODetailsModal: Dialog closed, resetting internal state");
     } else {
       console.log("UTXODetailsModal: Dialog opened with UTXO ID:", utxoId?.substring(0, 6));
       
-      // Debug log for selectedUTXO
       if (selectedUTXO) {
         console.log("Selected UTXO:", {
           id: selectedUTXO.txid.substring(0, 6),
@@ -48,7 +44,6 @@ export const UTXODetailsModal = ({
   }, [open, utxoId, selectedUTXO]);
 
   useEffect(() => {
-    // Add keyboard event listener for Escape key
     const handleEscapeKey = (event: KeyboardEvent) => {
       if (event.key === "Escape" && open) {
         onOpenChange(false);
