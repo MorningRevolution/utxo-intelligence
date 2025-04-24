@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/store/WalletContext";
@@ -50,7 +51,7 @@ export const UTXODetailsModal = ({
     // Add keyboard event listener for Escape key
     const handleEscapeKey = (event: KeyboardEvent) => {
       if (event.key === "Escape" && open) {
-        handleOpenChange(false);
+        onOpenChange(false);
       }
     };
 
@@ -61,10 +62,10 @@ export const UTXODetailsModal = ({
     return () => {
       window.removeEventListener("keydown", handleEscapeKey);
     };
-  }, [open]);
+  }, [open, onOpenChange]);
 
   const handleModalClose = () => {
-    handleOpenChange(false);
+    onOpenChange(false);
   };
 
   if (!open) return null;
@@ -107,7 +108,7 @@ export const UTXODetailsModal = ({
             <div className="grid gap-2">
               <div className="text-sm font-medium">Amount</div>
               <div className="text-sm text-muted-foreground">
-                {selectedUTXO.value} BTC
+                {selectedUTXO.amount} BTC
               </div>
             </div>
 
@@ -131,3 +132,5 @@ export const UTXODetailsModal = ({
     </div>
   );
 };
+
+export default UTXODetailsModal;
