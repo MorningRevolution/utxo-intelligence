@@ -34,8 +34,6 @@ export const TagSelector = ({
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#3b82f6");
   
-  const isDebugDisabled = false; // TEMPORARY DEBUG FLAG
-  
   useEffect(() => {
     console.log("TagSelector mounted for UTXO:", utxoId?.substring(0, 6));
     console.log("Current tags for this UTXO:", utxoTags);
@@ -65,6 +63,7 @@ export const TagSelector = ({
       console.log("Calling onSelect with new tag ID:", newTag.id);
       onSelect(newTag.id);
       
+      // Don't close the dialog after adding a tag
       if (walletData) {
         const updatedUtxo = walletData.utxos.find(u => u.txid === utxoId);
         console.log("Updated UTXO tags after add:", updatedUtxo?.tags);
@@ -94,6 +93,7 @@ export const TagSelector = ({
       onSelect(tagId);
     }
     
+    // Don't close the dialog after selecting a tag
     setTimeout(() => {
       if (walletData) {
         const updatedUtxo = walletData.utxos.find(u => u.txid === utxoId);
@@ -101,19 +101,6 @@ export const TagSelector = ({
       }
     }, 0);
   };
-
-  if (isDebugDisabled) {
-    return (
-      <div className="p-2 border border-amber-300 bg-amber-50 text-amber-800 rounded-md">
-        <p className="text-xs">TagSelector temporarily disabled for debugging</p>
-      </div>
-    );
-  }
-
-  const availableColors = [
-    "#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444",
-    "#6366f1", "#ec4899", "#f97316", "#06b6d4", "#14b8a6",
-  ];
 
   const defaultTrigger = (
     <div className="flex items-center cursor-pointer" tabIndex={0} data-testid="tag-selector-default-trigger">
@@ -211,7 +198,10 @@ export const TagSelector = ({
                 <Input
                   placeholder="Tag name"
                   value={newTagName}
-                  onChange={(e) => setNewTagName(e.target.value)}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    setNewTagName(e.target.value);
+                  }}
                   className="flex-1 bg-background text-foreground"
                   onKeyPress={handleTagKeyPress}
                   onClick={(e) => e.stopPropagation()}
@@ -221,7 +211,10 @@ export const TagSelector = ({
                 
                 <div className="flex items-center gap-2">
                   <div className="flex-1 flex flex-wrap gap-1">
-                    {availableColors.map((color) => (
+                    {[
+                      "#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444",
+                      "#6366f1", "#ec4899", "#f97316", "#06b6d4", "#14b8a6",
+                    ].map((color) => (
                       <div 
                         key={color} 
                         className={cn(
