@@ -33,7 +33,7 @@ export const TagSelector = ({
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#3b82f6");
   
-  const isDebugDisabled = true; // TEMPORARY DEBUG FLAG
+  const isDebugDisabled = false; // TEMPORARY DEBUG FLAG
   
   useEffect(() => {
     console.log("TagSelector mounted for UTXO:", utxoId?.substring(0, 6));
