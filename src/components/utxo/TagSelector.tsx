@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Check, Plus, Tag as TagIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,12 @@ export const TagSelector = ({
     };
   }, [utxoId, utxoTags, location.pathname]);
 
-  const handleAddTag = () => {
+  const handleAddTag = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     if (newTagName.trim()) {
       const newTag = {
         id: Date.now().toString(),
@@ -68,11 +74,16 @@ export const TagSelector = ({
 
   const handleTagKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && newTagName.trim()) {
+      e.preventDefault();
+      e.stopPropagation();
       handleAddTag();
     }
   };
 
-  const handleTagSelect = (tagId: string) => {
+  const handleTagSelect = (e: React.MouseEvent, tagId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     const tag = tags.find(t => t.id === tagId);
     
     if (tag && utxoTags.includes(tag.name)) {
@@ -126,6 +137,7 @@ export const TagSelector = ({
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
+            e.stopPropagation();
             setIsOpen(true);
           }
         }}
@@ -161,13 +173,14 @@ export const TagSelector = ({
                           "flex items-center justify-between p-2 rounded-md cursor-pointer hover:bg-muted/50",
                           isSelected && "bg-muted"
                         )}
-                        onClick={() => handleTagSelect(tag.id)}
+                        onClick={(e) => handleTagSelect(e, tag.id)}
                         data-testid={`tag-item-${tag.id}`}
                         tabIndex={0}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            handleTagSelect(tag.id);
+                            e.stopPropagation();
+                            handleTagSelect(e as unknown as React.MouseEvent, tag.id);
                           }
                         }}
                       >
@@ -225,6 +238,7 @@ export const TagSelector = ({
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
+                            e.stopPropagation();
                             setNewTagColor(color);
                           }
                         }}
@@ -235,10 +249,7 @@ export const TagSelector = ({
                   <Button 
                     size="sm"
                     disabled={!newTagName.trim()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAddTag();
-                    }}
+                    onClick={(e) => handleAddTag(e)}
                     data-testid="add-tag-button"
                     tabIndex={0}
                   >
