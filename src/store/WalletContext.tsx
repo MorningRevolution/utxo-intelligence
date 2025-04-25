@@ -15,7 +15,7 @@ interface WalletContextType {
   importWallet: (data: WalletData) => void;
   importFromJson: (jsonString: string) => void;
   addTag: (tag: Tag) => void;
-  tagUTXO: (utxoId: string, tagId: string) => void;
+  tagUTXO: (utxoId: string, tagId: string | null, tagNameToRemove?: string | null) => void;
   removeTagFromUTXO: (utxoId: string, tagId: string) => void;
   selectUTXO: (utxo: UTXO) => void;
   deselectUTXO: (utxo: UTXO) => void;
@@ -100,29 +100,38 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setTags(prevTags => [...prevTags, tag]);
   };
 
-  const tagUTXO = (utxoId: string, tagId: string) => {
+  const tagUTXO = (utxoId: string, tagId: string | null, tagNameToRemove?: string | null) => {
     if (!walletData) return;
     
-    const tagName = tags.find(t => t.id === tagId)?.name;
-    if (!tagName) return;
-    
-    console.log(`WalletContext: Tagging UTXO ${utxoId.substring(0, 6)} with tag: ${tagName}`);
-    
-    const utxoBeforeUpdate = walletData.utxos.find(utxo => utxo.txid === utxoId);
-    console.log(`UTXO before tagging: ${utxoBeforeUpdate?.txid.substring(0, 6)}, Tags: ${utxoBeforeUpdate?.tags.join(', ')}`);
+    if (!tagId && !tagNameToRemove) {
+      console.log('No tag operation specified - both tagId and tagNameToRemove are null');
+      return;
+    }
     
     const updatedUtxos = walletData.utxos.map(utxo => {
       if (utxo.txid === utxoId) {
+        let newTags = [...utxo.tags];
+        
+        if (tagNameToRemove) {
+          console.log(`Removing tag "${tagNameToRemove}" from UTXO ${utxoId.substring(0, 8)}`);
+          newTags = newTags.filter(tag => tag !== tagNameToRemove);
+        }
+        
+        if (tagId) {
+          const tagToAdd = tags.find(t => t.id === tagId);
+          if (tagToAdd && !newTags.includes(tagToAdd.name)) {
+            console.log(`Adding tag "${tagToAdd.name}" to UTXO ${utxoId.substring(0, 8)}`);
+            newTags.push(tagToAdd.name);
+          }
+        }
+        
         return {
           ...utxo,
-          tags: utxo.tags.includes(tagName) ? utxo.tags : [...utxo.tags, tagName]
+          tags: newTags
         };
       }
       return utxo;
     });
-    
-    const updatedUtxo = updatedUtxos.find(utxo => utxo.txid === utxoId);
-    console.log(`UTXO after tagging: ${updatedUtxo?.txid.substring(0, 6)}, Tags: ${updatedUtxo?.tags.join(', ')}`);
     
     setWalletData({
       ...walletData,
