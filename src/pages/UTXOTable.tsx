@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { 
@@ -122,13 +121,29 @@ const UTXOTable = () => {
     }));
   };
 
-  const handleTagSelection = (utxoId: string, tagId: string) => {
+  const handleTagSelection = (utxoId: string, tagId: string, remove?: boolean) => {
     if (tagId && utxoId) {
-      tagUTXO(utxoId, tagId);
-      toast({
-        title: "Tag applied",
-        description: "The tag has been applied to the UTXO",
-      });
+      if (remove) {
+        // Remove the tag
+        const utxo = walletData?.utxos.find(u => u.txid === utxoId);
+        const tag = tags.find(t => t.id === tagId);
+        if (utxo && tag) {
+          console.log(`UTXOTable: Removing tag ${tag.name} from UTXO ${utxoId.substring(0, 8)}`);
+          tagUTXO(utxoId, null, tag.name); // Pass null for tagId and the tag name to remove
+          toast({
+            title: "Tag removed",
+            description: `The tag "${tag.name}" has been removed from the UTXO`,
+          });
+        }
+      } else {
+        // Add the tag
+        console.log(`UTXOTable: Adding tag ${tagId} to UTXO ${utxoId.substring(0, 8)}`);
+        tagUTXO(utxoId, tagId);
+        toast({
+          title: "Tag applied",
+          description: "The tag has been applied to the UTXO",
+        });
+      }
     }
   };
 
@@ -375,7 +390,7 @@ const UTXOTable = () => {
                             >
                               <TagSelector 
                                 utxoId={utxo.txid}
-                                onSelect={(tagId) => handleTagSelection(utxo.txid, tagId)}
+                                onSelect={(tagId, remove) => handleTagSelection(utxo.txid, tagId, remove)}
                                 utxoTags={utxo.tags}
                                 trigger={
                                   <div className="flex items-center w-full">

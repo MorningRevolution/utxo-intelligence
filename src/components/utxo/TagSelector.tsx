@@ -17,7 +17,7 @@ import {
 
 interface TagSelectorProps {
   utxoId: string;
-  onSelect: (tagId: string | null) => void;
+  onSelect: (tagId: string, remove?: boolean) => void;
   utxoTags: string[];
   trigger?: React.ReactNode;
 }
@@ -79,18 +79,25 @@ export const TagSelector = ({
     }
   };
 
+  // Updated to check if tag ID exists in UTXO tags (not tag name)
   const handleTagSelect = (e: React.MouseEvent, tagId: string) => {
     e.preventDefault();
     e.stopPropagation();
     
     const tag = tags.find(t => t.id === tagId);
+    const isTagApplied = walletData?.utxos.find(u => u.txid === utxoId)?.tags.some(tagName => {
+      const existingTag = tags.find(t => t.name === tagName);
+      return existingTag?.id === tagId;
+    });
     
-    if (tag && utxoTags.includes(tag.name)) {
-      console.log("TagSelector: Removing tag:", tag.name);
-      onSelect(null);
-    } else {
-      console.log("TagSelector: Adding tag:", tag?.name);
-      onSelect(tagId);
+    if (tag) {
+      if (isTagApplied) {
+        console.log("TagSelector: Removing tag:", tag.name);
+        onSelect(tagId, true); // Pass true to indicate removal
+      } else {
+        console.log("TagSelector: Adding tag:", tag.name);
+        onSelect(tagId, false); // Pass false to indicate addition
+      }
     }
     
     // Don't close the dialog after selecting a tag
@@ -151,7 +158,11 @@ export const TagSelector = ({
               <ScrollArea className="h-[180px] pr-4">
                 <div className="space-y-1">
                   {tags.map((tag) => {
-                    const isSelected = utxoTags.includes(tag.name);
+                    // Check if this tag ID is applied to the UTXO
+                    const isSelected = walletData?.utxos.find(u => u.txid === utxoId)?.tags.some(tagName => {
+                      const existingTag = tags.find(t => t.name === tagName);
+                      return existingTag?.id === tag.id;
+                    }) || false;
                     
                     return (
                       <div 

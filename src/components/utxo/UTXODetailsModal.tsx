@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/store/WalletContext";
@@ -8,7 +9,7 @@ interface UTXODetailsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   utxoId: string | null;
-  onTagUpdate?: (utxoId: string, tagId: string | null) => void;
+  onTagUpdate?: (utxoId: string, tagId: string | null, remove?: boolean) => void;
 }
 
 export const UTXODetailsModal = ({
@@ -63,6 +64,12 @@ export const UTXODetailsModal = ({
     onOpenChange(false);
   };
 
+  const handleTagUpdate = (tagId: string, remove?: boolean) => {
+    if (utxoId && onTagUpdate) {
+      onTagUpdate(utxoId, tagId, remove);
+    }
+  };
+
   if (!open) return null;
 
   return (
@@ -111,7 +118,7 @@ export const UTXODetailsModal = ({
               <div className="text-sm font-medium">Tags</div>
               <TagSelector
                 utxoId={selectedUTXO.txid}
-                onSelect={(tagId) => onTagUpdate?.(selectedUTXO.txid, tagId)}
+                onSelect={handleTagUpdate}
                 utxoTags={selectedUTXO.tags || []}
               />
             </div>
