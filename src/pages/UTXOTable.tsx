@@ -124,19 +124,17 @@ const UTXOTable = () => {
   const handleTagSelection = (utxoId: string, tagId: string, remove?: boolean) => {
     if (tagId && utxoId) {
       if (remove) {
-        // Remove the tag
         const utxo = walletData?.utxos.find(u => u.txid === utxoId);
         const tag = tags.find(t => t.id === tagId);
         if (utxo && tag) {
           console.log(`UTXOTable: Removing tag ${tag.name} from UTXO ${utxoId.substring(0, 8)}`);
-          tagUTXO(utxoId, null, tag.name); // Pass null for tagId and the tag name to remove
+          tagUTXO(utxoId, null, tag.name);
           toast({
             title: "Tag removed",
             description: `The tag "${tag.name}" has been removed from the UTXO`,
           });
         }
       } else {
-        // Add the tag
         console.log(`UTXOTable: Adding tag ${tagId} to UTXO ${utxoId.substring(0, 8)}`);
         tagUTXO(utxoId, tagId);
         toast({

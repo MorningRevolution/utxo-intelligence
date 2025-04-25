@@ -66,6 +66,7 @@ export const UTXODetailsModal = ({
 
   const handleTagUpdate = (tagId: string, remove?: boolean) => {
     if (utxoId && onTagUpdate) {
+      // Pass the remove flag to the parent component
       onTagUpdate(utxoId, tagId, remove);
     }
   };
