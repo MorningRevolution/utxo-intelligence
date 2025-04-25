@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Check, Plus, Tag as TagIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -154,7 +155,7 @@ export const TagSelector = ({
                     const isSelected = walletData?.utxos.find(u => u.txid === utxoId)?.tags.some(tagName => {
                       const existingTag = tags.find(t => t.name === tagName);
                       return existingTag?.id === tag.id;
-                    }) || false;
+                    });
                     
                     return (
                       <div 
@@ -277,3 +278,4 @@ export const TagSelector = ({
     </>
   );
 };
+
