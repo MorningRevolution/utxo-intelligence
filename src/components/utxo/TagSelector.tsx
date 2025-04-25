@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Check, Plus, Tag as TagIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,12 +7,12 @@ import { cn } from "@/lib/utils";
 import { useLocation } from "react-router-dom";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogTitle,
-  AlertDialogFooter,
-  AlertDialogDescription,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface TagSelectorProps {
   utxoId: string;
@@ -44,11 +43,9 @@ export const TagSelector = ({
     };
   }, [utxoId, utxoTags, location.pathname]);
 
-  const handleAddTag = (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
+  const handleAddTag = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     
     if (newTagName.trim()) {
       const newTag = {
@@ -63,7 +60,6 @@ export const TagSelector = ({
       console.log("Calling onSelect with new tag ID:", newTag.id);
       onSelect(newTag.id);
       
-      // Don't close the dialog after adding a tag
       if (walletData) {
         const updatedUtxo = walletData.utxos.find(u => u.txid === utxoId);
         console.log("Updated UTXO tags after add:", updatedUtxo?.tags);
@@ -75,11 +71,10 @@ export const TagSelector = ({
     if (e.key === 'Enter' && newTagName.trim()) {
       e.preventDefault();
       e.stopPropagation();
-      handleAddTag();
+      handleAddTag(e as unknown as React.MouseEvent);
     }
   };
 
-  // Updated to check if tag ID exists in UTXO tags (not tag name)
   const handleTagSelect = (e: React.MouseEvent, tagId: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -93,14 +88,13 @@ export const TagSelector = ({
     if (tag) {
       if (isTagApplied) {
         console.log("TagSelector: Removing tag:", tag.name);
-        onSelect(tagId, true); // Pass true to indicate removal
+        onSelect(tagId, true);
       } else {
         console.log("TagSelector: Adding tag:", tag.name);
-        onSelect(tagId, false); // Pass false to indicate addition
+        onSelect(tagId, false);
       }
     }
     
-    // Don't close the dialog after selecting a tag
     setTimeout(() => {
       if (walletData) {
         const updatedUtxo = walletData.utxos.find(u => u.txid === utxoId);
@@ -139,17 +133,16 @@ export const TagSelector = ({
         {trigger ? trigger : defaultTrigger}
       </div>
 
-      <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
-        <AlertDialogContent 
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent 
           className="bg-background text-foreground p-4 border border-border shadow-md w-72 max-w-[95vw]"
           onClick={(e) => e.stopPropagation()}
           data-testid="tag-selector-dialog"
-          tabIndex={0}
         >
-          <AlertDialogTitle className="font-medium text-foreground">Manage Tags</AlertDialogTitle>
-          <AlertDialogDescription className="sr-only">
+          <DialogTitle className="font-medium text-foreground">Manage Tags</DialogTitle>
+          <DialogDescription className="sr-only">
             Manage tags for the selected UTXO. You can add new tags or remove existing ones.
-          </AlertDialogDescription>
+          </DialogDescription>
           
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-1 gap-2">
@@ -158,7 +151,6 @@ export const TagSelector = ({
               <ScrollArea className="h-[180px] pr-4">
                 <div className="space-y-1">
                   {tags.map((tag) => {
-                    // Check if this tag ID is applied to the UTXO
                     const isSelected = walletData?.utxos.find(u => u.txid === utxoId)?.tags.some(tagName => {
                       const existingTag = tags.find(t => t.name === tagName);
                       return existingTag?.id === tag.id;
@@ -253,7 +245,7 @@ export const TagSelector = ({
                   <Button 
                     size="sm"
                     disabled={!newTagName.trim()}
-                    onClick={(e) => handleAddTag(e)}
+                    onClick={handleAddTag}
                     data-testid="add-tag-button"
                     tabIndex={0}
                   >
@@ -265,7 +257,7 @@ export const TagSelector = ({
             </div>
           </div>
           
-          <AlertDialogFooter className="mt-4">
+          <DialogFooter className="mt-4">
             <Button 
               variant="outline" 
               size="sm"
@@ -279,9 +271,9 @@ export const TagSelector = ({
             >
               Done
             </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
