@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +48,19 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
     }
   });
 
+  // This effect updates the form values when the utxo prop changes
+  // This is crucial for updating the UI after auto-population
+  useEffect(() => {
+    form.reset({
+      acquisitionFiatValue: utxo.acquisitionFiatValue !== null ? utxo.acquisitionFiatValue.toString() : "",
+      notes: utxo.notes || ""
+    });
+    
+    if (utxo.acquisitionDate) {
+      setAcquisitionDate(new Date(utxo.acquisitionDate));
+    }
+  }, [utxo, form]);
+
   const handleSave = () => {
     try {
       const values = form.getValues();
@@ -55,9 +68,12 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
         ? null 
         : parseFloat(values.acquisitionFiatValue);
       
+      // Format the date properly if it exists
+      const formattedDate = acquisitionDate ? format(acquisitionDate, "yyyy-MM-dd") : null;
+      
       updateUtxoCostBasis(
         utxo.txid,
-        acquisitionDate ? format(acquisitionDate, "yyyy-MM-dd") : null,
+        formattedDate, // Use the formatted date string
         fiatValue,
         values.notes.trim() === "" ? null : values.notes
       );
@@ -81,12 +97,38 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
     setIsLoading(true);
     try {
       const success = await autoPopulateUTXOCostBasis(utxo.txid);
+      
       if (success) {
-        toast({
-          title: "Cost basis auto-populated",
-          description: "Historical price data has been used to populate the cost basis.",
-        });
-        onClose();
+        // Get the updated UTXO data after auto-population
+        const updatedUtxo = window.walletContext?.walletData?.utxos.find(
+          u => u.txid === utxo.txid
+        );
+        
+        if (updatedUtxo) {
+          // Update form values with new data
+          form.setValue(
+            "acquisitionFiatValue", 
+            updatedUtxo.acquisitionFiatValue !== null 
+              ? updatedUtxo.acquisitionFiatValue.toString() 
+              : ""
+          );
+          
+          if (updatedUtxo.acquisitionDate) {
+            setAcquisitionDate(new Date(updatedUtxo.acquisitionDate));
+          }
+          
+          form.setValue("notes", updatedUtxo.notes || "");
+          
+          toast({
+            title: "Cost basis auto-populated",
+            description: "Historical price data has been used to populate the cost basis.",
+          });
+        } else {
+          toast({
+            title: "Auto-population succeeded",
+            description: "However, the updated UTXO could not be retrieved. You may need to refresh.",
+          });
+        }
       } else {
         toast({
           title: "Auto-population failed",
@@ -100,10 +142,16 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
         description: "Failed to auto-populate cost basis.",
         variant: "destructive",
       });
+      console.error("Auto-populate error:", error);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Make the wallet context available in window for debugging and access in event handlers
+  useEffect(() => {
+    window.walletContext = useWallet();
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -142,6 +190,7 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
                     setIsCalendarOpen(false);
                   }}
                   initialFocus
+                  className="p-3 pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>
@@ -207,4 +256,11 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
       </Form>
     </div>
   );
+}
+
+// Add type definition to window object for walletContext
+declare global {
+  interface Window {
+    walletContext?: ReturnType<typeof useWallet>;
+  }
 }
