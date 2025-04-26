@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useRef, ReactNode, useEffect, useCallback } from 'react';
-import { WalletData, UTXO, Tag, Transaction, Report } from '../types/utxo';
+import { WalletData, UTXO, Tag, Transaction, Report, PortfolioData } from '../types/utxo';
 import { mockWalletData, mockTags } from '../data/mockData';
 import { 
   isUTXOInSelection, 
@@ -7,6 +7,7 @@ import {
   removeUTXOFromSelection, 
   toggleUTXOInSelection 
 } from '../utils/utxoSelectionUtils';
+import { getCurrentBitcoinPrice, getBitcoinHistoricalPrice } from '../services/coingeckoService';
 
 interface WalletContextType {
   walletData: WalletData | null;
@@ -26,6 +27,9 @@ interface WalletContextType {
   hasWallet: boolean;
   preselectedForSimulation: boolean;
   setPreselectedForSimulation: (value: boolean) => void;
+  updateUtxoCostBasis: (utxoId: string, acquisitionDate: string | null, acquisitionFiatValue: number | null, notes: string | null) => void;
+  autoPopulateUTXOCostBasis: (utxoId: string) => Promise<boolean>;
+  getPortfolioData: () => Promise<PortfolioData | null>;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -257,6 +261,164 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  const updateUtxoCostBasis = (
+    utxoId: string, 
+    acquisitionDate: string | null, 
+    acquisitionFiatValue: number | null,
+    notes: string | null
+  ) => {
+    if (!walletData) return;
+    
+    const updatedUtxos = walletData.utxos.map(utxo => {
+      if (utxo.txid === utxoId) {
+        return {
+          ...utxo,
+          acquisitionDate,
+          acquisitionFiatValue,
+          costAutoPopulated: false,
+          notes: notes !== undefined ? notes : utxo.notes
+        };
+      }
+      return utxo;
+    });
+    
+    setWalletData({
+      ...walletData,
+      utxos: updatedUtxos
+    });
+  };
+  
+  const autoPopulateUTXOCostBasis = async (utxoId: string): Promise<boolean> => {
+    if (!walletData) return false;
+    
+    const utxo = walletData.utxos.find(u => u.txid === utxoId);
+    if (!utxo || !utxo.createdAt) return false;
+    
+    try {
+      const acquisitionDate = utxo.acquisitionDate || utxo.createdAt;
+      
+      const historicalPrice = await getBitcoinHistoricalPrice(acquisitionDate);
+      
+      if (!historicalPrice) return false;
+      
+      const fiatValue = historicalPrice * utxo.amount;
+      
+      updateUtxoCostBasis(
+        utxoId,
+        acquisitionDate,
+        fiatValue,
+        utxo.notes
+      );
+      
+      return true;
+    } catch (error) {
+      console.error("Failed to auto-populate cost basis:", error);
+      return false;
+    }
+  };
+  
+  const getPortfolioData = async (): Promise<PortfolioData | null> => {
+    if (!walletData) return null;
+    
+    try {
+      const currentPrice = await getCurrentBitcoinPrice() || 20000;
+      
+      const totalBalance = walletData.totalBalance;
+      const currentValue = totalBalance * currentPrice;
+      
+      let totalCost = 0;
+      let utxosWithCost = 0;
+      
+      walletData.utxos.forEach(utxo => {
+        if (utxo.acquisitionFiatValue !== null) {
+          totalCost += utxo.acquisitionFiatValue;
+          utxosWithCost++;
+        }
+      });
+      
+      if (utxosWithCost < walletData.utxos.length && utxosWithCost > 0) {
+        const avgCostPerBTC = totalCost / walletData.utxos
+          .filter(u => u.acquisitionFiatValue !== null)
+          .reduce((sum, u) => sum + u.amount, 0);
+        
+        const missingCost = walletData.utxos
+          .filter(u => u.acquisitionFiatValue === null)
+          .reduce((sum, u) => sum + (u.amount * avgCostPerBTC), 0);
+        
+        totalCost += missingCost;
+      }
+      
+      const unrealizedGain = currentValue - totalCost;
+      const unrealizedGainPercentage = totalCost > 0 ? (unrealizedGain / totalCost) : 0;
+      
+      const tagCounts: Record<string, { amount: number, count: number }> = {};
+      
+      walletData.utxos.forEach(utxo => {
+        if (utxo.tags.length === 0) {
+          const tagName = 'Untagged';
+          tagCounts[tagName] = tagCounts[tagName] || { amount: 0, count: 0 };
+          tagCounts[tagName].amount += utxo.amount;
+          tagCounts[tagName].count += 1;
+        } else {
+          utxo.tags.forEach(tag => {
+            tagCounts[tag] = tagCounts[tag] || { amount: 0, count: 0 };
+            tagCounts[tag].amount += utxo.amount / utxo.tags.length;
+            tagCounts[tag].count += 1;
+          });
+        }
+      });
+      
+      const tagAllocation = Object.entries(tagCounts).map(([tag, { amount }]) => ({
+        tag,
+        amount,
+        percentage: amount / totalBalance,
+        fiatValue: amount * currentPrice
+      }));
+      
+      const dates = Array.from({ length: 30 }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (29 - i));
+        return date.toISOString().split('T')[0];
+      });
+      
+      const growthFactor = 1.01;
+      let previousBalance = totalBalance * 0.8;
+      
+      const balanceHistory = dates.map((date, index) => {
+        previousBalance = previousBalance * (1 + (Math.random() * 0.04 - 0.02));
+        if (index > 20) previousBalance = previousBalance * growthFactor;
+        
+        if (index === dates.length - 1) {
+          previousBalance = totalBalance;
+        }
+        
+        const fiatMultiplier = 1 + ((index - dates.length + 1) / 100);
+        const dayPrice = currentPrice * fiatMultiplier;
+        const fiatValue = previousBalance * dayPrice;
+        const fiatGain = fiatValue - (previousBalance * currentPrice * 0.8);
+        
+        return {
+          date,
+          balance: previousBalance,
+          fiatValue,
+          fiatGain
+        };
+      });
+      
+      return {
+        currentValue,
+        totalCost,
+        unrealizedGain,
+        unrealizedGainPercentage,
+        tagAllocation,
+        balanceHistory
+      };
+    } catch (error) {
+      console.error("Failed to generate portfolio data:", error);
+      return null;
+    }
+  };
+
   const contextValue = {
     walletData,
     tags,
@@ -274,7 +436,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     generateReport,
     hasWallet: !!walletData,
     preselectedForSimulation,
-    setPreselectedForSimulation
+    setPreselectedForSimulation,
+    updateUtxoCostBasis,
+    autoPopulateUTXOCostBasis,
+    getPortfolioData
   };
 
   return (

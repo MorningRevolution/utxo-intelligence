@@ -13,6 +13,7 @@ import UTXOTable from "./pages/UTXOTable";
 import RiskSimulator from "./pages/RiskSimulator";
 import ReportExport from "./pages/ReportExport";
 import AIAssistant from "./pages/AIAssistant";
+import Portfolio from "./pages/Portfolio";
 import Settings from "./pages/Settings";
 import TaxSettings from "./pages/TaxSettings";
 import NotFound from "./pages/NotFound";
@@ -35,6 +36,7 @@ const App = () => (
                 <Route path="/risk-simulator" element={<RiskSimulator />} />
                 <Route path="/report-export" element={<ReportExport />} />
                 <Route path="/ai-assistant" element={<AIAssistant />} />
+                <Route path="/portfolio" element={<Portfolio />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/settings/tax" element={<TaxSettings />} />
                 <Route path="*" element={<NotFound />} />

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -11,7 +12,8 @@ import {
   Menu,
   X,
   Shield,
-  Settings
+  Settings,
+  ChartLine
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/store/WalletContext";
@@ -38,6 +40,12 @@ export function SideNav() {
       name: "UTXO Table",
       path: "/utxo-table",
       icon: <Table className="mr-2 h-5 w-5" />,
+      disabled: !hasWallet
+    },
+    {
+      name: "Portfolio",
+      path: "/portfolio",
+      icon: <ChartLine className="mr-2 h-5 w-5" />,
       disabled: !hasWallet
     },
     {

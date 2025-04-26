@@ -12,7 +12,8 @@ import {
   Eye,
   Shield,
   ChevronRight,
-  Settings
+  Settings,
+  ChartLine
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -189,6 +190,18 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
+            
+            <div className="flex gap-4 items-start">
+              <div className="bg-dark-lighter p-3 rounded-lg">
+                <ChartLine className="h-6 w-6 text-bitcoin" />
+              </div>
+              <div>
+                <h3 className="font-medium">Portfolio Analysis</h3>
+                <p className="text-muted-foreground text-sm">
+                  Track your Bitcoin portfolio value, cost basis, and unrealized gains over time
+                </p>
+              </div>
+            </div>
           </CardContent>
           <CardFooter>
             <Button className="w-full" onClick={() => navigate("/wallet-import")} disabled={hasWallet}>
@@ -220,6 +233,16 @@ const Dashboard = () => {
             >
               <Table className="mr-2 h-5 w-5" />
               Browse UTXOs
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => navigate("/portfolio")}
+              disabled={!hasWallet}
+            >
+              <ChartLine className="mr-2 h-5 w-5" />
+              Portfolio Dashboard
             </Button>
             
             <Button 

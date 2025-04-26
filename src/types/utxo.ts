@@ -1,3 +1,4 @@
+
 export interface UTXO {
   txid: string;
   vout: number;
@@ -63,4 +64,27 @@ export interface Report {
   }[];
   riskyUtxos: UTXO[];
   recommendations: string[];
+}
+
+export interface PortfolioData {
+  currentValue: number; // In USD
+  totalCost: number; // In USD
+  balanceHistory: BalanceHistoryItem[];
+  tagAllocation: TagAllocation[];
+  unrealizedGain: number; // In USD
+  unrealizedGainPercentage: number; // As decimal
+}
+
+export interface BalanceHistoryItem {
+  date: string;
+  balance: number; // In BTC
+  fiatValue: number; // In USD
+  fiatGain: number; // In USD
+}
+
+export interface TagAllocation {
+  tag: string;
+  amount: number; // In BTC
+  percentage: number; // As decimal
+  fiatValue: number; // In USD
 }
