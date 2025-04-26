@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +31,7 @@ interface CostBasisEditorProps {
 }
 
 export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
+  // Move useWallet hook to the top level of the component
   const { updateUtxoCostBasis, autoPopulateUTXOCostBasis, walletData } = useWallet();
   const { toast } = useToast();
   
@@ -39,9 +40,6 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
     utxo.acquisitionDate ? new Date(utxo.acquisitionDate) : undefined
   );
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  
-  // Store a ref to the wallet context to access in event handlers
-  const walletContextRef = useRef(useWallet());
   
   // Initialize the form with default values from the UTXO
   const form = useForm<CostBasisFormValues>({
@@ -63,11 +61,6 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
       setAcquisitionDate(new Date(utxo.acquisitionDate));
     }
   }, [utxo, form]);
-
-  // Effect to update the wallet context ref when it changes
-  useEffect(() => {
-    walletContextRef.current = useWallet();
-  }, [walletData]);
 
   const handleSave = () => {
     try {
@@ -111,8 +104,8 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
       
       if (success) {
         // Get the updated UTXO data after auto-population
-        // Access wallet data via the ref instead of calling the hook
-        const updatedUtxo = walletContextRef.current.walletData?.utxos.find(
+        // Direct access to walletData instead of through ref
+        const updatedUtxo = walletData?.utxos.find(
           u => u.txid === utxoId
         );
         
@@ -159,11 +152,6 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
       setIsLoading(false);
     }
   };
-
-  // Make the global window.walletContext available for debugging
-  useEffect(() => {
-    window.walletContext = walletContextRef.current;
-  }, []);
 
   return (
     <div className="space-y-4">
