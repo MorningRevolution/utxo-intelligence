@@ -1,4 +1,3 @@
-
 export interface UTXO {
   txid: string;
   vout: number;
@@ -9,6 +8,13 @@ export interface UTXO {
   tags: string[];
   createdAt: string; // ISO date string
   privacyRisk: 'low' | 'medium' | 'high';
+  acquisitionDate: string | null;
+  acquisitionFiatValue: number | null;
+  disposalDate: string | null;
+  disposalFiatValue: number | null;
+  realizedGainFiat: number | null;
+  costAutoPopulated: boolean;
+  notes: string | null;
 }
 
 export interface WalletData {
