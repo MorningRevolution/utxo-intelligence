@@ -23,7 +23,14 @@ export const mockUTXOs: UTXO[] = [
     scriptPubKey: '00141a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r',
     tags: ['Exchange', 'Bull KYC'],
     createdAt: '2023-10-12T14:32:11Z',
-    privacyRisk: 'high'
+    privacyRisk: 'high',
+    acquisitionDate: null,
+    acquisitionFiatValue: null,
+    disposalDate: null,
+    disposalFiatValue: null,
+    realizedGainFiat: null,
+    costAutoPopulated: false,
+    notes: ''
   },
   {
     txid: '2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u',
@@ -34,7 +41,14 @@ export const mockUTXOs: UTXO[] = [
     scriptPubKey: '00142b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r',
     tags: ['Personal'],
     createdAt: '2023-11-05T08:17:23Z',
-    privacyRisk: 'low'
+    privacyRisk: 'low',
+    acquisitionDate: null,
+    acquisitionFiatValue: null,
+    disposalDate: null,
+    disposalFiatValue: null,
+    realizedGainFiat: null,
+    costAutoPopulated: false,
+    notes: ''
   },
   {
     txid: '3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v',
@@ -45,7 +59,14 @@ export const mockUTXOs: UTXO[] = [
     scriptPubKey: '00143c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r',
     tags: ['Mining'],
     createdAt: '2024-01-15T19:42:56Z',
-    privacyRisk: 'medium'
+    privacyRisk: 'medium',
+    acquisitionDate: null,
+    acquisitionFiatValue: null,
+    disposalDate: null,
+    disposalFiatValue: null,
+    realizedGainFiat: null,
+    costAutoPopulated: false,
+    notes: ''
   },
   {
     txid: '4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w',
@@ -56,7 +77,14 @@ export const mockUTXOs: UTXO[] = [
     scriptPubKey: '00144d5e6f7g8h9i0j1k2l3m4n5o6p7q8r',
     tags: ['Merchant'],
     createdAt: '2023-09-20T11:25:37Z',
-    privacyRisk: 'medium'
+    privacyRisk: 'medium',
+    acquisitionDate: null,
+    acquisitionFiatValue: null,
+    disposalDate: null,
+    disposalFiatValue: null,
+    realizedGainFiat: null,
+    costAutoPopulated: false,
+    notes: ''
   },
   {
     txid: '5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x',
@@ -67,7 +95,14 @@ export const mockUTXOs: UTXO[] = [
     scriptPubKey: '00145e6f7g8h9i0j1k2l3m4n5o6p7q8r',
     tags: ['Savings'],
     createdAt: '2024-02-01T15:10:44Z',
-    privacyRisk: 'low'
+    privacyRisk: 'low',
+    acquisitionDate: null,
+    acquisitionFiatValue: null,
+    disposalDate: null,
+    disposalFiatValue: null,
+    realizedGainFiat: null,
+    costAutoPopulated: false,
+    notes: ''
   },
   {
     txid: '6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y',
@@ -78,7 +113,14 @@ export const mockUTXOs: UTXO[] = [
     scriptPubKey: '00146f7g8h9i0j1k2l3m4n5o6p7q8r',
     tags: ['Donation'],
     createdAt: '2023-07-03T22:14:09Z',
-    privacyRisk: 'low'
+    privacyRisk: 'low',
+    acquisitionDate: null,
+    acquisitionFiatValue: null,
+    disposalDate: null,
+    disposalFiatValue: null,
+    realizedGainFiat: null,
+    costAutoPopulated: false,
+    notes: ''
   },
   {
     txid: '7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z',
@@ -89,7 +131,14 @@ export const mockUTXOs: UTXO[] = [
     scriptPubKey: '00147g8h9i0j1k2l3m4n5o6p7q8r',
     tags: ['Coinjoin'],
     createdAt: '2023-12-12T03:45:21Z',
-    privacyRisk: 'low'
+    privacyRisk: 'low',
+    acquisitionDate: null,
+    acquisitionFiatValue: null,
+    disposalDate: null,
+    disposalFiatValue: null,
+    realizedGainFiat: null,
+    costAutoPopulated: false,
+    notes: ''
   },
   {
     txid: '8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a',
@@ -100,7 +149,14 @@ export const mockUTXOs: UTXO[] = [
     scriptPubKey: '00148h9i0j1k2l3m4n5o6p7q8r',
     tags: ['Exchange', 'Bull KYC'],
     createdAt: '2023-10-30T16:22:38Z',
-    privacyRisk: 'high'
+    privacyRisk: 'high',
+    acquisitionDate: null,
+    acquisitionFiatValue: null,
+    disposalDate: null,
+    disposalFiatValue: null,
+    realizedGainFiat: null,
+    costAutoPopulated: false,
+    notes: ''
   },
   {
     txid: '9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b',
@@ -111,7 +167,14 @@ export const mockUTXOs: UTXO[] = [
     scriptPubKey: '00149i0j1k2l3m4n5o6p7q8r',
     tags: ['Personal', 'Gift'],
     createdAt: '2024-01-25T09:11:53Z',
-    privacyRisk: 'medium'
+    privacyRisk: 'medium',
+    acquisitionDate: null,
+    acquisitionFiatValue: null,
+    disposalDate: null,
+    disposalFiatValue: null,
+    realizedGainFiat: null,
+    costAutoPopulated: false,
+    notes: ''
   },
   {
     txid: '0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b9c',
@@ -122,7 +185,14 @@ export const mockUTXOs: UTXO[] = [
     scriptPubKey: '00140j1k2l3m4n5o6p7q8r',
     tags: ['Mining'],
     createdAt: '2023-11-18T05:37:42Z',
-    privacyRisk: 'low'
+    privacyRisk: 'low',
+    acquisitionDate: null,
+    acquisitionFiatValue: null,
+    disposalDate: null,
+    disposalFiatValue: null,
+    realizedGainFiat: null,
+    costAutoPopulated: false,
+    notes: ''
   },
   {
     txid: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0',
@@ -133,7 +203,14 @@ export const mockUTXOs: UTXO[] = [
     scriptPubKey: '0014a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5',
     tags: ['P2P'],
     createdAt: '2023-08-22T13:19:27Z',
-    privacyRisk: 'medium'
+    privacyRisk: 'medium',
+    acquisitionDate: null,
+    acquisitionFiatValue: null,
+    disposalDate: null,
+    disposalFiatValue: null,
+    realizedGainFiat: null,
+    costAutoPopulated: false,
+    notes: ''
   },
   {
     txid: 'b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1',
@@ -144,7 +221,14 @@ export const mockUTXOs: UTXO[] = [
     scriptPubKey: '0014b2c3d4e5f6g7h8i9j0k1l2m3n4o5',
     tags: ['Coinjoin'],
     createdAt: '2023-12-05T18:02:13Z',
-    privacyRisk: 'low'
+    privacyRisk: 'low',
+    acquisitionDate: null,
+    acquisitionFiatValue: null,
+    disposalDate: null,
+    disposalFiatValue: null,
+    realizedGainFiat: null,
+    costAutoPopulated: false,
+    notes: ''
   },
   {
     txid: 'c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2',
@@ -155,7 +239,14 @@ export const mockUTXOs: UTXO[] = [
     scriptPubKey: '0014c3d4e5f6g7h8i9j0k1l2m3n4o5',
     tags: ['Gift'],
     createdAt: '2024-01-30T20:45:18Z',
-    privacyRisk: 'low'
+    privacyRisk: 'low',
+    acquisitionDate: null,
+    acquisitionFiatValue: null,
+    disposalDate: null,
+    disposalFiatValue: null,
+    realizedGainFiat: null,
+    costAutoPopulated: false,
+    notes: ''
   },
   {
     txid: 'd4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3',
@@ -166,7 +257,14 @@ export const mockUTXOs: UTXO[] = [
     scriptPubKey: '0014d4e5f6g7h8i9j0k1l2m3n4o5',
     tags: ['Savings', 'P2P'],
     createdAt: '2023-09-10T08:33:51Z',
-    privacyRisk: 'medium'
+    privacyRisk: 'medium',
+    acquisitionDate: null,
+    acquisitionFiatValue: null,
+    disposalDate: null,
+    disposalFiatValue: null,
+    realizedGainFiat: null,
+    costAutoPopulated: false,
+    notes: ''
   }
 ];
 
