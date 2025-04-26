@@ -14,6 +14,7 @@ import RiskSimulator from "./pages/RiskSimulator";
 import ReportExport from "./pages/ReportExport";
 import AIAssistant from "./pages/AIAssistant";
 import Settings from "./pages/Settings";
+import TaxSettings from "./pages/TaxSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
                 <Route path="/report-export" element={<ReportExport />} />
                 <Route path="/ai-assistant" element={<AIAssistant />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/settings/tax" element={<TaxSettings />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Layout>

@@ -1,8 +1,11 @@
 
 import { FileText } from "lucide-react";
-import { JurisdictionSelector } from "@/components/tax/JurisdictionSelector";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 const Settings = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="container px-2 md:px-4 py-6">
       <div className="flex items-center mb-6">
@@ -11,7 +14,13 @@ const Settings = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-6 max-w-2xl">
-        <JurisdictionSelector />
+        <Button
+          variant="outline"
+          className="justify-start"
+          onClick={() => navigate("/settings/tax")}
+        >
+          Tax Settings
+        </Button>
       </div>
     </div>
   );
