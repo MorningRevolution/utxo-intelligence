@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -11,7 +10,8 @@ import {
   Bot, 
   Menu,
   X,
-  Shield
+  Shield,
+  Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/store/WalletContext";
@@ -56,6 +56,12 @@ export function SideNav() {
       name: "AI Assistant",
       path: "/ai-assistant",
       icon: <Bot className="mr-2 h-5 w-5" />,
+      disabled: false
+    },
+    {
+      name: "Settings",
+      path: "/settings",
+      icon: <Settings className="mr-2 h-5 w-5" />,
       disabled: false
     }
   ];

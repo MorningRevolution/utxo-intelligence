@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -12,7 +11,8 @@ import {
   Tag,
   Eye,
   Shield,
-  ChevronRight // Added for consistency
+  ChevronRight,
+  Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +24,6 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { walletData, hasWallet } = useWallet();
 
-  // Calculate privacy metrics if wallet is loaded
   const privacyScore = walletData ? calculatePrivacyScore(walletData.utxos) : 0;
   const getScoreColor = () => {
     if (privacyScore >= 80) return "bg-risk-low";
@@ -250,6 +249,15 @@ const Dashboard = () => {
             >
               <Bot className="mr-2 h-5 w-5" />
               Ask AI Assistant
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => navigate("/settings/tax")}
+            >
+              <Settings className="mr-2 h-5 w-5" />
+              Configure Tax Rules
             </Button>
           </CardContent>
         </Card>
