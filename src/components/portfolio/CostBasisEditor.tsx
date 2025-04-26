@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -31,7 +31,7 @@ interface CostBasisEditorProps {
 }
 
 export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
-  const { updateUtxoCostBasis, autoPopulateUTXOCostBasis } = useWallet();
+  const { updateUtxoCostBasis, autoPopulateUTXOCostBasis, walletData } = useWallet();
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -39,7 +39,10 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
     utxo.acquisitionDate ? new Date(utxo.acquisitionDate) : undefined
   );
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-
+  
+  // Store a ref to the wallet context to access in event handlers
+  const walletContextRef = useRef(useWallet());
+  
   // Initialize the form with default values from the UTXO
   const form = useForm<CostBasisFormValues>({
     defaultValues: {
@@ -60,6 +63,11 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
       setAcquisitionDate(new Date(utxo.acquisitionDate));
     }
   }, [utxo, form]);
+
+  // Effect to update the wallet context ref when it changes
+  useEffect(() => {
+    walletContextRef.current = useWallet();
+  }, [walletData]);
 
   const handleSave = () => {
     try {
@@ -94,14 +102,18 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
   };
 
   const handleAutoPopulate = async () => {
+    // Capture the current UTXO ID before async operations
+    const utxoId = utxo.txid;
+    
     setIsLoading(true);
     try {
-      const success = await autoPopulateUTXOCostBasis(utxo.txid);
+      const success = await autoPopulateUTXOCostBasis(utxoId);
       
       if (success) {
         // Get the updated UTXO data after auto-population
-        const updatedUtxo = window.walletContext?.walletData?.utxos.find(
-          u => u.txid === utxo.txid
+        // Access wallet data via the ref instead of calling the hook
+        const updatedUtxo = walletContextRef.current.walletData?.utxos.find(
+          u => u.txid === utxoId
         );
         
         if (updatedUtxo) {
@@ -148,9 +160,9 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
     }
   };
 
-  // Make the wallet context available in window for debugging and access in event handlers
+  // Make the global window.walletContext available for debugging
   useEffect(() => {
-    window.walletContext = useWallet();
+    window.walletContext = walletContextRef.current;
   }, []);
 
   return (
