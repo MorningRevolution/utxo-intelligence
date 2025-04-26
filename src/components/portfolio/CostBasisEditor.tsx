@@ -11,7 +11,19 @@ import { useWallet } from "@/store/WalletContext";
 import { UTXO } from "@/types/utxo";
 import { Textarea } from "@/components/ui/textarea";
 import { formatBTC } from "@/utils/utxo-utils";
-import { FormLabel } from "@/components/ui/form";
+import { 
+  Form, 
+  FormControl, 
+  FormField, 
+  FormItem, 
+  FormLabel 
+} from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+
+interface CostBasisFormValues {
+  acquisitionFiatValue: string;
+  notes: string;
+}
 
 interface CostBasisEditorProps {
   utxo: UTXO;
@@ -26,23 +38,28 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
   const [acquisitionDate, setAcquisitionDate] = useState<Date | undefined>(
     utxo.acquisitionDate ? new Date(utxo.acquisitionDate) : undefined
   );
-  const [acquisitionFiatValue, setAcquisitionFiatValue] = useState<string>(
-    utxo.acquisitionFiatValue !== null ? utxo.acquisitionFiatValue.toString() : ""
-  );
-  const [notes, setNotes] = useState<string>(utxo.notes || "");
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
+  // Initialize the form with default values from the UTXO
+  const form = useForm<CostBasisFormValues>({
+    defaultValues: {
+      acquisitionFiatValue: utxo.acquisitionFiatValue !== null ? utxo.acquisitionFiatValue.toString() : "",
+      notes: utxo.notes || ""
+    }
+  });
 
   const handleSave = () => {
     try {
-      const fiatValue = acquisitionFiatValue === "" 
+      const values = form.getValues();
+      const fiatValue = values.acquisitionFiatValue === "" 
         ? null 
-        : parseFloat(acquisitionFiatValue);
+        : parseFloat(values.acquisitionFiatValue);
       
       updateUtxoCostBasis(
         utxo.txid,
         acquisitionDate ? format(acquisitionDate, "yyyy-MM-dd") : null,
         fiatValue,
-        notes.trim() === "" ? null : notes
+        values.notes.trim() === "" ? null : values.notes
       );
       
       toast({
@@ -98,80 +115,96 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
         </div>
       </div>
 
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <FormLabel>Acquisition Date</FormLabel>
-          <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-            <PopoverTrigger asChild>
+      <Form {...form}>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <FormLabel>Acquisition Date</FormLabel>
+            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {acquisitionDate ? (
+                    format(acquisitionDate, "PPP")
+                  ) : (
+                    <span>Pick a date</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={acquisitionDate}
+                  onSelect={(date) => {
+                    setAcquisitionDate(date);
+                    setIsCalendarOpen(false);
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <FormField
+            control={form.control}
+            name="acquisitionFiatValue"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Acquisition Value (USD)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="Cost in USD"
+                    step="0.01"
+                    {...field}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Notes</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Add notes about this UTXO"
+                    rows={3}
+                    {...field}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <div className="flex justify-between pt-2">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <div className="flex space-x-2">
               <Button
-                variant="outline"
-                className="w-full justify-start text-left font-normal"
+                variant="secondary"
+                onClick={handleAutoPopulate}
+                disabled={isLoading}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {acquisitionDate ? (
-                  format(acquisitionDate, "PPP")
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                  </>
                 ) : (
-                  <span>Pick a date</span>
+                  "Auto-populate"
                 )}
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={acquisitionDate}
-                onSelect={(date) => {
-                  setAcquisitionDate(date);
-                  setIsCalendarOpen(false);
-                }}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        <div className="space-y-2">
-          <FormLabel>Acquisition Value (USD)</FormLabel>
-          <Input
-            type="number"
-            value={acquisitionFiatValue}
-            onChange={(e) => setAcquisitionFiatValue(e.target.value)}
-            placeholder="Cost in USD"
-            step="0.01"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <FormLabel>Notes</FormLabel>
-          <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Add notes about this UTXO"
-            rows={3}
-          />
-        </div>
-
-        <div className="flex justify-between pt-2">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <div className="flex space-x-2">
-            <Button
-              variant="secondary"
-              onClick={handleAutoPopulate}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                </>
-              ) : (
-                "Auto-populate"
-              )}
-            </Button>
-            <Button onClick={handleSave}>Save</Button>
+              <Button onClick={handleSave}>Save</Button>
+            </div>
           </div>
         </div>
-      </div>
+      </Form>
     </div>
   );
 }
