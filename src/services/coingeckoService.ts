@@ -1,6 +1,6 @@
 
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, isAfter, subDays } from "date-fns";
 
 const API_BASE_URL = 'https://api.coingecko.com/api/v3';
 
@@ -17,8 +17,13 @@ export const getBitcoinHistoricalPrice = async (
   currency: SupportedCurrency = 'usd'
 ): Promise<number | null> => {
   try {
+    // Check if date is within the allowed range (CoinGecko free API limitation)
+    const requestDate = new Date(date);
+    const now = new Date();
+    const oneYearAgo = subDays(now, 365);
+    
     // Format date to dd-MM-yyyy for CoinGecko API using date-fns
-    const formattedDate = format(new Date(date), "dd-MM-yyyy");
+    const formattedDate = format(requestDate, "dd-MM-yyyy");
 
     const response = await fetch(
       `${API_BASE_URL}/coins/bitcoin/history?date=${formattedDate}&localization=false`
@@ -28,11 +33,15 @@ export const getBitcoinHistoricalPrice = async (
       if (response.status === 429) {
         toast.error("Rate limit exceeded for CoinGecko API. Please try again later.");
       } else if (response.status === 401) {
-        toast.error("CoinGecko API access error: Historical data may be limited. Try a more recent date.");
+        if (isAfter(oneYearAgo, requestDate)) {
+          toast.error("CoinGecko API restricts free historical data to the past 365 days.");
+        } else {
+          toast.error("CoinGecko API access error: Authentication required for this request.");
+        }
       } else {
         toast.error(`Failed to fetch Bitcoin price: ${response.statusText}`);
       }
-      console.error('CoinGecko API error:', response.statusText);
+      console.error('CoinGecko API error:', response.status, response.statusText);
       return null;
     }
 

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { CalendarIcon, Loader2, AlertTriangle } from "lucide-react";
 import { format, isAfter, isValid, parseISO } from "date-fns";
@@ -73,13 +74,6 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
       
       if (isAfter(acquisitionDate, currentDate)) {
         setDateError("Acquisition date cannot be in the future");
-      }
-      
-      const oneYearAgo = new Date();
-      oneYearAgo.setFullYear(currentDate.getFullYear() - 1);
-      
-      if (isAfter(oneYearAgo, acquisitionDate)) {
-        setDateError("Warning: Dates over 1 year old may not return price data from CoinGecko's free API");
       }
     }
   }, [acquisitionDate]);

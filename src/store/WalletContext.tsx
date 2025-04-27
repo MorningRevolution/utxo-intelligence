@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useRef, ReactNode, useEffect, useCallback } from 'react';
 import { WalletData, UTXO, Tag, Transaction, Report, PortfolioData } from '../types/utxo';
 import { mockWalletData, mockTags } from '../data/mockData';
@@ -393,6 +394,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         fiatValue: amount * currentPrice
       }));
       
+      // Improved historical data generation for smoother trends
       const generateHistoricalData = (days: number) => {
         const dates: string[] = [];
         const now = new Date();
@@ -403,53 +405,99 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           dates.push(date.toISOString().split('T')[0]);
         }
         
-        const growthFactor = 1.01;
-        let previousBalance = totalBalance * 0.7;
-        let growthSeed = 1;
+        // Initialize with base values
+        let initialBalance = totalBalance * 0.8;
+        if (days > 90) initialBalance = totalBalance * 0.7;
+        if (days > 180) initialBalance = totalBalance * 0.6;
+        if (days > 300) initialBalance = totalBalance * 0.5;
         
-        if (days > 90) {
-          previousBalance = totalBalance * 0.4;
-          growthSeed = 1.1;
+        // Create smoother trends with reduced volatility
+        const generateTrend = () => {
+          const trend: number[] = [];
+          let value = initialBalance;
+          
+          // Generate base trend with reduced noise
+          for (let i = 0; i <= days; i++) {
+            // Monthly cycle (simulate recurring purchases)
+            const monthlyEffect = Math.sin(i * (2 * Math.PI / 30)) * 0.005;
+            
+            // Market long-term trend (generally upward for BTC)
+            const longTermTrend = 0.0003 + (Math.random() * 0.0002);
+            
+            // Normal random daily fluctuation (reduced volatility)
+            const dailyFluctuation = ((Math.random() - 0.45) * 0.003);
+            
+            // Apply all factors
+            value = value * (1 + monthlyEffect + longTermTrend + dailyFluctuation);
+            
+            // Ensure we don't go below a reasonable floor
+            value = Math.max(value, initialBalance * 0.7);
+            
+            trend.push(value);
+          }
+          
+          // Smooth the trend with moving average
+          const smoothedTrend: number[] = [];
+          const windowSize = Math.min(5, Math.floor(days / 20));
+          
+          for (let i = 0; i < trend.length; i++) {
+            let sum = 0;
+            let count = 0;
+            
+            for (let j = Math.max(0, i - windowSize); j <= Math.min(trend.length - 1, i + windowSize); j++) {
+              sum += trend[j];
+              count++;
+            }
+            
+            smoothedTrend.push(sum / count);
+          }
+          
+          // Force the final value to match current balance
+          smoothedTrend[smoothedTrend.length - 1] = totalBalance;
+          
+          return smoothedTrend;
+        };
+        
+        const balances = generateTrend();
+        
+        // Generate price trend
+        const priceTrend: number[] = [];
+        let currentPriceValue = currentPrice * 0.8;
+        
+        if (days > 90) currentPriceValue = currentPrice * 0.7;
+        if (days > 180) currentPriceValue = currentPrice * 0.65;
+        if (days > 300) currentPriceValue = currentPrice * 0.6;
+        
+        // Generate smoother price trend
+        for (let i = 0; i <= days; i++) {
+          // Market cycles
+          const cycleEffect = Math.sin(i * (2 * Math.PI / 120)) * 0.01;
+          
+          // Long-term trend (generally upward for BTC)
+          const longTermTrend = 0.0005 + (Math.random() * 0.0002);
+          
+          // Normal random daily fluctuation
+          const dailyFluctuation = ((Math.random() - 0.5) * 0.005);
+          
+          // Apply all factors
+          currentPriceValue = currentPriceValue * (1 + cycleEffect + longTermTrend + dailyFluctuation);
+          
+          priceTrend.push(currentPriceValue);
         }
         
-        const priceMultipliers = dates.map((_, index) => {
-          if (days > 90) {
-            if (index % 30 === 0) {
-              return 1 + ((Math.random() > 0.5 ? 1 : -1) * Math.random() * 0.15);
-            }
-          }
-          
-          return 1 + ((Math.random() > 0.5 ? 1 : -1) * Math.random() * 0.03);
-        });
+        // Force last price to be current price
+        priceTrend[priceTrend.length - 1] = currentPrice;
         
-        const trendBias = days <= 30 ? 1.001 : 
-                      days <= 90 ? 1.0005 : 
-                      days <= 365 ? 1.0003 : 1.00015;
-        
+        // Combine everything into the historical data format
         return dates.map((date, index) => {
-          const fluctuation = priceMultipliers[index];
-          growthSeed *= (trendBias * fluctuation);
-          
-          const volatilityFactor = days <= 30 ? 1 : 
-                               days <= 90 ? 0.8 : 
-                               days <= 365 ? 0.6 : 0.5;
-          
-          const smoothedGrowth = 1 + ((growthSeed - 1) * volatilityFactor);
-          previousBalance = previousBalance * smoothedGrowth;
-          
-          if (index === dates.length - 1) {
-            previousBalance = totalBalance;
-          }
-          
-          const priceSeed = 1 + ((index / dates.length) * 0.5);
-          const dayPrice = currentPrice * (priceSeed * (0.9 + Math.random() * 0.2));
-          
-          const fiatValue = previousBalance * dayPrice;
-          const fiatGain = fiatValue - (previousBalance * currentPrice * 0.7);
+          const balance = balances[index];
+          const price = priceTrend[index];
+          const fiatValue = balance * price;
+          const fiatGain = fiatValue - (balance * price * 0.7);
           
           return {
             date,
-            balance: previousBalance,
+            balance,
             fiatValue,
             fiatGain
           };
