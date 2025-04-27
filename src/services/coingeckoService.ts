@@ -1,5 +1,5 @@
-
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 const API_BASE_URL = 'https://api.coingecko.com/api/v3';
 
@@ -10,12 +10,8 @@ const API_BASE_URL = 'https://api.coingecko.com/api/v3';
  */
 export const getBitcoinHistoricalPrice = async (date: string): Promise<number | null> => {
   try {
-    // Format date to dd-mm-yyyy for CoinGecko API
-    const formattedDate = new Date(date).toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).replace(/\//g, '-');
+    // Format date to dd-MM-yyyy for CoinGecko API using date-fns
+    const formattedDate = format(new Date(date), "dd-MM-yyyy");
 
     const response = await fetch(
       `${API_BASE_URL}/coins/bitcoin/history?date=${formattedDate}&localization=false`
