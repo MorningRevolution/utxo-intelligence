@@ -1,4 +1,3 @@
-
 export interface UTXO {
   txid: string;
   vout: number;
@@ -67,12 +66,18 @@ export interface Report {
 }
 
 export interface PortfolioData {
-  currentValue: number; // In USD
-  totalCost: number; // In USD
+  currentValue: number;
+  totalCost: number;
+  unrealizedGain: number;
+  unrealizedGainPercentage: number;
+  tagAllocation: {
+    tag: string;
+    amount: number;
+    percentage: number;
+    fiatValue: number;
+  }[];
   balanceHistory: BalanceHistoryItem[];
-  tagAllocation: TagAllocation[];
-  unrealizedGain: number; // In USD
-  unrealizedGainPercentage: number; // As decimal
+  currency?: string;
 }
 
 export interface BalanceHistoryItem {

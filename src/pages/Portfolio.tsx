@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChartArea, ChartLine, Wallet, CircleDollarSign } from "lucide-react";
+import { ChartArea, ChartLine, Wallet, CircleDollarSign, Calendar } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,15 +14,20 @@ import { toast } from "sonner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { CostBasisEditor } from "@/components/portfolio/CostBasisEditor";
 import { getCurrentBitcoinPrice } from "@/services/coingeckoService";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+
+// Time filter options for the charts
+type TimeFilter = '30d' | '90d' | '1y' | 'all' | '2023' | '2024';
 
 function Portfolio() {
   const navigate = useNavigate();
-  const { walletData, hasWallet, getPortfolioData } = useWallet();
+  const { walletData, hasWallet, getPortfolioData, selectedCurrency } = useWallet();
   const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [selectedTab, setSelectedTab] = useState("balance");
   const [selectedUtxoId, setSelectedUtxoId] = useState<string | null>(null);
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('30d');
 
   // Load portfolio data and current price
   useEffect(() => {
@@ -50,18 +54,62 @@ function Portfolio() {
     };
     
     fetchData();
-  }, [hasWallet, getPortfolioData]);
+  }, [hasWallet, getPortfolioData, selectedCurrency]);
 
   // Get the selected UTXO
   const selectedUtxo = selectedUtxoId && walletData 
     ? walletData.utxos.find(u => u.txid === selectedUtxoId) 
     : null;
 
+  // Filter chart data based on the selected time period
+  const getFilteredChartData = () => {
+    if (!portfolioData) return [];
+    
+    const now = new Date();
+    const data = [...portfolioData.balanceHistory];
+    
+    switch (timeFilter) {
+      case '30d':
+        return data.slice(-30);
+      case '90d':
+        return data.slice(-90);
+      case '1y':
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(now.getFullYear() - 1);
+        return data.filter(item => new Date(item.date) >= oneYearAgo);
+      case '2023':
+        return data.filter(item => {
+          const date = new Date(item.date);
+          return date.getFullYear() === 2023;
+        });
+      case '2024':
+        return data.filter(item => {
+          const date = new Date(item.date);
+          return date.getFullYear() === 2024;
+        });
+      case 'all':
+      default:
+        return data;
+    }
+  };
+
   // Format percentage gain/loss
   const formatPercentage = (value: number) => {
     const percentage = value * 100;
     const formatted = percentage.toFixed(2) + "%";
     return percentage >= 0 ? `+${formatted}` : formatted;
+  };
+
+  // Format currency for display
+  const formatCurrency = (value: number) => {
+    const currencySymbol = selectedCurrency === 'usd' ? '$' : 
+                         selectedCurrency === 'eur' ? '€' : 
+                         selectedCurrency === 'gbp' ? '£' : 
+                         selectedCurrency === 'jpy' ? '¥' : 
+                         selectedCurrency === 'aud' ? 'A$' : 
+                         selectedCurrency === 'cad' ? 'C$' : '$';
+    
+    return `${currencySymbol}${value.toLocaleString()}`;
   };
 
   // Get status class based on value
@@ -118,9 +166,9 @@ function Portfolio() {
             <CardTitle className="text-lg">Current Value</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">${portfolioData.currentValue.toLocaleString()}</div>
+            <div className="text-3xl font-bold">{formatCurrency(portfolioData.currentValue)}</div>
             <p className="text-muted-foreground text-sm mt-1">
-              ${currentPrice?.toLocaleString()} per BTC
+              {formatCurrency(currentPrice || 0)} per BTC
             </p>
           </CardContent>
         </Card>
@@ -131,13 +179,25 @@ function Portfolio() {
           </CardHeader>
           <CardContent>
             <div className={`text-3xl font-bold ${getStatusClass(portfolioData.unrealizedGain)}`}>
-              ${portfolioData.unrealizedGain.toLocaleString()}
+              {formatCurrency(portfolioData.unrealizedGain)}
             </div>
             <p className={`text-sm mt-1 ${getStatusClass(portfolioData.unrealizedGainPercentage)}`}>
               {formatPercentage(portfolioData.unrealizedGainPercentage)} from cost basis
             </p>
           </CardContent>
         </Card>
+      </div>
+      
+      {/* Charts Time Filter */}
+      <div className="mb-4">
+        <ToggleGroup type="single" value={timeFilter} onValueChange={(value) => value && setTimeFilter(value as TimeFilter)}>
+          <ToggleGroupItem value="30d">30 days</ToggleGroupItem>
+          <ToggleGroupItem value="90d">90 days</ToggleGroupItem>
+          <ToggleGroupItem value="1y">1 year</ToggleGroupItem>
+          <ToggleGroupItem value="2024">2024</ToggleGroupItem>
+          <ToggleGroupItem value="2023">2023</ToggleGroupItem>
+          <ToggleGroupItem value="all">All time</ToggleGroupItem>
+        </ToggleGroup>
       </div>
       
       {/* Charts Tabs */}
@@ -158,11 +218,15 @@ function Portfolio() {
         </TabsList>
         
         <TabsContent value="balance" className="h-[400px]">
-          <BalanceChart data={portfolioData.balanceHistory} height={350} />
+          <BalanceChart data={getFilteredChartData()} height={350} />
         </TabsContent>
         
         <TabsContent value="fiat" className="h-[400px]">
-          <FiatValueChart data={portfolioData.balanceHistory} height={350} />
+          <FiatValueChart 
+            data={getFilteredChartData()} 
+            height={350}
+            currencySymbol={selectedCurrency.toUpperCase()}
+          />
         </TabsContent>
         
         <TabsContent value="allocation" className="h-[400px]">
@@ -205,7 +269,7 @@ function Portfolio() {
                     </td>
                     <td className="py-2 px-4">
                       {utxo.acquisitionFiatValue 
-                        ? `$${utxo.acquisitionFiatValue.toLocaleString()}` 
+                        ? `${formatCurrency(utxo.acquisitionFiatValue)}` 
                         : "-"}
                       {utxo.costAutoPopulated && (
                         <span className="ml-2 text-xs text-muted-foreground">(auto)</span>

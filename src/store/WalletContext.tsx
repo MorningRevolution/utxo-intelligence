@@ -9,6 +9,8 @@ import {
 } from '../utils/utxoSelectionUtils';
 import { getCurrentBitcoinPrice, getBitcoinHistoricalPrice } from '../services/coingeckoService';
 
+type SupportedCurrency = 'usd' | 'eur' | 'gbp' | 'jpy' | 'aud' | 'cad';
+
 interface WalletContextType {
   walletData: WalletData | null;
   tags: Tag[];
@@ -30,6 +32,8 @@ interface WalletContextType {
   updateUtxoCostBasis: (utxoId: string, acquisitionDate: string | null, acquisitionFiatValue: number | null, notes: string | null) => void;
   autoPopulateUTXOCostBasis: (utxoId: string) => Promise<boolean>;
   getPortfolioData: () => Promise<PortfolioData | null>;
+  selectedCurrency: SupportedCurrency;
+  setSelectedCurrency: (currency: SupportedCurrency) => void;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -39,6 +43,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [tags, setTags] = useState<Tag[]>(mockTags);
   const [selectedUTXOs, setSelectedUTXOs] = useState<UTXO[]>([]);
   const [preselectedForSimulation, setPreselectedForSimulation] = useState<boolean>(false);
+  const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>('usd');
   
   const preselectionDoneRef = useRef<boolean>(false);
   
@@ -292,10 +297,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (!walletData) return false;
     
     const utxo = walletData.utxos.find(u => u.txid === utxoId);
-    if (!utxo || !utxo.createdAt) return false;
+    if (!utxo) return false;
     
     try {
       const acquisitionDate = utxo.acquisitionDate || utxo.createdAt;
+      if (!acquisitionDate) return false;
       
       const historicalPrice = await getBitcoinHistoricalPrice(acquisitionDate);
       
@@ -309,6 +315,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         fiatValue,
         utxo.notes
       );
+      
+      const updatedUtxos = walletData.utxos.map(u => {
+        if (u.txid === utxoId) {
+          return { ...u, costAutoPopulated: true };
+        }
+        return u;
+      });
+      
+      setWalletData({
+        ...walletData,
+        utxos: updatedUtxos
+      });
       
       return true;
     } catch (error) {
@@ -411,7 +429,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         unrealizedGain,
         unrealizedGainPercentage,
         tagAllocation,
-        balanceHistory
+        balanceHistory,
+        currency: selectedCurrency
       };
     } catch (error) {
       console.error("Failed to generate portfolio data:", error);
@@ -439,7 +458,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setPreselectedForSimulation,
     updateUtxoCostBasis,
     autoPopulateUTXOCostBasis,
-    getPortfolioData
+    getPortfolioData,
+    selectedCurrency,
+    setSelectedCurrency
   };
 
   return (

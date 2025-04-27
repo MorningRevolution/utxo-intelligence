@@ -28,6 +28,18 @@ export function BalanceChart({ data, title = "BTC Balance Over Time", height = 3
     }));
   }, [data]);
 
+  // Format large BTC numbers (for Y-axis display)
+  const formatYAxisTick = (value: number) => {
+    if (value >= 1000) {
+      return `${(value / 1000).toFixed(1)}K`;
+    } else if (value >= 100) {
+      return value.toFixed(1);
+    } else if (value >= 1) {
+      return value.toFixed(2);
+    }
+    return value.toFixed(4);
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -51,7 +63,7 @@ export function BalanceChart({ data, title = "BTC Balance Over Time", height = 3
               minTickGap={10}
             />
             <YAxis 
-              tickFormatter={(value) => formatBTC(value).replace('₿', '')} 
+              tickFormatter={(value) => formatYAxisTick(value)}
               tickLine={false}
               axisLine={false}
               tickMargin={10}

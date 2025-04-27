@@ -16,9 +16,15 @@ interface FiatValueChartProps {
   data: BalanceHistoryItem[];
   title?: string;
   height?: number;
+  currencySymbol?: string;
 }
 
-export function FiatValueChart({ data, title = "Unrealized Gains/Losses", height = 300 }: FiatValueChartProps) {
+export function FiatValueChart({ 
+  data, 
+  title = "Unrealized Gains/Losses", 
+  height = 300,
+  currencySymbol = "USD"
+}: FiatValueChartProps) {
   const chartData = useMemo(() => {
     return data.map(item => ({
       date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -26,6 +32,18 @@ export function FiatValueChart({ data, title = "Unrealized Gains/Losses", height
       gain: item.fiatGain
     }));
   }, [data]);
+
+  // Format large numbers (e.g. $20,000 -> $20K)
+  const formatYAxisTick = (value: number) => {
+    if (value >= 1000000000) {
+      return `${(value / 1000000000).toFixed(1)}B`;
+    } else if (value >= 1000000) {
+      return `${(value / 1000000).toFixed(1)}M`;
+    } else if (value >= 1000) {
+      return `${(value / 1000).toFixed(1)}K`;
+    }
+    return value.toString();
+  };
 
   return (
     <Card>
@@ -54,7 +72,7 @@ export function FiatValueChart({ data, title = "Unrealized Gains/Losses", height
               minTickGap={10}
             />
             <YAxis 
-              tickFormatter={(value) => `$${value.toLocaleString()}`}
+              tickFormatter={(value) => formatYAxisTick(value)}
               tickLine={false}
               axisLine={false}
               tickMargin={10}
@@ -63,7 +81,7 @@ export function FiatValueChart({ data, title = "Unrealized Gains/Losses", height
             />
             <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
             <Tooltip 
-              formatter={(value: number) => [`$${value.toLocaleString()}`, "USD"]}
+              formatter={(value: number) => [`${currencySymbol}${value.toLocaleString()}`, currencySymbol]}
               labelFormatter={(label) => `Date: ${label}`}
             />
             <Area 
