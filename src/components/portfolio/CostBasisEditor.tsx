@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { CalendarIcon, Loader2, AlertTriangle } from "lucide-react";
 import { format, isAfter, isValid, parseISO } from "date-fns";
@@ -32,7 +31,6 @@ interface CostBasisEditorProps {
 }
 
 export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
-  // Use the wallet context at the top level
   const { 
     updateUtxoCostBasis, 
     autoPopulateUTXOCostBasis, 
@@ -49,7 +47,6 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [dateError, setDateError] = useState<string | null>(null);
   
-  // Initialize the form with default values from the UTXO
   const form = useForm<CostBasisFormValues>({
     defaultValues: {
       acquisitionFiatValue: utxo.acquisitionFiatValue !== null ? utxo.acquisitionFiatValue.toString() : "",
@@ -57,7 +54,6 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
     }
   });
 
-  // This effect updates the form values when the utxo prop changes
   useEffect(() => {
     form.reset({
       acquisitionFiatValue: utxo.acquisitionFiatValue !== null ? utxo.acquisitionFiatValue.toString() : "",
@@ -69,19 +65,16 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
     }
   }, [utxo, form]);
   
-  // Validate the selected date
   useEffect(() => {
     setDateError(null);
     
     if (acquisitionDate) {
       const currentDate = new Date();
       
-      // Check if date is in the future
       if (isAfter(acquisitionDate, currentDate)) {
         setDateError("Acquisition date cannot be in the future");
       }
       
-      // Check if date is older than 365 days (CoinGecko free API limitation)
       const oneYearAgo = new Date();
       oneYearAgo.setFullYear(currentDate.getFullYear() - 1);
       
@@ -98,12 +91,11 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
         ? null 
         : parseFloat(values.acquisitionFiatValue);
       
-      // Format the date properly if it exists
       const formattedDate = acquisitionDate ? format(acquisitionDate, "yyyy-MM-dd") : null;
       
       updateUtxoCostBasis(
         utxo.txid,
-        formattedDate, // Use the formatted date string
+        formattedDate,
         fiatValue,
         values.notes.trim() === "" ? null : values.notes
       );
@@ -124,7 +116,6 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
   };
 
   const handleAutoPopulate = async () => {
-    // Require an acquisition date for auto-populate
     if (!acquisitionDate) {
       toast({
         title: "Acquisition date required",
@@ -134,7 +125,6 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
       return;
     }
     
-    // Capture the current UTXO ID before async operations
     const utxoId = utxo.txid;
     
     setIsLoading(true);
@@ -142,11 +132,9 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
       const success = await autoPopulateUTXOCostBasis(utxoId);
       
       if (success) {
-        // Get the updated UTXO data after auto-population
         const updatedUtxo = walletData?.utxos.find(u => u.txid === utxoId);
         
         if (updatedUtxo) {
-          // Update form values with new data
           form.setValue(
             "acquisitionFiatValue", 
             updatedUtxo.acquisitionFiatValue !== null 
@@ -189,7 +177,6 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
     }
   };
 
-  // Get currency symbol for display
   const getCurrencySymbol = () => {
     switch (selectedCurrency) {
       case 'usd': return '$';
@@ -246,7 +233,7 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
             </Popover>
             
             {dateError && (
-              <Alert variant="warning" className="mt-2">
+              <Alert variant="destructive" className="mt-2">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>{dateError}</AlertDescription>
               </Alert>
