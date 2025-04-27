@@ -26,11 +26,26 @@ export function FiatValueChart({
   currencySymbol = "USD"
 }: FiatValueChartProps) {
   const chartData = useMemo(() => {
-    return data.map(item => ({
-      date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      value: item.fiatValue,
-      gain: item.fiatGain
-    }));
+    // Determine appropriate data point spacing based on number of data points
+    const totalPoints = data.length;
+    let step = 1;
+    
+    // For larger datasets, skip points to avoid overcrowding
+    if (totalPoints > 180) {
+      step = Math.ceil(totalPoints / 180);
+    } else if (totalPoints > 90) {
+      step = Math.ceil(totalPoints / 90);
+    } else if (totalPoints > 60) {
+      step = Math.ceil(totalPoints / 60);
+    }
+    
+    // Filter the data points based on the step
+    return data.filter((_, index) => index % step === 0 || index === data.length - 1)
+      .map(item => ({
+        date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        value: item.fiatValue,
+        gain: item.fiatGain
+      }));
   }, [data]);
 
   // Format large numbers (e.g. $20,000 -> $20K)
@@ -70,6 +85,7 @@ export function FiatValueChart({
               tickMargin={10}
               fontSize={12}
               minTickGap={10}
+              interval={chartData.length > 30 ? Math.ceil(chartData.length / 15) : 0}
             />
             <YAxis 
               tickFormatter={(value) => formatYAxisTick(value)}

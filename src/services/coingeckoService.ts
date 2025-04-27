@@ -1,14 +1,21 @@
+
 import { toast } from "sonner";
 import { format } from "date-fns";
 
 const API_BASE_URL = 'https://api.coingecko.com/api/v3';
 
+type SupportedCurrency = 'usd' | 'eur' | 'gbp' | 'jpy' | 'aud' | 'cad';
+
 /**
  * Fetches the historical price of Bitcoin on a specific date
  * @param date ISO string date
- * @returns Promise with the Bitcoin price in USD on that date
+ * @param currency Currency to get the price in
+ * @returns Promise with the Bitcoin price in specified currency on that date
  */
-export const getBitcoinHistoricalPrice = async (date: string): Promise<number | null> => {
+export const getBitcoinHistoricalPrice = async (
+  date: string, 
+  currency: SupportedCurrency = 'usd'
+): Promise<number | null> => {
   try {
     // Format date to dd-MM-yyyy for CoinGecko API using date-fns
     const formattedDate = format(new Date(date), "dd-MM-yyyy");
@@ -20,6 +27,8 @@ export const getBitcoinHistoricalPrice = async (date: string): Promise<number | 
     if (!response.ok) {
       if (response.status === 429) {
         toast.error("Rate limit exceeded for CoinGecko API. Please try again later.");
+      } else if (response.status === 401) {
+        toast.error("CoinGecko API access error: Historical data may be limited. Try a more recent date.");
       } else {
         toast.error(`Failed to fetch Bitcoin price: ${response.statusText}`);
       }
@@ -28,7 +37,14 @@ export const getBitcoinHistoricalPrice = async (date: string): Promise<number | 
     }
 
     const data = await response.json();
-    return data.market_data?.current_price?.usd || null;
+    const price = data.market_data?.current_price?.[currency];
+    
+    if (!price) {
+      console.error('No price data found for', formattedDate, currency);
+      return null;
+    }
+    
+    return price;
   } catch (error) {
     console.error('Error fetching Bitcoin historical price:', error);
     return null;
@@ -38,12 +54,16 @@ export const getBitcoinHistoricalPrice = async (date: string): Promise<number | 
 /**
  * Fetches Bitcoin price history for a specified range
  * @param days Number of days of price history to fetch
+ * @param currency Currency to get prices in
  * @returns Price history array of [timestamp, price] tuples
  */
-export const getBitcoinPriceHistory = async (days: number = 30): Promise<[number, number][] | null> => {
+export const getBitcoinPriceHistory = async (
+  days: number = 30,
+  currency: SupportedCurrency = 'usd'
+): Promise<[number, number][] | null> => {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/coins/bitcoin/market_chart?vs_currency=usd&days=${days}&interval=daily`
+      `${API_BASE_URL}/coins/bitcoin/market_chart?vs_currency=${currency}&days=${days}&interval=daily`
     );
 
     if (!response.ok) {
@@ -66,12 +86,15 @@ export const getBitcoinPriceHistory = async (days: number = 30): Promise<[number
 
 /**
  * Fetches the current Bitcoin price
- * @returns Promise with the current Bitcoin price in USD
+ * @param currency Currency to get the price in
+ * @returns Promise with the current Bitcoin price in specified currency
  */
-export const getCurrentBitcoinPrice = async (): Promise<number | null> => {
+export const getCurrentBitcoinPrice = async (
+  currency: SupportedCurrency = 'usd'
+): Promise<number | null> => {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/simple/price?ids=bitcoin&vs_currencies=usd`
+      `${API_BASE_URL}/simple/price?ids=bitcoin&vs_currencies=${currency}`
     );
 
     if (!response.ok) {
@@ -85,7 +108,7 @@ export const getCurrentBitcoinPrice = async (): Promise<number | null> => {
     }
 
     const data = await response.json();
-    return data.bitcoin?.usd || null;
+    return data.bitcoin?.[currency] || null;
   } catch (error) {
     console.error('Error fetching current Bitcoin price:', error);
     return null;

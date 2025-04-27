@@ -303,7 +303,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       const acquisitionDate = utxo.acquisitionDate || utxo.createdAt;
       if (!acquisitionDate) return false;
       
-      const historicalPrice = await getBitcoinHistoricalPrice(acquisitionDate);
+      const historicalPrice = await getBitcoinHistoricalPrice(acquisitionDate, selectedCurrency);
       
       if (!historicalPrice) return false;
       
@@ -339,7 +339,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (!walletData) return null;
     
     try {
-      const currentPrice = await getCurrentBitcoinPrice() || 20000;
+      const currentPrice = await getCurrentBitcoinPrice(selectedCurrency) || 20000;
       
       const totalBalance = walletData.totalBalance;
       const currentValue = totalBalance * currentPrice;
@@ -393,35 +393,70 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         fiatValue: amount * currentPrice
       }));
       
-      const dates = Array.from({ length: 30 }, (_, i) => {
-        const date = new Date();
-        date.setDate(date.getDate() - (29 - i));
-        return date.toISOString().split('T')[0];
-      });
-      
-      const growthFactor = 1.01;
-      let previousBalance = totalBalance * 0.8;
-      
-      const balanceHistory = dates.map((date, index) => {
-        previousBalance = previousBalance * (1 + (Math.random() * 0.04 - 0.02));
-        if (index > 20) previousBalance = previousBalance * growthFactor;
+      const generateHistoricalData = (days: number) => {
+        const dates: string[] = [];
+        const now = new Date();
         
-        if (index === dates.length - 1) {
-          previousBalance = totalBalance;
+        for (let i = days; i >= 0; i--) {
+          const date = new Date(now);
+          date.setDate(date.getDate() - i);
+          dates.push(date.toISOString().split('T')[0]);
         }
         
-        const fiatMultiplier = 1 + ((index - dates.length + 1) / 100);
-        const dayPrice = currentPrice * fiatMultiplier;
-        const fiatValue = previousBalance * dayPrice;
-        const fiatGain = fiatValue - (previousBalance * currentPrice * 0.8);
+        const growthFactor = 1.01;
+        let previousBalance = totalBalance * 0.7;
+        let growthSeed = 1;
         
-        return {
-          date,
-          balance: previousBalance,
-          fiatValue,
-          fiatGain
-        };
-      });
+        if (days > 90) {
+          previousBalance = totalBalance * 0.4;
+          growthSeed = 1.1;
+        }
+        
+        const priceMultipliers = dates.map((_, index) => {
+          if (days > 90) {
+            if (index % 30 === 0) {
+              return 1 + ((Math.random() > 0.5 ? 1 : -1) * Math.random() * 0.15);
+            }
+          }
+          
+          return 1 + ((Math.random() > 0.5 ? 1 : -1) * Math.random() * 0.03);
+        });
+        
+        const trendBias = days <= 30 ? 1.001 : 
+                      days <= 90 ? 1.0005 : 
+                      days <= 365 ? 1.0003 : 1.00015;
+        
+        return dates.map((date, index) => {
+          const fluctuation = priceMultipliers[index];
+          growthSeed *= (trendBias * fluctuation);
+          
+          const volatilityFactor = days <= 30 ? 1 : 
+                               days <= 90 ? 0.8 : 
+                               days <= 365 ? 0.6 : 0.5;
+          
+          const smoothedGrowth = 1 + ((growthSeed - 1) * volatilityFactor);
+          previousBalance = previousBalance * smoothedGrowth;
+          
+          if (index === dates.length - 1) {
+            previousBalance = totalBalance;
+          }
+          
+          const priceSeed = 1 + ((index / dates.length) * 0.5);
+          const dayPrice = currentPrice * (priceSeed * (0.9 + Math.random() * 0.2));
+          
+          const fiatValue = previousBalance * dayPrice;
+          const fiatGain = fiatValue - (previousBalance * currentPrice * 0.7);
+          
+          return {
+            date,
+            balance: previousBalance,
+            fiatValue,
+            fiatGain
+          };
+        });
+      };
+      
+      const balanceHistory = generateHistoricalData(365);
       
       return {
         currentValue,

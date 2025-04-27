@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
-import { CalendarIcon, Loader2 } from "lucide-react";
-import { format } from "date-fns";
+import { CalendarIcon, Loader2, AlertTriangle } from "lucide-react";
+import { format, isAfter, isValid, parseISO } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { useWallet } from "@/store/WalletContext";
 import { UTXO } from "@/types/utxo";
 import { Textarea } from "@/components/ui/textarea";
 import { formatBTC } from "@/utils/utxo-utils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Form, 
   FormControl, 
@@ -31,8 +32,14 @@ interface CostBasisEditorProps {
 }
 
 export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
-  // Move useWallet hook to the top level of the component
-  const { updateUtxoCostBasis, autoPopulateUTXOCostBasis, walletData } = useWallet();
+  // Use the wallet context at the top level
+  const { 
+    updateUtxoCostBasis, 
+    autoPopulateUTXOCostBasis, 
+    walletData, 
+    selectedCurrency 
+  } = useWallet();
+  
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -40,6 +47,7 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
     utxo.acquisitionDate ? new Date(utxo.acquisitionDate) : undefined
   );
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [dateError, setDateError] = useState<string | null>(null);
   
   // Initialize the form with default values from the UTXO
   const form = useForm<CostBasisFormValues>({
@@ -50,7 +58,6 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
   });
 
   // This effect updates the form values when the utxo prop changes
-  // This is crucial for updating the UI after auto-population
   useEffect(() => {
     form.reset({
       acquisitionFiatValue: utxo.acquisitionFiatValue !== null ? utxo.acquisitionFiatValue.toString() : "",
@@ -61,6 +68,28 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
       setAcquisitionDate(new Date(utxo.acquisitionDate));
     }
   }, [utxo, form]);
+  
+  // Validate the selected date
+  useEffect(() => {
+    setDateError(null);
+    
+    if (acquisitionDate) {
+      const currentDate = new Date();
+      
+      // Check if date is in the future
+      if (isAfter(acquisitionDate, currentDate)) {
+        setDateError("Acquisition date cannot be in the future");
+      }
+      
+      // Check if date is older than 365 days (CoinGecko free API limitation)
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(currentDate.getFullYear() - 1);
+      
+      if (isAfter(oneYearAgo, acquisitionDate)) {
+        setDateError("Warning: Dates over 1 year old may not return price data from CoinGecko's free API");
+      }
+    }
+  }, [acquisitionDate]);
 
   const handleSave = () => {
     try {
@@ -95,6 +124,16 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
   };
 
   const handleAutoPopulate = async () => {
+    // Require an acquisition date for auto-populate
+    if (!acquisitionDate) {
+      toast({
+        title: "Acquisition date required",
+        description: "Please select an acquisition date before auto-populating.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Capture the current UTXO ID before async operations
     const utxoId = utxo.txid;
     
@@ -104,10 +143,7 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
       
       if (success) {
         // Get the updated UTXO data after auto-population
-        // Direct access to walletData instead of through ref
-        const updatedUtxo = walletData?.utxos.find(
-          u => u.txid === utxoId
-        );
+        const updatedUtxo = walletData?.utxos.find(u => u.txid === utxoId);
         
         if (updatedUtxo) {
           // Update form values with new data
@@ -153,6 +189,19 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
     }
   };
 
+  // Get currency symbol for display
+  const getCurrencySymbol = () => {
+    switch (selectedCurrency) {
+      case 'usd': return '$';
+      case 'eur': return '€';
+      case 'gbp': return '£';
+      case 'jpy': return '¥';
+      case 'aud': return 'A$';
+      case 'cad': return 'C$';
+      default: return '$';
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -190,10 +239,18 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
                     setIsCalendarOpen(false);
                   }}
                   initialFocus
+                  disabled={(date) => isAfter(date, new Date())}
                   className="p-3 pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>
+            
+            {dateError && (
+              <Alert variant="warning" className="mt-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{dateError}</AlertDescription>
+              </Alert>
+            )}
           </div>
 
           <FormField
@@ -201,11 +258,13 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
             name="acquisitionFiatValue"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Acquisition Value (USD)</FormLabel>
+                <FormLabel>
+                  Acquisition Value ({selectedCurrency.toUpperCase()})
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="number"
-                    placeholder="Cost in USD"
+                    placeholder={`Cost in ${selectedCurrency.toUpperCase()}`}
                     step="0.01"
                     {...field}
                   />
@@ -239,7 +298,7 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
               <Button
                 variant="secondary"
                 onClick={handleAutoPopulate}
-                disabled={isLoading}
+                disabled={isLoading || !acquisitionDate}
               >
                 {isLoading ? (
                   <>
@@ -256,11 +315,4 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
       </Form>
     </div>
   );
-}
-
-// Add type definition to window object for walletContext
-declare global {
-  interface Window {
-    walletContext?: ReturnType<typeof useWallet>;
-  }
 }
