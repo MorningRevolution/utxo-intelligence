@@ -27,7 +27,7 @@ interface AddUTXOModalProps {
 }
 
 export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
-  const { selectedCurrency } = useWallet();
+  const { selectedCurrency, walletData, importWallet } = useWallet();
   const [amount, setAmount] = useState("");
   const [acquisitionDate, setAcquisitionDate] = useState<Date | undefined>();
   const [acquisitionFiatValue, setAcquisitionFiatValue] = useState("");
@@ -35,7 +35,7 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const handleSubmit = async () => {
-    if (!amount || !acquisitionDate) {
+    if (!walletData || !amount || !acquisitionDate) {
       toast.error("Amount and acquisition date are required");
       return;
     }
@@ -47,7 +47,35 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
       return;
     }
 
-    // TODO: Implement actual UTXO creation
+    // Create new UTXO
+    const newUtxo = {
+      txid: `manual-${Date.now()}`,
+      vout: 0,
+      address: "Manual Entry",
+      amount: btcAmount,
+      confirmations: 6,
+      scriptPubKey: "",
+      tags: [],
+      createdAt: new Date().toISOString(),
+      privacyRisk: 'low' as const,
+      acquisitionDate: acquisitionDate.toISOString(),
+      acquisitionFiatValue: acquisitionFiatValue ? parseFloat(acquisitionFiatValue) : null,
+      disposalDate: null,
+      disposalFiatValue: null,
+      realizedGainFiat: null,
+      costAutoPopulated: false,
+      notes: notes || null
+    };
+
+    // Update wallet data
+    const updatedWalletData = {
+      ...walletData,
+      totalBalance: walletData.totalBalance + btcAmount,
+      utxos: [...walletData.utxos, newUtxo]
+    };
+
+    importWallet(updatedWalletData);
+    
     toast.success("UTXO added successfully");
     onOpenChange(false);
     

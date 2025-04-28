@@ -9,6 +9,7 @@ import {
   XAxis, 
   YAxis 
 } from "recharts";
+import { format, isWithinInterval, subDays, parseISO } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BalanceHistoryItem } from "@/types/utxo";
 
@@ -17,20 +18,52 @@ interface FiatValueChartProps {
   title?: string;
   height?: number;
   currencySymbol?: string;
+  timeFilter: '30d' | '90d' | '1y' | 'all' | '2023' | '2024';
 }
 
 export function FiatValueChart({ 
   data, 
   title = "Unrealized Gains/Losses", 
   height = 300,
-  currencySymbol = "USD"
+  currencySymbol = "USD",
+  timeFilter
 }: FiatValueChartProps) {
   const chartData = useMemo(() => {
-    // Determine appropriate data point spacing based on number of data points
-    const totalPoints = data.length;
+    const now = new Date();
+    const filteredData = data.filter(item => {
+      const itemDate = parseISO(item.date);
+      
+      switch (timeFilter) {
+        case '30d':
+          return isWithinInterval(itemDate, {
+            start: subDays(now, 30),
+            end: now
+          });
+        case '90d':
+          return isWithinInterval(itemDate, {
+            start: subDays(now, 90),
+            end: now
+          });
+        case '1y':
+          return isWithinInterval(itemDate, {
+            start: subDays(now, 365),
+            end: now
+          });
+        case '2024':
+          return itemDate.getFullYear() === 2024;
+        case '2023':
+          return itemDate.getFullYear() === 2023;
+        case 'all':
+          return true;
+        default:
+          return true;
+      }
+    });
+
+    // Determine appropriate data point spacing
+    const totalPoints = filteredData.length;
     let step = 1;
     
-    // For larger datasets, skip points to avoid overcrowding
     if (totalPoints > 180) {
       step = Math.ceil(totalPoints / 180);
     } else if (totalPoints > 90) {
@@ -39,26 +72,14 @@ export function FiatValueChart({
       step = Math.ceil(totalPoints / 60);
     }
     
-    // Filter the data points based on the step
-    return data.filter((_, index) => index % step === 0 || index === data.length - 1)
+    return filteredData
+      .filter((_, index) => index % step === 0 || index === filteredData.length - 1)
       .map(item => ({
-        date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        date: format(parseISO(item.date), 'MMM d'),
         value: item.fiatValue,
         gain: item.fiatGain
       }));
-  }, [data]);
-
-  // Format large numbers (e.g. $20,000 -> $20K)
-  const formatYAxisTick = (value: number) => {
-    if (value >= 1000000000) {
-      return `${(value / 1000000000).toFixed(1)}B`;
-    } else if (value >= 1000000) {
-      return `${(value / 1000000).toFixed(1)}M`;
-    } else if (value >= 1000) {
-      return `${(value / 1000).toFixed(1)}K`;
-    }
-    return value.toString();
-  };
+  }, [data, timeFilter]);
 
   return (
     <Card>

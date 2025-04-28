@@ -14,14 +14,14 @@ export const getBitcoinHistoricalPrice = async (
     const requestDate = new Date(date);
     const now = new Date();
     
-    // If date is today or in the future, use current price
+    // If date is in the future, use current price
     if (isAfter(requestDate, now)) {
       return getCurrentBitcoinPrice(currency);
     }
     
     // Format date for CoinGecko API
     const formattedDate = format(requestDate, "dd-MM-yyyy");
-
+    
     const response = await fetch(
       `${API_BASE_URL}/coins/bitcoin/history?date=${formattedDate}&localization=false`
     );
@@ -32,8 +32,9 @@ export const getBitcoinHistoricalPrice = async (
         return null;
       } 
       
-      // For recent dates that fail, try current price as fallback
-      if (response.status === 401 || response.status === 404) {
+      // Only fallback to current price for very recent dates (last 24h)
+      if ((response.status === 401 || response.status === 404) && 
+          isAfter(requestDate, subDays(now, 1))) {
         const currentPrice = await getCurrentBitcoinPrice(currency);
         if (currentPrice) {
           toast.info("Using current BTC price as historical data is unavailable.");
