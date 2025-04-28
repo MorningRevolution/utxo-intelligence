@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChartArea, ChartLine, Wallet, CircleDollarSign, Calendar } from "lucide-react";
@@ -36,7 +37,7 @@ function Portfolio() {
     
     setIsLoading(true);
     try {
-      const price = await getCurrentBitcoinPrice();
+      const price = await getCurrentBitcoinPrice(selectedCurrency);
       setCurrentPrice(price);
       
       const data = await getPortfolioData();
@@ -60,6 +61,7 @@ function Portfolio() {
   const handleAddUTXOModalClose = (success: boolean) => {
     setIsAddUTXOModalOpen(false);
     if (success) {
+      // Refresh portfolio data when a new UTXO is successfully added
       fetchPortfolioData();
     }
   };
@@ -325,7 +327,11 @@ function Portfolio() {
           {selectedUtxo && (
             <CostBasisEditor 
               utxo={selectedUtxo} 
-              onClose={() => setSelectedUtxoId(null)} 
+              onClose={() => {
+                setSelectedUtxoId(null);
+                // Refresh portfolio data when cost basis is updated
+                fetchPortfolioData();
+              }} 
             />
           )}
         </DialogContent>

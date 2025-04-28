@@ -74,21 +74,31 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
       utxos: [...walletData.utxos, newUtxo]
     };
 
-    importWallet(updatedWalletData);
-    
-    toast.success("UTXO added successfully");
-    
+    try {
+      importWallet(updatedWalletData);
+      toast.success("UTXO added successfully");
+      
+      // Reset form
+      setAmount("");
+      setAcquisitionDate(new Date());
+      setAcquisitionFiatValue("");
+      setNotes("");
+      
+      // Close modal and trigger refresh by passing true
+      onOpenChange(true);
+    } catch (error) {
+      console.error("Error adding UTXO:", error);
+      toast.error("Failed to add UTXO");
+      onOpenChange(false);
+    }
+  };
+  
+  const handleCancel = () => {
     // Reset form
     setAmount("");
     setAcquisitionDate(new Date());
     setAcquisitionFiatValue("");
     setNotes("");
-    
-    // Close modal and trigger refresh
-    onOpenChange(true);
-  };
-  
-  const handleCancel = () => {
     onOpenChange(false);
   };
 
