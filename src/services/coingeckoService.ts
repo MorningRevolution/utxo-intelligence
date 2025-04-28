@@ -6,23 +6,20 @@ const API_BASE_URL = 'https://api.coingecko.com/api/v3';
 
 type SupportedCurrency = 'usd' | 'eur' | 'gbp' | 'jpy' | 'aud' | 'cad';
 
-/**
- * Fetches the historical price of Bitcoin on a specific date
- * @param date ISO string date
- * @param currency Currency to get the price in
- * @returns Promise with the Bitcoin price in specified currency on that date
- */
 export const getBitcoinHistoricalPrice = async (
   date: string, 
   currency: SupportedCurrency = 'usd'
 ): Promise<number | null> => {
   try {
-    // Check if date is within the allowed range (CoinGecko free API limitation)
     const requestDate = new Date(date);
     const now = new Date();
-    const oneYearAgo = subDays(now, 365);
     
-    // Format date to dd-MM-yyyy for CoinGecko API using date-fns
+    // If date is today or in the future, use current price
+    if (isAfter(requestDate, now)) {
+      return getCurrentBitcoinPrice(currency);
+    }
+    
+    // Format date for CoinGecko API
     const formattedDate = format(requestDate, "dd-MM-yyyy");
 
     const response = await fetch(
@@ -32,15 +29,18 @@ export const getBitcoinHistoricalPrice = async (
     if (!response.ok) {
       if (response.status === 429) {
         toast.error("Rate limit exceeded for CoinGecko API. Please try again later.");
-      } else if (response.status === 401) {
-        if (isAfter(oneYearAgo, requestDate)) {
-          toast.error("CoinGecko API restricts free historical data to the past 365 days.");
-        } else {
-          toast.error("CoinGecko API access error: Authentication required for this request.");
+        return null;
+      } 
+      
+      // For recent dates that fail, try current price as fallback
+      if (response.status === 401 || response.status === 404) {
+        const currentPrice = await getCurrentBitcoinPrice(currency);
+        if (currentPrice) {
+          toast.info("Using current BTC price as historical data is unavailable.");
+          return currentPrice;
         }
-      } else {
-        toast.error(`Failed to fetch Bitcoin price: ${response.statusText}`);
       }
+      
       console.error('CoinGecko API error:', response.status, response.statusText);
       return null;
     }

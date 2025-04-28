@@ -1,4 +1,5 @@
 import { UTXO, WalletData, Tag, Transaction } from '../types/utxo';
+import { subDays, format } from 'date-fns';
 
 export const mockTags: Tag[] = [
   { id: '1', name: 'Exchange', color: '#3b82f6' },
@@ -13,260 +14,44 @@ export const mockTags: Tag[] = [
   { id: '10', name: 'P2P', color: '#a855f7' },
 ];
 
-export const mockUTXOs: UTXO[] = [
-  {
-    txid: '1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t',
-    vout: 0,
-    address: 'bc1qu6jf0q7cjmj9pz4ymmwdj6tt4rdh2z9vqzt3xw',
-    amount: 0.25,
-    confirmations: 145,
-    scriptPubKey: '00141a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r',
-    tags: ['Exchange', 'Bull KYC'],
-    createdAt: '2023-10-12T14:32:11Z',
-    privacyRisk: 'high',
-    acquisitionDate: null,
-    acquisitionFiatValue: null,
+const getRandomRecentDate = () => {
+  const daysAgo = Math.floor(Math.random() * 364) + 1; // 1-364 days ago
+  return format(subDays(new Date(), daysAgo), 'yyyy-MM-dd');
+};
+
+const getRealisticBTCPrice = (date: string) => {
+  const basePrice = 45000; // Base price around $45k
+  const volatility = 0.3; // 30% volatility
+  const daysFromNow = Math.floor((new Date().getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
+  const trendFactor = 1 + (364 - daysFromNow) * 0.001; // Slight upward trend
+  const randomFactor = 1 + (Math.random() - 0.5) * volatility;
+  return Math.round(basePrice * trendFactor * randomFactor);
+};
+
+export const mockUTXOs: UTXO[] = Array.from({ length: 15 }, (_, i) => {
+  const acquisitionDate = getRandomRecentDate();
+  const amount = Math.round(Math.random() * 100) / 100; // 0.00-0.99 BTC
+  const price = getRealisticBTCPrice(acquisitionDate);
+  
+  return {
+    txid: `tx${i + 1}_${Math.random().toString(36).substring(2, 15)}`,
+    vout: Math.floor(Math.random() * 4),
+    address: `bc1${Math.random().toString(36).substring(2, 38)}`,
+    amount,
+    confirmations: Math.floor(Math.random() * 1000) + 1,
+    scriptPubKey: `0014${Math.random().toString(36).substring(2, 38)}`,
+    tags: [mockTags[Math.floor(Math.random() * mockTags.length)].name],
+    createdAt: acquisitionDate + 'T' + new Date().toISOString().split('T')[1],
+    privacyRisk: Math.random() < 0.2 ? 'high' : Math.random() < 0.5 ? 'medium' : 'low',
+    acquisitionDate,
+    acquisitionFiatValue: amount * price,
     disposalDate: null,
     disposalFiatValue: null,
     realizedGainFiat: null,
     costAutoPopulated: false,
-    notes: ''
-  },
-  {
-    txid: '2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u',
-    vout: 1,
-    address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-    amount: 0.15,
-    confirmations: 234,
-    scriptPubKey: '00142b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r',
-    tags: ['Personal'],
-    createdAt: '2023-11-05T08:17:23Z',
-    privacyRisk: 'low',
-    acquisitionDate: null,
-    acquisitionFiatValue: null,
-    disposalDate: null,
-    disposalFiatValue: null,
-    realizedGainFiat: null,
-    costAutoPopulated: false,
-    notes: ''
-  },
-  {
-    txid: '3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v',
-    vout: 0,
-    address: 'bc1qk0d8kpxzmvz83d8h8am9pt3vzs80rz2wvmrj4f',
-    amount: 0.05,
-    confirmations: 67,
-    scriptPubKey: '00143c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r',
-    tags: ['Mining'],
-    createdAt: '2024-01-15T19:42:56Z',
-    privacyRisk: 'medium',
-    acquisitionDate: null,
-    acquisitionFiatValue: null,
-    disposalDate: null,
-    disposalFiatValue: null,
-    realizedGainFiat: null,
-    costAutoPopulated: false,
-    notes: ''
-  },
-  {
-    txid: '4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w',
-    vout: 2,
-    address: 'bc1q9jd8qh84gkl5trg6mvz729fj8xp9mjr7hjyzke',
-    amount: 0.1,
-    confirmations: 312,
-    scriptPubKey: '00144d5e6f7g8h9i0j1k2l3m4n5o6p7q8r',
-    tags: ['Merchant'],
-    createdAt: '2023-09-20T11:25:37Z',
-    privacyRisk: 'medium',
-    acquisitionDate: null,
-    acquisitionFiatValue: null,
-    disposalDate: null,
-    disposalFiatValue: null,
-    realizedGainFiat: null,
-    costAutoPopulated: false,
-    notes: ''
-  },
-  {
-    txid: '5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x',
-    vout: 1,
-    address: 'bc1qy0kc8h7j4f5g6h7j8k9l0p1q2r3s4t5u6v7w8x',
-    amount: 0.3,
-    confirmations: 89,
-    scriptPubKey: '00145e6f7g8h9i0j1k2l3m4n5o6p7q8r',
-    tags: ['Savings'],
-    createdAt: '2024-02-01T15:10:44Z',
-    privacyRisk: 'low',
-    acquisitionDate: null,
-    acquisitionFiatValue: null,
-    disposalDate: null,
-    disposalFiatValue: null,
-    realizedGainFiat: null,
-    costAutoPopulated: false,
-    notes: ''
-  },
-  {
-    txid: '6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y',
-    vout: 0,
-    address: 'bc1qa2s3d4f5g6h7j8k9l0p1q2w3e4r5t6y7u8i9o',
-    amount: 0.02,
-    confirmations: 423,
-    scriptPubKey: '00146f7g8h9i0j1k2l3m4n5o6p7q8r',
-    tags: ['Donation'],
-    createdAt: '2023-07-03T22:14:09Z',
-    privacyRisk: 'low',
-    acquisitionDate: null,
-    acquisitionFiatValue: null,
-    disposalDate: null,
-    disposalFiatValue: null,
-    realizedGainFiat: null,
-    costAutoPopulated: false,
-    notes: ''
-  },
-  {
-    txid: '7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z',
-    vout: 3,
-    address: 'bc1qz2x3c4v5b6n7m8a9s0d1f2g3h4j5k6l7p8q9w',
-    amount: 0.5,
-    confirmations: 156,
-    scriptPubKey: '00147g8h9i0j1k2l3m4n5o6p7q8r',
-    tags: ['Coinjoin'],
-    createdAt: '2023-12-12T03:45:21Z',
-    privacyRisk: 'low',
-    acquisitionDate: null,
-    acquisitionFiatValue: null,
-    disposalDate: null,
-    disposalFiatValue: null,
-    realizedGainFiat: null,
-    costAutoPopulated: false,
-    notes: ''
-  },
-  {
-    txid: '8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a',
-    vout: 1,
-    address: 'bc1q1w2e3r4t5y6u7i8o9p0a1s2d3f4g5h6j7k8l',
-    amount: 0.08,
-    confirmations: 267,
-    scriptPubKey: '00148h9i0j1k2l3m4n5o6p7q8r',
-    tags: ['Exchange', 'Bull KYC'],
-    createdAt: '2023-10-30T16:22:38Z',
-    privacyRisk: 'high',
-    acquisitionDate: null,
-    acquisitionFiatValue: null,
-    disposalDate: null,
-    disposalFiatValue: null,
-    realizedGainFiat: null,
-    costAutoPopulated: false,
-    notes: ''
-  },
-  {
-    txid: '9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b',
-    vout: 2,
-    address: 'bc1q9o8i7u6y5t4r3e2w1q0p9a8s7d6f5g4h3j2k',
-    amount: 0.12,
-    confirmations: 78,
-    scriptPubKey: '00149i0j1k2l3m4n5o6p7q8r',
-    tags: ['Personal', 'Gift'],
-    createdAt: '2024-01-25T09:11:53Z',
-    privacyRisk: 'medium',
-    acquisitionDate: null,
-    acquisitionFiatValue: null,
-    disposalDate: null,
-    disposalFiatValue: null,
-    realizedGainFiat: null,
-    costAutoPopulated: false,
-    notes: ''
-  },
-  {
-    txid: '0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b9c',
-    vout: 0,
-    address: 'bc1ql2k3j4h5g6f7d8s9a0p1o2i3u4y5t6r7e8w9',
-    amount: 0.35,
-    confirmations: 213,
-    scriptPubKey: '00140j1k2l3m4n5o6p7q8r',
-    tags: ['Mining'],
-    createdAt: '2023-11-18T05:37:42Z',
-    privacyRisk: 'low',
-    acquisitionDate: null,
-    acquisitionFiatValue: null,
-    disposalDate: null,
-    disposalFiatValue: null,
-    realizedGainFiat: null,
-    costAutoPopulated: false,
-    notes: ''
-  },
-  {
-    txid: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0',
-    vout: 1,
-    address: 'bc1qw3e4r5t6y7u8i9o0p1a2s3d4f5g6h7j8k9l0',
-    amount: 0.17,
-    confirmations: 324,
-    scriptPubKey: '0014a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5',
-    tags: ['P2P'],
-    createdAt: '2023-08-22T13:19:27Z',
-    privacyRisk: 'medium',
-    acquisitionDate: null,
-    acquisitionFiatValue: null,
-    disposalDate: null,
-    disposalFiatValue: null,
-    realizedGainFiat: null,
-    costAutoPopulated: false,
-    notes: ''
-  },
-  {
-    txid: 'b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1',
-    vout: 2,
-    address: 'bc1q3e4r5t6y7u8i9o0p1a2s3d4f5g6h7j8k9l0z',
-    amount: 0.42,
-    confirmations: 175,
-    scriptPubKey: '0014b2c3d4e5f6g7h8i9j0k1l2m3n4o5',
-    tags: ['Coinjoin'],
-    createdAt: '2023-12-05T18:02:13Z',
-    privacyRisk: 'low',
-    acquisitionDate: null,
-    acquisitionFiatValue: null,
-    disposalDate: null,
-    disposalFiatValue: null,
-    realizedGainFiat: null,
-    costAutoPopulated: false,
-    notes: ''
-  },
-  {
-    txid: 'c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2',
-    vout: 0,
-    address: 'bc1qe4r5t6y7u8i9o0p1a2s3d4f5g6h7j8k9l0z1',
-    amount: 0.22,
-    confirmations: 97,
-    scriptPubKey: '0014c3d4e5f6g7h8i9j0k1l2m3n4o5',
-    tags: ['Gift'],
-    createdAt: '2024-01-30T20:45:18Z',
-    privacyRisk: 'low',
-    acquisitionDate: null,
-    acquisitionFiatValue: null,
-    disposalDate: null,
-    disposalFiatValue: null,
-    realizedGainFiat: null,
-    costAutoPopulated: false,
-    notes: ''
-  },
-  {
-    txid: 'd4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3',
-    vout: 3,
-    address: 'bc1qr5t6y7u8i9o0p1a2s3d4f5g6h7j8k9l0z1x2',
-    amount: 0.63,
-    confirmations: 284,
-    scriptPubKey: '0014d4e5f6g7h8i9j0k1l2m3n4o5',
-    tags: ['Savings', 'P2P'],
-    createdAt: '2023-09-10T08:33:51Z',
-    privacyRisk: 'medium',
-    acquisitionDate: null,
-    acquisitionFiatValue: null,
-    disposalDate: null,
-    disposalFiatValue: null,
-    realizedGainFiat: null,
-    costAutoPopulated: false,
-    notes: ''
-  }
-];
+    notes: `Demo UTXO #${i + 1}`
+  };
+});
 
 export const mockWalletData: WalletData = {
   name: 'Demo Wallet',

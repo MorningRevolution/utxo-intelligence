@@ -15,8 +15,9 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { CostBasisEditor } from "@/components/portfolio/CostBasisEditor";
 import { getCurrentBitcoinPrice } from "@/services/coingeckoService";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Plus } from "lucide-react";
+import { AddUTXOModal } from "@/components/portfolio/AddUTXOModal";
 
-// Time filter options for the charts
 type TimeFilter = '30d' | '90d' | '1y' | 'all' | '2023' | '2024';
 
 function Portfolio() {
@@ -28,8 +29,8 @@ function Portfolio() {
   const [selectedTab, setSelectedTab] = useState("balance");
   const [selectedUtxoId, setSelectedUtxoId] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('30d');
+  const [isAddUTXOModalOpen, setIsAddUTXOModalOpen] = useState(false);
 
-  // Load portfolio data and current price
   useEffect(() => {
     const fetchData = async () => {
       if (!hasWallet) return;
@@ -56,12 +57,10 @@ function Portfolio() {
     fetchData();
   }, [hasWallet, getPortfolioData, selectedCurrency]);
 
-  // Get the selected UTXO
   const selectedUtxo = selectedUtxoId && walletData 
     ? walletData.utxos.find(u => u.txid === selectedUtxoId) 
     : null;
 
-  // Filter chart data based on the selected time period
   const getFilteredChartData = () => {
     if (!portfolioData) return [];
     
@@ -93,14 +92,12 @@ function Portfolio() {
     }
   };
 
-  // Format percentage gain/loss
   const formatPercentage = (value: number) => {
     const percentage = value * 100;
     const formatted = percentage.toFixed(2) + "%";
     return percentage >= 0 ? `+${formatted}` : formatted;
   };
 
-  // Format currency for display
   const formatCurrency = (value: number) => {
     const currencySymbol = selectedCurrency === 'usd' ? '$' : 
                          selectedCurrency === 'eur' ? '€' : 
@@ -112,7 +109,6 @@ function Portfolio() {
     return `${currencySymbol}${value.toLocaleString()}`;
   };
 
-  // Get status class based on value
   const getStatusClass = (value: number) => {
     return value >= 0 ? "text-green-500" : "text-red-500";
   };
@@ -149,7 +145,6 @@ function Portfolio() {
     <div className="container py-6">
       <h1 className="text-3xl font-bold mb-6">Portfolio Dashboard</h1>
       
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <Card className="bg-dark-card border-dark-border shadow-lg">
           <CardHeader className="pb-2">
@@ -188,7 +183,6 @@ function Portfolio() {
         </Card>
       </div>
       
-      {/* Charts Time Filter */}
       <div className="mb-4">
         <ToggleGroup type="single" value={timeFilter} onValueChange={(value) => value && setTimeFilter(value as TimeFilter)}>
           <ToggleGroupItem value="30d">30 days</ToggleGroupItem>
@@ -200,7 +194,6 @@ function Portfolio() {
         </ToggleGroup>
       </div>
       
-      {/* Charts Tabs */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="mb-6">
         <TabsList className="mb-4">
           <TabsTrigger value="balance">
@@ -234,13 +227,21 @@ function Portfolio() {
         </TabsContent>
       </Tabs>
       
-      {/* UTXO Table with Cost Basis */}
       <Card className="bg-dark-card border-dark-border shadow-lg">
-        <CardHeader>
-          <CardTitle>UTXO Cost Basis</CardTitle>
-          <CardDescription>
-            Edit acquisition details and cost basis for your UTXOs
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>UTXO Cost Basis</CardTitle>
+            <CardDescription>
+              Edit acquisition details and cost basis for your UTXOs
+            </CardDescription>
+          </div>
+          <Button 
+            onClick={() => setIsAddUTXOModalOpen(true)}
+            className="ml-4"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add UTXO
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -307,7 +308,6 @@ function Portfolio() {
         </CardContent>
       </Card>
 
-      {/* Cost Basis Editor Dialog */}
       <Dialog open={!!selectedUtxoId} onOpenChange={(open) => !open && setSelectedUtxoId(null)}>
         <DialogContent className="sm:max-w-[500px]">
           {selectedUtxo && (
@@ -318,6 +318,11 @@ function Portfolio() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AddUTXOModal
+        open={isAddUTXOModalOpen}
+        onOpenChange={setIsAddUTXOModalOpen}
+      />
     </div>
   );
 }
