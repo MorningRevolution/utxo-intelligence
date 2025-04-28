@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChartArea, ChartLine, Wallet, CircleDollarSign, Calendar } from "lucide-react";
@@ -211,7 +212,11 @@ function Portfolio() {
         </TabsList>
         
         <TabsContent value="balance" className="h-[400px]">
-          <BalanceChart data={getFilteredChartData()} height={350} />
+          <BalanceChart 
+            data={getFilteredChartData()} 
+            height={350}
+            timeFilter={timeFilter} 
+          />
         </TabsContent>
         
         <TabsContent value="fiat" className="h-[400px]">
@@ -219,6 +224,7 @@ function Portfolio() {
             data={getFilteredChartData()} 
             height={350}
             currencySymbol={selectedCurrency.toUpperCase()}
+            timeFilter={timeFilter}
           />
         </TabsContent>
         

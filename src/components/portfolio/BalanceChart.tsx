@@ -79,6 +79,46 @@ export function BalanceChart({
       }));
   }, [data, timeFilter]);
 
+  // Calculate the appropriate interval for X-axis ticks based on data points and timeFilter
+  const getTickInterval = () => {
+    if (chartData.length <= 6) return 0; // Show all ticks for small datasets
+    
+    switch(timeFilter) {
+      case '30d':
+        return Math.ceil(chartData.length / 6); // ~5 ticks for 30 days
+      case '90d':
+        return Math.ceil(chartData.length / 8); // ~7 ticks for 90 days
+      case '1y':
+        return Math.ceil(chartData.length / 12); // ~12 ticks for a year
+      case '2023':
+      case '2024':
+        return Math.ceil(chartData.length / 12); // ~12 ticks for a year
+      case 'all':
+        return Math.ceil(chartData.length / 10); // ~10 ticks for all time
+      default:
+        return Math.ceil(chartData.length / 8);
+    }
+  };
+
+  // Format Y-axis tick values for better readability
+  const formatYAxisTick = (value: number) => {
+    if (value === 0) return "0";
+    
+    if (value < 0.001) {
+      return value.toFixed(8);
+    } else if (value < 0.01) {
+      return value.toFixed(5);
+    } else if (value < 0.1) {
+      return value.toFixed(3);
+    } else if (value < 1) {
+      return value.toFixed(2);
+    } else if (value < 10) {
+      return value.toFixed(1);
+    } else {
+      return Math.round(value).toString();
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -100,7 +140,7 @@ export function BalanceChart({
               tickMargin={10}
               fontSize={12}
               minTickGap={10}
-              interval={chartData.length > 30 ? Math.ceil(chartData.length / 15) : 0}
+              interval={getTickInterval()}
             />
             <YAxis 
               tickFormatter={(value) => formatYAxisTick(value)}

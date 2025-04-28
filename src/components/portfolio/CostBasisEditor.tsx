@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
-import { CalendarIcon, Loader2, AlertTriangle } from "lucide-react";
-import { format, isAfter, isValid, parseISO } from "date-fns";
+import { CalendarIcon, Loader2 } from "lucide-react";
+import { format, isAfter, parseISO } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import {
   FormLabel 
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
+import { AlertTriangle } from "lucide-react";
 
 interface CostBasisFormValues {
   acquisitionFiatValue: string;
@@ -55,6 +56,7 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
     }
   });
 
+  // Reset form when UTXO changes
   useEffect(() => {
     form.reset({
       acquisitionFiatValue: utxo.acquisitionFiatValue !== null ? utxo.acquisitionFiatValue.toString() : "",
@@ -66,6 +68,7 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
     }
   }, [utxo, form]);
   
+  // Validate the acquisition date
   useEffect(() => {
     setDateError(null);
     
@@ -85,6 +88,7 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
         ? null 
         : parseFloat(values.acquisitionFiatValue);
       
+      // Format date as ISO string for storage
       const formattedDate = acquisitionDate ? format(acquisitionDate, "yyyy-MM-dd") : null;
       
       updateUtxoCostBasis(
