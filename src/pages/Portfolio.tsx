@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChartArea, ChartLine, Wallet, CircleDollarSign, Calendar } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,31 +31,38 @@ function Portfolio() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('30d');
   const [isAddUTXOModalOpen, setIsAddUTXOModalOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!hasWallet) return;
-      
-      setIsLoading(true);
-      try {
-        const price = await getCurrentBitcoinPrice();
-        setCurrentPrice(price);
-        
-        const data = await getPortfolioData();
-        if (data) {
-          setPortfolioData(data);
-        } else {
-          toast.error("Failed to load portfolio data");
-        }
-      } catch (error) {
-        console.error("Error fetching portfolio data:", error);
-        toast.error("An error occurred while loading portfolio data");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const fetchPortfolioData = useCallback(async () => {
+    if (!hasWallet) return;
     
-    fetchData();
+    setIsLoading(true);
+    try {
+      const price = await getCurrentBitcoinPrice();
+      setCurrentPrice(price);
+      
+      const data = await getPortfolioData();
+      if (data) {
+        setPortfolioData(data);
+      } else {
+        toast.error("Failed to load portfolio data");
+      }
+    } catch (error) {
+      console.error("Error fetching portfolio data:", error);
+      toast.error("An error occurred while loading portfolio data");
+    } finally {
+      setIsLoading(false);
+    }
   }, [hasWallet, getPortfolioData, selectedCurrency]);
+  
+  useEffect(() => {
+    fetchPortfolioData();
+  }, [fetchPortfolioData]);
+
+  const handleAddUTXOModalClose = (success: boolean) => {
+    setIsAddUTXOModalOpen(false);
+    if (success) {
+      fetchPortfolioData();
+    }
+  };
 
   const selectedUtxo = selectedUtxoId && walletData 
     ? walletData.utxos.find(u => u.txid === selectedUtxoId) 
@@ -327,7 +333,7 @@ function Portfolio() {
 
       <AddUTXOModal
         open={isAddUTXOModalOpen}
-        onOpenChange={setIsAddUTXOModalOpen}
+        onOpenChange={handleAddUTXOModalClose}
       />
     </div>
   );

@@ -143,7 +143,7 @@ export function FiatValueChart({
               interval={getTickInterval()}
             />
             <YAxis 
-              tickFormatter={(value) => formatYAxisTick(value)}
+              tickFormatter={formatYAxisTick}
               tickLine={false}
               axisLine={false}
               tickMargin={10}

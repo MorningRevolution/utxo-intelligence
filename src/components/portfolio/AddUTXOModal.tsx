@@ -23,13 +23,13 @@ import {
 
 interface AddUTXOModalProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (success: boolean) => void;
 }
 
 export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
   const { selectedCurrency, walletData, importWallet } = useWallet();
   const [amount, setAmount] = useState("");
-  const [acquisitionDate, setAcquisitionDate] = useState<Date | undefined>();
+  const [acquisitionDate, setAcquisitionDate] = useState<Date | undefined>(new Date());
   const [acquisitionFiatValue, setAcquisitionFiatValue] = useState("");
   const [notes, setNotes] = useState("");
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -77,17 +77,23 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
     importWallet(updatedWalletData);
     
     toast.success("UTXO added successfully");
-    onOpenChange(false);
     
     // Reset form
     setAmount("");
-    setAcquisitionDate(undefined);
+    setAcquisitionDate(new Date());
     setAcquisitionFiatValue("");
     setNotes("");
+    
+    // Close modal and trigger refresh
+    onOpenChange(true);
+  };
+  
+  const handleCancel = () => {
+    onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(open) => !open && handleCancel()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add New UTXO</DialogTitle>
@@ -133,7 +139,7 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
                   mode="single"
                   selected={acquisitionDate}
                   onSelect={(date) => {
-                    setAcquisitionDate(date);
+                    setAcquisitionDate(date || undefined);
                     setIsCalendarOpen(false);
                   }}
                   initialFocus
@@ -172,7 +178,7 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
         </div>
 
         <div className="flex justify-end space-x-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
           <Button onClick={handleSubmit}>Add UTXO</Button>
