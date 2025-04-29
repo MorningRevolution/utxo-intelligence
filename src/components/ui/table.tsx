@@ -106,16 +106,17 @@ const TableCaption = React.forwardRef<
 ))
 TableCaption.displayName = "TableCaption"
 
-// New component for editable table cells
+// EditableCell component for inline editing
 interface EditableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
-  isEditing?: boolean;
-  onSave?: (value: string) => void;
+  isEditing: boolean;
+  onSave: (value: string) => void;
   initialValue: string;
   inputType?: "text" | "number" | "date";
+  placeholder?: string;
 }
 
 const EditableCell = React.forwardRef<HTMLTableCellElement, EditableCellProps>(
-  ({ className, isEditing, onSave, initialValue, inputType = "text", ...props }, ref) => {
+  ({ className, isEditing, onSave, initialValue, inputType = "text", placeholder = "Enter value...", ...props }, ref) => {
     const [value, setValue] = React.useState(initialValue);
     
     React.useEffect(() => {
@@ -148,11 +149,12 @@ const EditableCell = React.forwardRef<HTMLTableCellElement, EditableCellProps>(
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             className="w-full bg-background border-border border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
+            placeholder={placeholder}
             autoFocus
           />
         ) : (
-          <div className="cursor-pointer hover:bg-muted/30 px-2 py-1 rounded">
-            {initialValue}
+          <div className="cursor-pointer hover:bg-muted/30 px-2 py-1 rounded truncate">
+            {initialValue || <span className="text-muted-foreground text-sm italic">Empty</span>}
           </div>
         )}
       </TableCell>

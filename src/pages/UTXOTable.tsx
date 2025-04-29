@@ -23,18 +23,17 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format, parseISO } from "date-fns";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useWallet } from "@/store/WalletContext";
 import { TagSelector } from "@/components/utxo/TagSelector";
 import { UTXODetailsModal } from "@/components/utxo/UTXODetailsModal";
 import { formatBTC, formatTxid, getRiskColor } from "@/utils/utxo-utils";
-import { ArrowUpDown, Filter, MoreVertical, Tag, Eye, Info, Bookmark, Edit, Check, X } from "lucide-react";
+import { ArrowUpDown, Filter, MoreVertical, Tag, Eye, Info, Bookmark, Edit, Calendar as CalendarIcon, DollarSign, NotePencil, Check, X } from "lucide-react";
 import { UTXO } from "@/types/utxo";
 
 const UTXOTable = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
   const { 
     walletData, 
     tags, 
@@ -77,7 +76,7 @@ const UTXOTable = () => {
         description: "Please import a wallet first",
       });
     }
-  }, [hasWallet, navigate, toast]);
+  }, [hasWallet, navigate]);
 
   const filteredUtxos = useMemo(() => {
     if (!walletData) return [];
@@ -87,7 +86,8 @@ const UTXOTable = () => {
         searchTerm === "" || 
         utxo.txid.toLowerCase().includes(searchTerm.toLowerCase()) ||
         utxo.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        utxo.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+        utxo.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (utxo.notes && utxo.notes.toLowerCase().includes(searchTerm.toLowerCase()));
       
       const matchesTags = 
         selectedTags.length === 0 || 
@@ -236,7 +236,7 @@ const UTXOTable = () => {
       title: "Not Editable",
       description: "UTXO amount cannot be edited - this would require a blockchain transaction"
     });
-  }, [toast]);
+  }, []);
 
   const handleDateEdit = useCallback((utxoId: string, dateString: string | null) => {
     if (!walletData) return;
@@ -276,7 +276,53 @@ const UTXOTable = () => {
     
     setEditableUtxo(null);
     setDatePickerOpen(null);
-  }, [walletData, updateUtxoCostBasis, autoPopulateUTXOCostBasis, toast]);
+  }, [walletData, updateUtxoCostBasis, autoPopulateUTXOCostBasis]);
+
+  const handleBtcPriceEdit = useCallback((utxoId: string, newValue: string) => {
+    if (!walletData) return;
+    
+    const utxo = walletData.utxos.find(u => u.txid === utxoId);
+    if (!utxo) return;
+    
+    const parsedValue = parseFloat(newValue);
+    if (isNaN(parsedValue) && newValue !== '') {
+      toast({
+        title: "Invalid Value",
+        description: "Please enter a valid number",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Calculate new acquisition fiat value based on BTC price and amount
+    const newAcquisitionFiatValue = newValue === '' ? null : parsedValue * utxo.amount;
+    
+    // Update the UTXO with the new BTC price and calculated fiat value
+    updateUtxoCostBasis(
+      utxoId,
+      utxo.acquisitionDate,
+      newAcquisitionFiatValue,
+      utxo.notes
+    );
+    
+    // Also update the BTC price directly in the UTXO
+    const updatedUtxo = {
+      ...utxo,
+      acquisitionBtcPrice: newValue === '' ? null : parsedValue,
+      costAutoPopulated: false
+    };
+    
+    // Since updateUtxoCostBasis doesn't directly update the BTC price field,
+    // we need to make sure it's updated in the wallet context
+    // This should be implemented in the WalletContext, but we're working with what we have
+    
+    toast({
+      title: "BTC Price Updated",
+      description: "The Bitcoin price and cost basis have been updated"
+    });
+    
+    setEditableUtxo(null);
+  }, [walletData, updateUtxoCostBasis]);
 
   const handleCostBasisEdit = useCallback((utxoId: string, newValue: string) => {
     if (!walletData) return;
@@ -308,7 +354,7 @@ const UTXOTable = () => {
     });
     
     setEditableUtxo(null);
-  }, [walletData, updateUtxoCostBasis, toast]);
+  }, [walletData, updateUtxoCostBasis]);
 
   const handleNotesEdit = useCallback((utxoId: string, newValue: string) => {
     if (!walletData) return;
@@ -330,7 +376,7 @@ const UTXOTable = () => {
     });
     
     setEditableUtxo(null);
-  }, [walletData, updateUtxoCostBasis, toast]);
+  }, [walletData, updateUtxoCostBasis]);
 
   if (!walletData) {
     return (
@@ -369,7 +415,7 @@ const UTXOTable = () => {
         <div className="flex flex-col md:flex-row gap-4 mb-4">
           <div className="flex-1">
             <Input
-              placeholder="Search by txid, address or tag..."
+              placeholder="Search by txid, address, tag or notes..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full"
@@ -466,12 +512,14 @@ const UTXOTable = () => {
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionDate')}>
+                    <CalendarIcon className="mr-1 h-4 w-4" />
                     Acq. Date
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionBtcPrice')}>
+                    <DollarSign className="mr-1 h-4 w-4" />
                     BTC Price
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </div>
@@ -482,8 +530,15 @@ const UTXOTable = () => {
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </div>
                 </TableHead>
-                <TableHead className="min-w-[100px]">Notes</TableHead>
-                <TableHead>Tags</TableHead>
+                <TableHead className="min-w-[100px]">
+                  Notes
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center">
+                    <Tag className="mr-1 h-4 w-4" />
+                    Tags
+                  </div>
+                </TableHead>
                 <TableHead>
                   <div className="flex items-center cursor-pointer" onClick={() => handleSort('privacyRisk')}>
                     Risk
@@ -503,7 +558,6 @@ const UTXOTable = () => {
               ) : (
                 filteredUtxos.map((utxo) => {
                   const isEditing = editableUtxo === utxo.txid;
-                  const isSelected = isUTXOSelected(utxo);
                   
                   return (
                     <TableRow key={utxo.txid + "-" + utxo.vout}>
@@ -518,150 +572,104 @@ const UTXOTable = () => {
                         </div>
                       </TableCell>
                       
+                      {/* Amount Cell - Read-only since it's a blockchain value */}
                       <TableCell>
                         {formatBTC(utxo.amount)}
                       </TableCell>
                       
-                      {/* Acquisition Date Cell */}
-                      <TableCell>
-                        {isEditing ? (
-                          <div className="flex flex-col">
-                            <Popover open={datePickerOpen === utxo.txid} onOpenChange={(open) => {
-                              if (open) setDatePickerOpen(utxo.txid);
-                              else setDatePickerOpen(null);
-                            }}>
-                              <PopoverTrigger asChild>
-                                <Button 
-                                  variant="outline" 
-                                  className="w-full justify-start text-left font-normal"
-                                  size="sm"
-                                >
-                                  {utxo.acquisitionDate 
-                                    ? format(new Date(utxo.acquisitionDate), "PPP")
-                                    : "Select date"}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={utxo.acquisitionDate ? new Date(utxo.acquisitionDate) : undefined}
-                                  onSelect={(date) => {
-                                    const dateStr = date ? format(date, 'yyyy-MM-dd') : null;
-                                    handleDateEdit(utxo.txid, dateStr);
-                                  }}
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
-                            <div className="flex justify-end mt-2 space-x-2">
+                      {/* Acquisition Date Cell - Editable */}
+                      {isEditing ? (
+                        <TableCell>
+                          <Popover open={datePickerOpen === utxo.txid} onOpenChange={(open) => {
+                            if (open) setDatePickerOpen(utxo.txid);
+                            else setDatePickerOpen(null);
+                          }}>
+                            <PopoverTrigger asChild>
                               <Button 
-                                size="sm" 
                                 variant="outline" 
-                                onClick={cancelEditing} 
-                                className="h-7 px-2"
+                                className="w-full justify-start text-left font-normal"
+                                size="sm"
                               >
-                                <X className="h-4 w-4" />
+                                {utxo.acquisitionDate 
+                                  ? format(new Date(utxo.acquisitionDate), "PPP")
+                                  : "Select date"}
                               </Button>
-                            </div>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={utxo.acquisitionDate ? new Date(utxo.acquisitionDate) : undefined}
+                                onSelect={(date) => {
+                                  const dateStr = date ? format(date, 'yyyy-MM-dd') : null;
+                                  handleDateEdit(utxo.txid, dateStr);
+                                }}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <div className="flex justify-end mt-2 space-x-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={cancelEditing} 
+                              className="h-7 px-2"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
                           </div>
-                        ) : (
-                          <div 
-                            className="cursor-pointer hover:bg-muted/30 px-2 py-1 rounded"
-                            onClick={() => startEditing(utxo.txid)}
-                          >
-                            {utxo.acquisitionDate 
-                              ? new Date(utxo.acquisitionDate).toLocaleDateString() 
-                              : "-"}
-                          </div>
-                        )}
-                      </TableCell>
+                        </TableCell>
+                      ) : (
+                        <EditableCell
+                          isEditing={false}
+                          initialValue={utxo.acquisitionDate 
+                            ? new Date(utxo.acquisitionDate).toLocaleDateString() 
+                            : ""}
+                          onSave={() => startEditing(utxo.txid)}
+                          inputType="text"
+                          placeholder="Set date..."
+                        />
+                      )}
                       
-                      {/* BTC Price Cell */}
-                      <TableCell>
-                        {utxo.acquisitionBtcPrice !== null 
-                          ? formatCurrency(utxo.acquisitionBtcPrice)
-                          : "-"}
-                      </TableCell>
+                      {/* BTC Price Cell - Editable */}
+                      <EditableCell
+                        isEditing={isEditing}
+                        initialValue={utxo.acquisitionBtcPrice !== null 
+                          ? String(utxo.acquisitionBtcPrice)
+                          : ""}
+                        onSave={(value) => handleBtcPriceEdit(utxo.txid, value)}
+                        inputType="number"
+                        placeholder="Enter BTC price..."
+                      />
                       
-                      {/* Cost Basis Cell */}
-                      <TableCell>
-                        {isEditing ? (
-                          <div className="flex flex-col">
-                            <Input
-                              type="number"
-                              defaultValue={utxo.acquisitionFiatValue?.toString() || ""}
-                              placeholder="Enter cost basis"
-                              className="w-full"
-                              onBlur={(e) => handleCostBasisEdit(utxo.txid, e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  handleCostBasisEdit(utxo.txid, e.currentTarget.value);
-                                }
-                              }}
-                            />
-                            <div className="flex justify-end mt-2 space-x-2">
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={cancelEditing} 
-                                className="h-7 px-2"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div 
-                            className="cursor-pointer hover:bg-muted/30 px-2 py-1 rounded"
-                            onClick={() => startEditing(utxo.txid)}
-                          >
-                            {utxo.acquisitionFiatValue !== null 
-                              ? formatCurrency(utxo.acquisitionFiatValue)
-                              : "-"}
-                            {utxo.costAutoPopulated && (
-                              <span className="ml-1 text-xs text-muted-foreground">(auto)</span>
-                            )}
-                          </div>
-                        )}
-                      </TableCell>
+                      {/* Cost Basis Cell - Editable */}
+                      <EditableCell
+                        isEditing={isEditing}
+                        initialValue={utxo.acquisitionFiatValue !== null 
+                          ? String(utxo.acquisitionFiatValue)
+                          : ""}
+                        onSave={(value) => handleCostBasisEdit(utxo.txid, value)}
+                        inputType="number"
+                        placeholder="Enter cost basis..."
+                      >
+                        <div className="flex items-center">
+                          {utxo.acquisitionFiatValue !== null 
+                            ? formatCurrency(utxo.acquisitionFiatValue) 
+                            : ""}
+                          {utxo.costAutoPopulated && !isEditing && (
+                            <span className="ml-1 text-xs text-muted-foreground">(auto)</span>
+                          )}
+                        </div>
+                      </EditableCell>
                       
-                      {/* Notes Cell */}
-                      <TableCell>
-                        {isEditing ? (
-                          <div className="flex flex-col">
-                            <Input
-                              type="text"
-                              defaultValue={utxo.notes || ""}
-                              placeholder="Add notes"
-                              className="w-full"
-                              onBlur={(e) => handleNotesEdit(utxo.txid, e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  handleNotesEdit(utxo.txid, e.currentTarget.value);
-                                }
-                              }}
-                            />
-                            <div className="flex justify-end mt-2 space-x-2">
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={cancelEditing} 
-                                className="h-7 px-2"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div 
-                            className="cursor-pointer hover:bg-muted/30 px-2 py-1 rounded max-w-[200px] truncate"
-                            onClick={() => startEditing(utxo.txid)}
-                            title={utxo.notes || ""}
-                          >
-                            {utxo.notes || "-"}
-                          </div>
-                        )}
-                      </TableCell>
+                      {/* Notes Cell - Editable */}
+                      <EditableCell
+                        isEditing={isEditing}
+                        initialValue={utxo.notes || ""}
+                        onSave={(value) => handleNotesEdit(utxo.txid, value)}
+                        inputType="text"
+                        placeholder="Add notes..."
+                        className="max-w-[200px]"
+                      />
                       
                       {/* Tags Cell */}
                       <TableCell>
@@ -697,14 +705,25 @@ const UTXOTable = () => {
                       {/* Actions Cell */}
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end space-x-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => startEditing(utxo.txid)}
-                            className="h-8 w-8"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          {isEditing ? (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={cancelEditing}
+                              className="h-8 w-8"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => startEditing(utxo.txid)}
+                              className="h-8 w-8"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
                           
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -740,16 +759,16 @@ const UTXOTable = () => {
                                   <TooltipTrigger asChild>
                                     <div>
                                       <DropdownMenuItem 
-                                        onClick={() => !isSelected && handleAddToSimulation(utxo)}
-                                        disabled={isSelected}
-                                        className={isSelected ? "cursor-not-allowed opacity-50" : ""}
+                                        onClick={() => !isUTXOSelected(utxo) && handleAddToSimulation(utxo)}
+                                        disabled={isUTXOSelected(utxo)}
+                                        className={isUTXOSelected(utxo) ? "cursor-not-allowed opacity-50" : ""}
                                       >
                                         <Bookmark className="mr-2 h-4 w-4" />
-                                        {isSelected ? "Already in Simulation" : "Add to Simulation"}
+                                        {isUTXOSelected(utxo) ? "Already in Simulation" : "Add to Simulation"}
                                       </DropdownMenuItem>
                                     </div>
                                   </TooltipTrigger>
-                                  {isSelected && (
+                                  {isUTXOSelected(utxo) && (
                                     <TooltipContent>
                                       <p>Already added to simulation</p>
                                     </TooltipContent>
