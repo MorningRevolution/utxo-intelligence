@@ -11,6 +11,7 @@ export interface UTXO {
   privacyRisk: 'low' | 'medium' | 'high';
   acquisitionDate: string | null;
   acquisitionFiatValue: number | null;
+  acquisitionBtcPrice: number | null; // Added field for BTC price at acquisition
   disposalDate: string | null;
   disposalFiatValue: number | null;
   realizedGainFiat: number | null;

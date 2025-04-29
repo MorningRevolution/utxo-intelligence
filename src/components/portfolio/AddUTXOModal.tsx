@@ -20,6 +20,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { getBitcoinHistoricalPrice } from "@/services/coingeckoService";
 
 interface AddUTXOModalProps {
   open: boolean;
@@ -31,8 +32,39 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
   const [amount, setAmount] = useState("");
   const [acquisitionDate, setAcquisitionDate] = useState<Date | undefined>(new Date());
   const [acquisitionFiatValue, setAcquisitionFiatValue] = useState("");
+  const [acquisitionBtcPrice, setAcquisitionBtcPrice] = useState("");
   const [notes, setNotes] = useState("");
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchBtcPrice = async () => {
+    if (!acquisitionDate) return;
+    
+    setIsLoading(true);
+    try {
+      const dateString = format(acquisitionDate, "yyyy-MM-dd");
+      const price = await getBitcoinHistoricalPrice(dateString, selectedCurrency);
+      
+      if (price) {
+        setAcquisitionBtcPrice(price.toString());
+        
+        // If no acquisition value is set, suggest one based on the BTC price
+        if (!acquisitionFiatValue) {
+          const btcAmount = parseFloat(amount) || 0;
+          setAcquisitionFiatValue((btcAmount * price).toString());
+        }
+        
+        toast.success("BTC price loaded for selected date");
+      } else {
+        toast.error("Could not fetch historical BTC price");
+      }
+    } catch (error) {
+      console.error("Error fetching BTC price:", error);
+      toast.error("Failed to load BTC price data");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!walletData || !amount || !acquisitionDate) {
@@ -60,6 +92,7 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
       privacyRisk: 'low' as const,
       acquisitionDate: acquisitionDate.toISOString(),
       acquisitionFiatValue: acquisitionFiatValue ? parseFloat(acquisitionFiatValue) : null,
+      acquisitionBtcPrice: acquisitionBtcPrice ? parseFloat(acquisitionBtcPrice) : null,
       disposalDate: null,
       disposalFiatValue: null,
       realizedGainFiat: null,
@@ -82,6 +115,7 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
       setAmount("");
       setAcquisitionDate(new Date());
       setAcquisitionFiatValue("");
+      setAcquisitionBtcPrice("");
       setNotes("");
       
       // Close modal and trigger refresh by passing true
@@ -98,6 +132,7 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
     setAmount("");
     setAcquisitionDate(new Date());
     setAcquisitionFiatValue("");
+    setAcquisitionBtcPrice("");
     setNotes("");
     onOpenChange(false);
   };
@@ -151,16 +186,46 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
                   onSelect={(date) => {
                     setAcquisitionDate(date || undefined);
                     setIsCalendarOpen(false);
+                    // Clear the BTC price when date changes
+                    setAcquisitionBtcPrice("");
                   }}
                   initialFocus
                 />
               </PopoverContent>
             </Popover>
+            <div className="flex justify-end">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={fetchBtcPrice}
+                disabled={!acquisitionDate || isLoading}
+              >
+                {isLoading ? "Loading..." : "Get BTC Price for Date"}
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="btcPrice" className="text-sm font-medium">
+              BTC Market Price ({selectedCurrency.toUpperCase()})
+            </label>
+            <Input
+              id="btcPrice"
+              type="number"
+              step="0.01"
+              min="0"
+              value={acquisitionBtcPrice}
+              onChange={(e) => setAcquisitionBtcPrice(e.target.value)}
+              placeholder={`BTC price in ${selectedCurrency.toUpperCase()}`}
+            />
+            <p className="text-sm text-muted-foreground">
+              Price per Bitcoin at acquisition date
+            </p>
           </div>
 
           <div className="space-y-2">
             <label htmlFor="fiatValue" className="text-sm font-medium">
-              Acquisition Value ({selectedCurrency.toUpperCase()}) - Optional
+              Acquisition Value ({selectedCurrency.toUpperCase()})
             </label>
             <Input
               id="fiatValue"
@@ -171,6 +236,9 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
               onChange={(e) => setAcquisitionFiatValue(e.target.value)}
               placeholder={`Enter value in ${selectedCurrency.toUpperCase()}`}
             />
+            <p className="text-sm text-muted-foreground">
+              Total amount paid for this UTXO
+            </p>
           </div>
 
           <div className="space-y-2">

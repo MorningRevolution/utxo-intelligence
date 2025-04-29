@@ -1,5 +1,6 @@
+
 import { UTXO, WalletData, Tag, Transaction } from '../types/utxo';
-import { subDays, format } from 'date-fns';
+import { subDays, format, subMonths, subYears, addDays } from 'date-fns';
 
 export const mockTags: Tag[] = [
   { id: '1', name: 'Exchange', color: '#3b82f6' },
@@ -14,24 +15,92 @@ export const mockTags: Tag[] = [
   { id: '10', name: 'P2P', color: '#a855f7' },
 ];
 
-const getRandomRecentDate = () => {
-  const daysAgo = Math.floor(Math.random() * 364) + 1; // 1-364 days ago
-  return format(subDays(new Date(), daysAgo), 'yyyy-MM-dd');
+// More realistic historical Bitcoin prices (USD)
+const historicalBtcPrices: Record<string, number> = {
+  '2022-01': 38000,
+  '2022-04': 40000,
+  '2022-07': 23000,
+  '2022-10': 19000,
+  '2023-01': 16500,
+  '2023-04': 28000,
+  '2023-07': 30000,
+  '2023-10': 27000,
+  '2024-01': 42000,
+  '2024-04': 70000,
 };
 
+// Generate realistic date in the past 2 years
+const getRealisticDate = () => {
+  const randomMonths = Math.floor(Math.random() * 24); // 0-23 months ago
+  return format(subMonths(new Date(), randomMonths), 'yyyy-MM-dd');
+};
+
+// Get realistic BTC price based on date
 const getRealisticBTCPrice = (date: string) => {
-  const basePrice = 45000; // Base price around $45k
-  const volatility = 0.3; // 30% volatility
-  const daysFromNow = Math.floor((new Date().getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
-  const trendFactor = 1 + (364 - daysFromNow) * 0.001; // Slight upward trend
-  const randomFactor = 1 + (Math.random() - 0.5) * volatility;
-  return Math.round(basePrice * trendFactor * randomFactor);
+  const yearMonth = date.substring(0, 7); // Get YYYY-MM part
+  
+  // Find closest month in our historical data
+  const months = Object.keys(historicalBtcPrices).sort();
+  let closestMonth = months[0];
+  
+  for (const month of months) {
+    if (month <= yearMonth) {
+      closestMonth = month;
+    } else {
+      break;
+    }
+  }
+  
+  // Add some randomness to the price (±5%)
+  const basePrice = historicalBtcPrices[closestMonth];
+  const randomFactor = 0.95 + (Math.random() * 0.1); // 0.95 to 1.05
+  
+  return Math.round(basePrice * randomFactor);
 };
 
-export const mockUTXOs: UTXO[] = Array.from({ length: 15 }, (_, i) => {
-  const acquisitionDate = getRandomRecentDate();
-  const amount = Math.round(Math.random() * 100) / 100; // 0.00-0.99 BTC
-  const price = getRealisticBTCPrice(acquisitionDate);
+// Generate realistic amounts based on common UTXO patterns
+const getRealisticAmount = () => {
+  const pattern = Math.floor(Math.random() * 5);
+  
+  switch (pattern) {
+    case 0: // Small change (~0.001 - 0.01 BTC)
+      return Math.round(Math.random() * 900 + 100) / 100000;
+    case 1: // Medium (~0.01 - 0.1 BTC)
+      return Math.round(Math.random() * 90 + 10) / 1000;
+    case 2: // Standard (~0.1 - 0.5 BTC)
+      return Math.round(Math.random() * 400 + 100) / 1000;
+    case 3: // Large (~0.5 - 2 BTC)
+      return Math.round(Math.random() * 150 + 50) / 100;
+    case 4: // Round number (exactly 0.1, 0.5, 1.0 BTC)
+      const roundOptions = [0.1, 0.2, 0.5, 1.0, 2.0];
+      return roundOptions[Math.floor(Math.random() * roundOptions.length)];
+    default:
+      return Math.round(Math.random() * 100) / 100;
+  }
+};
+
+// Generate realistic cost basis (could be higher or lower than market price)
+const getRealisticCostBasis = (marketPrice: number, amount: number) => {
+  const premiumFactor = 0.85 + (Math.random() * 0.3); // 0.85 to 1.15 (±15% from market)
+  return Math.round(marketPrice * premiumFactor * amount);
+};
+
+export const mockUTXOs: UTXO[] = Array.from({ length: 25 }, (_, i) => {
+  const acquisitionDate = getRealisticDate();
+  const amount = getRealisticAmount();
+  const btcPrice = getRealisticBTCPrice(acquisitionDate);
+  const fiatValue = getRealisticCostBasis(btcPrice, amount);
+  
+  // Select 1-2 tags randomly
+  const numTags = Math.random() > 0.7 ? 2 : 1;
+  const selectedTags = [];
+  
+  for (let t = 0; t < numTags; t++) {
+    const randomTag = mockTags[Math.floor(Math.random() * mockTags.length)].name;
+    if (!selectedTags.includes(randomTag)) {
+      selectedTags.push(randomTag);
+    }
+  }
   
   return {
     txid: `tx${i + 1}_${Math.random().toString(36).substring(2, 15)}`,
@@ -40,16 +109,17 @@ export const mockUTXOs: UTXO[] = Array.from({ length: 15 }, (_, i) => {
     amount,
     confirmations: Math.floor(Math.random() * 1000) + 1,
     scriptPubKey: `0014${Math.random().toString(36).substring(2, 38)}`,
-    tags: [mockTags[Math.floor(Math.random() * mockTags.length)].name],
+    tags: selectedTags,
     createdAt: acquisitionDate + 'T' + new Date().toISOString().split('T')[1],
     privacyRisk: Math.random() < 0.2 ? 'high' : Math.random() < 0.5 ? 'medium' : 'low',
     acquisitionDate,
-    acquisitionFiatValue: amount * price,
+    acquisitionFiatValue: fiatValue,
+    acquisitionBtcPrice: btcPrice,
     disposalDate: null,
     disposalFiatValue: null,
     realizedGainFiat: null,
-    costAutoPopulated: false,
-    notes: `Demo UTXO #${i + 1}`
+    costAutoPopulated: Math.random() > 0.7, // 30% are auto-populated
+    notes: Math.random() > 0.6 ? `Demo UTXO #${i + 1} - ${selectedTags.join(', ')}` : null
   };
 });
 

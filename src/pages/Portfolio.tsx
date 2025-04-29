@@ -1,7 +1,6 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChartArea, ChartLine, Wallet, CircleDollarSign, Calendar } from "lucide-react";
+import { ChartArea, ChartLine, Wallet, CircleDollarSign, Calendar, DollarSign } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -61,7 +60,6 @@ function Portfolio() {
   const handleAddUTXOModalClose = (success: boolean) => {
     setIsAddUTXOModalOpen(false);
     if (success) {
-      // Refresh portfolio data when a new UTXO is successfully added
       fetchPortfolioData();
     }
   };
@@ -265,6 +263,12 @@ function Portfolio() {
                   <th className="text-left py-2 px-4 font-medium">TXID</th>
                   <th className="text-left py-2 px-4 font-medium">Amount</th>
                   <th className="text-left py-2 px-4 font-medium">Acquisition Date</th>
+                  <th className="text-left py-2 px-4 font-medium">
+                    <div className="flex items-center gap-1">
+                      <DollarSign className="h-4 w-4" />
+                      <span>BTC Price</span>
+                    </div>
+                  </th>
                   <th className="text-left py-2 px-4 font-medium">Cost Basis</th>
                   <th className="text-left py-2 px-4 font-medium">Notes</th>
                   <th className="text-right py-2 px-4 font-medium">Actions</th>
@@ -280,6 +284,11 @@ function Portfolio() {
                     <td className="py-2 px-4">
                       {utxo.acquisitionDate 
                         ? new Date(utxo.acquisitionDate).toLocaleDateString() 
+                        : "-"}
+                    </td>
+                    <td className="py-2 px-4">
+                      {utxo.acquisitionBtcPrice !== null 
+                        ? formatCurrency(utxo.acquisitionBtcPrice)
                         : "-"}
                     </td>
                     <td className="py-2 px-4">
@@ -329,7 +338,6 @@ function Portfolio() {
               utxo={selectedUtxo} 
               onClose={() => {
                 setSelectedUtxoId(null);
-                // Refresh portfolio data when cost basis is updated
                 fetchPortfolioData();
               }} 
             />

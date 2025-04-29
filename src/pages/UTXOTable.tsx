@@ -25,7 +25,7 @@ import { useWallet } from "@/store/WalletContext";
 import { TagSelector } from "@/components/utxo/TagSelector";
 import { UTXODetailsModal } from "@/components/utxo/UTXODetailsModal";
 import { formatBTC, formatTxid, getRiskColor } from "@/utils/utxo-utils";
-import { ArrowUpDown, Filter, MoreVertical, Tag, Eye, Info, Bookmark } from "lucide-react";
+import { ArrowUpDown, Filter, MoreVertical, Tag, Eye, Info, Bookmark, DollarSign } from "lucide-react";
 import { UTXO } from "@/types/utxo";
 import { Check } from "lucide-react";
 
@@ -39,7 +39,8 @@ const UTXOTable = () => {
     tagUTXO, 
     hasWallet,
     isUTXOSelected,
-    toggleUTXOSelection
+    toggleUTXOSelection,
+    selectedCurrency
   } = useWallet();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -102,6 +103,14 @@ const UTXOTable = () => {
         return sortConfig.direction === 'asc'
           ? a.confirmations - b.confirmations
           : b.confirmations - a.confirmations;
+      }
+
+      if (sortConfig.key === 'acquisitionBtcPrice') {
+        const aPrice = a.acquisitionBtcPrice || 0;
+        const bPrice = b.acquisitionBtcPrice || 0;
+        return sortConfig.direction === 'asc'
+          ? aPrice - bPrice
+          : bPrice - aPrice;
       }
       
       const aValue = String(a[sortConfig.key]);
@@ -174,6 +183,23 @@ const UTXOTable = () => {
     setSearchTerm("");
     setSelectedTags([]);
     setSelectedRisk([]);
+  };
+
+  const getCurrencySymbol = () => {
+    switch (selectedCurrency) {
+      case 'usd': return '$';
+      case 'eur': return '€';
+      case 'gbp': return '£';
+      case 'jpy': return '¥';
+      case 'aud': return 'A$';
+      case 'cad': return 'C$';
+      default: return '$';
+    }
+  };
+
+  const formatCurrency = (value: number | null) => {
+    if (value === null) return 'N/A';
+    return `${getCurrencySymbol()}${value.toLocaleString()}`;
   };
 
   if (!walletData) {
@@ -288,7 +314,7 @@ const UTXOTable = () => {
             </TableCaption>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[180px]">
+                <TableHead className="w-[150px]">
                   <div className="flex items-center cursor-pointer" onClick={() => handleSort('txid')}>
                     TxID
                     <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -306,6 +332,24 @@ const UTXOTable = () => {
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </div>
                 </TableHead>
+                <TableHead>
+                  <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionDate')}>
+                    Acq. Date
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionBtcPrice')}>
+                    BTC Price
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionFiatValue')}>
+                    Cost Basis
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </div>
+                </TableHead>
                 <TableHead>Tags</TableHead>
                 <TableHead>
                   <div className="flex items-center cursor-pointer" onClick={() => handleSort('privacyRisk')}>
@@ -319,7 +363,7 @@ const UTXOTable = () => {
             <TableBody>
               {filteredUtxos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-foreground">
                     No UTXOs matching the current filters
                   </TableCell>
                 </TableRow>
@@ -341,6 +385,24 @@ const UTXOTable = () => {
                       </TableCell>
                       <TableCell>{formatBTC(utxo.amount)}</TableCell>
                       <TableCell>{utxo.confirmations}</TableCell>
+                      <TableCell>
+                        {utxo.acquisitionDate 
+                          ? new Date(utxo.acquisitionDate).toLocaleDateString() 
+                          : "-"}
+                      </TableCell>
+                      <TableCell>
+                        {utxo.acquisitionBtcPrice !== null 
+                          ? formatCurrency(utxo.acquisitionBtcPrice)
+                          : "-"}
+                      </TableCell>
+                      <TableCell>
+                        {utxo.acquisitionFiatValue !== null 
+                          ? formatCurrency(utxo.acquisitionFiatValue)
+                          : "-"}
+                        {utxo.costAutoPopulated && (
+                          <span className="ml-1 text-xs text-muted-foreground">(auto)</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {utxo.tags.map((tagName, index) => {

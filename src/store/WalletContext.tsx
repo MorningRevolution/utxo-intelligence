@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useRef, ReactNode, useEffect, useCallback } from 'react';
 import { WalletData, UTXO, Tag, Transaction, Report, PortfolioData } from '../types/utxo';
 import { mockWalletData, mockTags } from '../data/mockData';
@@ -277,10 +276,20 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     
     const updatedUtxos = walletData.utxos.map(utxo => {
       if (utxo.txid === utxoId) {
+        // If we're updating the acquisition date, we should also try to get the BTC price
+        let btcPrice = utxo.acquisitionBtcPrice;
+        
+        // If acquisition date has changed or we don't have a BTC price yet, 
+        // make sure we update the price when we auto-populate next time
+        if (acquisitionDate !== utxo.acquisitionDate) {
+          btcPrice = null;
+        }
+        
         return {
           ...utxo,
           acquisitionDate,
           acquisitionFiatValue,
+          acquisitionBtcPrice: btcPrice,
           costAutoPopulated: false,
           notes: notes !== undefined ? notes : utxo.notes
         };
@@ -310,16 +319,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       
       const fiatValue = historicalPrice * utxo.amount;
       
-      updateUtxoCostBasis(
-        utxoId,
-        acquisitionDate,
-        fiatValue,
-        utxo.notes
-      );
-      
       const updatedUtxos = walletData.utxos.map(u => {
         if (u.txid === utxoId) {
-          return { ...u, costAutoPopulated: true };
+          return { 
+            ...u, 
+            acquisitionDate,
+            acquisitionFiatValue: fiatValue,
+            acquisitionBtcPrice: historicalPrice,
+            costAutoPopulated: true 
+          };
         }
         return u;
       });
@@ -394,7 +402,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         fiatValue: amount * currentPrice
       }));
       
-      // Improved historical data generation for smoother trends
       const generateHistoricalData = (days: number) => {
         const dates: string[] = [];
         const now = new Date();
@@ -405,38 +412,26 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           dates.push(date.toISOString().split('T')[0]);
         }
         
-        // Initialize with base values
         let initialBalance = totalBalance * 0.8;
         if (days > 90) initialBalance = totalBalance * 0.7;
         if (days > 180) initialBalance = totalBalance * 0.6;
         if (days > 300) initialBalance = totalBalance * 0.5;
         
-        // Create smoother trends with reduced volatility
         const generateTrend = () => {
           const trend: number[] = [];
           let value = initialBalance;
           
-          // Generate base trend with reduced noise
           for (let i = 0; i <= days; i++) {
-            // Monthly cycle (simulate recurring purchases)
             const monthlyEffect = Math.sin(i * (2 * Math.PI / 30)) * 0.005;
-            
-            // Market long-term trend (generally upward for BTC)
             const longTermTrend = 0.0003 + (Math.random() * 0.0002);
-            
-            // Normal random daily fluctuation (reduced volatility)
             const dailyFluctuation = ((Math.random() - 0.45) * 0.003);
             
-            // Apply all factors
             value = value * (1 + monthlyEffect + longTermTrend + dailyFluctuation);
-            
-            // Ensure we don't go below a reasonable floor
             value = Math.max(value, initialBalance * 0.7);
             
             trend.push(value);
           }
           
-          // Smooth the trend with moving average
           const smoothedTrend: number[] = [];
           const windowSize = Math.min(5, Math.floor(days / 20));
           
@@ -452,7 +447,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             smoothedTrend.push(sum / count);
           }
           
-          // Force the final value to match current balance
           smoothedTrend[smoothedTrend.length - 1] = totalBalance;
           
           return smoothedTrend;
@@ -460,7 +454,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         
         const balances = generateTrend();
         
-        // Generate price trend
         const priceTrend: number[] = [];
         let currentPriceValue = currentPrice * 0.8;
         
@@ -468,27 +461,42 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         if (days > 180) currentPriceValue = currentPrice * 0.65;
         if (days > 300) currentPriceValue = currentPrice * 0.6;
         
-        // Generate smoother price trend
-        for (let i = 0; i <= days; i++) {
-          // Market cycles
-          const cycleEffect = Math.sin(i * (2 * Math.PI / 120)) * 0.01;
+        const generateTrend = () => {
+          const trend: number[] = [];
+          let value = currentPriceValue;
           
-          // Long-term trend (generally upward for BTC)
-          const longTermTrend = 0.0005 + (Math.random() * 0.0002);
+          for (let i = 0; i <= days; i++) {
+            const cycleEffect = Math.sin(i * (2 * Math.PI / 120)) * 0.01;
+            const longTermTrend = 0.0005 + (Math.random() * 0.0002);
+            const dailyFluctuation = ((Math.random() - 0.5) * 0.005);
+            
+            value = value * (1 + cycleEffect + longTermTrend + dailyFluctuation);
+            
+            trend.push(value);
+          }
           
-          // Normal random daily fluctuation
-          const dailyFluctuation = ((Math.random() - 0.5) * 0.005);
+          const smoothedTrend: number[] = [];
+          const windowSize = Math.min(5, Math.floor(days / 20));
           
-          // Apply all factors
-          currentPriceValue = currentPriceValue * (1 + cycleEffect + longTermTrend + dailyFluctuation);
+          for (let i = 0; i < trend.length; i++) {
+            let sum = 0;
+            let count = 0;
+            
+            for (let j = Math.max(0, i - windowSize); j <= Math.min(trend.length - 1, i + windowSize); j++) {
+              sum += trend[j];
+              count++;
+            }
+            
+            smoothedTrend.push(sum / count);
+          }
           
-          priceTrend.push(currentPriceValue);
-        }
+          smoothedTrend[smoothedTrend.length - 1] = currentPrice;
+          
+          return smoothedTrend;
+        };
         
-        // Force last price to be current price
-        priceTrend[priceTrend.length - 1] = currentPrice;
+        const priceTrend = generateTrend();
         
-        // Combine everything into the historical data format
         return dates.map((date, index) => {
           const balance = balances[index];
           const price = priceTrend[index];

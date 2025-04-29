@@ -17,7 +17,8 @@ import {
   FormControl, 
   FormField, 
   FormItem, 
-  FormLabel 
+  FormLabel,
+  FormDescription
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { AlertTriangle } from "lucide-react";
@@ -187,6 +188,11 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
     }
   };
 
+  const formatCurrency = (value: number | null) => {
+    if (value === null) return 'N/A';
+    return `${getCurrencySymbol()}${value.toLocaleString()}`;
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -194,6 +200,9 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
         <div className="text-muted-foreground text-sm mb-4">
           <p>UTXO: {utxo.txid.substring(0, 8)}...{utxo.txid.substring(utxo.txid.length - 8)}</p>
           <p>Amount: {formatBTC(utxo.amount)}</p>
+          {utxo.acquisitionBtcPrice !== null && (
+            <p>BTC Market Price at Acquisition: {formatCurrency(utxo.acquisitionBtcPrice)} per BTC</p>
+          )}
         </div>
       </div>
 
@@ -246,6 +255,9 @@ export function CostBasisEditor({ utxo, onClose }: CostBasisEditorProps) {
                 <FormLabel>
                   Acquisition Value ({selectedCurrency.toUpperCase()})
                 </FormLabel>
+                <FormDescription>
+                  The total amount paid to acquire this UTXO
+                </FormDescription>
                 <FormControl>
                   <Input
                     type="number"
