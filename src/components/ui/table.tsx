@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
@@ -105,6 +106,61 @@ const TableCaption = React.forwardRef<
 ))
 TableCaption.displayName = "TableCaption"
 
+// New component for editable table cells
+interface EditableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
+  isEditing?: boolean;
+  onSave?: (value: string) => void;
+  initialValue: string;
+  inputType?: "text" | "number" | "date";
+}
+
+const EditableCell = React.forwardRef<HTMLTableCellElement, EditableCellProps>(
+  ({ className, isEditing, onSave, initialValue, inputType = "text", ...props }, ref) => {
+    const [value, setValue] = React.useState(initialValue);
+    
+    React.useEffect(() => {
+      setValue(initialValue);
+    }, [initialValue]);
+    
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setValue(e.target.value);
+    };
+    
+    const handleBlur = () => {
+      if (onSave && value !== initialValue) {
+        onSave(value);
+      }
+    };
+    
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' && onSave) {
+        onSave(value);
+      }
+    };
+    
+    return (
+      <TableCell ref={ref} className={cn(className)} {...props}>
+        {isEditing ? (
+          <input
+            type={inputType}
+            value={value}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            className="w-full bg-background border-border border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
+            autoFocus
+          />
+        ) : (
+          <div className="cursor-pointer hover:bg-muted/30 px-2 py-1 rounded">
+            {initialValue}
+          </div>
+        )}
+      </TableCell>
+    );
+  }
+);
+EditableCell.displayName = "EditableCell";
+
 export {
   Table,
   TableHeader,
@@ -114,4 +170,5 @@ export {
   TableRow,
   TableCell,
   TableCaption,
+  EditableCell
 }
