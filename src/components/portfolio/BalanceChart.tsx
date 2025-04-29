@@ -27,6 +27,25 @@ export function BalanceChart({
   height = 300,
   timeFilter 
 }: BalanceChartProps) {
+  // Format Y-axis tick values for better readability
+  const formatYAxisTick = (value: number) => {
+    if (value === 0) return "0";
+    
+    if (value < 0.001) {
+      return value.toFixed(8);
+    } else if (value < 0.01) {
+      return value.toFixed(5);
+    } else if (value < 0.1) {
+      return value.toFixed(3);
+    } else if (value < 1) {
+      return value.toFixed(2);
+    } else if (value < 10) {
+      return value.toFixed(1);
+    } else {
+      return Math.round(value).toString();
+    }
+  };
+
   const chartData = useMemo(() => {
     const now = new Date();
     const filteredData = data.filter(item => {
@@ -97,25 +116,6 @@ export function BalanceChart({
         return Math.ceil(chartData.length / 10); // ~10 ticks for all time
       default:
         return Math.ceil(chartData.length / 8);
-    }
-  };
-
-  // Format Y-axis tick values for better readability
-  const formatYAxisTick = (value: number) => {
-    if (value === 0) return "0";
-    
-    if (value < 0.001) {
-      return value.toFixed(8);
-    } else if (value < 0.01) {
-      return value.toFixed(5);
-    } else if (value < 0.1) {
-      return value.toFixed(3);
-    } else if (value < 1) {
-      return value.toFixed(2);
-    } else if (value < 10) {
-      return value.toFixed(1);
-    } else {
-      return Math.round(value).toString();
     }
   };
 

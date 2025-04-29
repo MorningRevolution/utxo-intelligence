@@ -28,6 +28,19 @@ export function FiatValueChart({
   currencySymbol = "USD",
   timeFilter
 }: FiatValueChartProps) {
+  // Format Y-axis tick values for better readability
+  const formatYAxisTick = (value: number) => {
+    if (value === 0) return "0";
+    
+    if (Math.abs(value) >= 1000000) {
+      return `${(value / 1000000).toFixed(1)}M`;
+    } else if (Math.abs(value) >= 1000) {
+      return `${(value / 1000).toFixed(1)}K`;
+    } else {
+      return value.toFixed(0);
+    }
+  };
+
   const chartData = useMemo(() => {
     const now = new Date();
     const filteredData = data.filter(item => {
@@ -99,19 +112,6 @@ export function FiatValueChart({
         return Math.ceil(chartData.length / 10); // ~10 ticks for all time
       default:
         return Math.ceil(chartData.length / 8);
-    }
-  };
-
-  // Format Y-axis tick values for better readability
-  const formatYAxisTick = (value: number) => {
-    if (value === 0) return "0";
-    
-    if (Math.abs(value) >= 1000000) {
-      return `${(value / 1000000).toFixed(1)}M`;
-    } else if (Math.abs(value) >= 1000) {
-      return `${(value / 1000).toFixed(1)}K`;
-    } else {
-      return value.toFixed(0);
     }
   };
 
