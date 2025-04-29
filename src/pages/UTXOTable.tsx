@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { 
@@ -28,7 +27,7 @@ import { useWallet } from "@/store/WalletContext";
 import { TagSelector } from "@/components/utxo/TagSelector";
 import { UTXODetailsModal } from "@/components/utxo/UTXODetailsModal";
 import { formatBTC, formatTxid, getRiskColor } from "@/utils/utxo-utils";
-import { ArrowUpDown, Filter, MoreVertical, Tag, Eye, Info, Bookmark, Edit, Calendar as CalendarIcon, DollarSign, NotePencil, Check, X } from "lucide-react";
+import { ArrowUpDown, Filter, MoreVertical, Tag, Eye, Info, Bookmark, Edit, Calendar as CalendarIcon, DollarSign, Pencil, Check, X } from "lucide-react";
 import { UTXO } from "@/types/utxo";
 
 const UTXOTable = () => {
@@ -71,10 +70,7 @@ const UTXOTable = () => {
   useEffect(() => {
     if (!hasWallet) {
       navigate("/wallet-import");
-      toast({
-        title: "No wallet loaded",
-        description: "Please import a wallet first",
-      });
+      toast("No wallet loaded. Please import a wallet first.");
     }
   }, [hasWallet, navigate]);
 
@@ -155,18 +151,12 @@ const UTXOTable = () => {
         if (utxo && tag) {
           console.log(`UTXOTable: Removing tag ${tag.name} from UTXO ${utxoId.substring(0, 8)}`);
           tagUTXO(utxoId, null, tag.name);
-          toast({
-            title: "Tag removed",
-            description: `The tag "${tag.name}" has been removed from the UTXO`,
-          });
+          toast("Tag removed. The tag has been removed from the UTXO");
         }
       } else {
         console.log(`UTXOTable: Adding tag ${tagId} to UTXO ${utxoId.substring(0, 8)}`);
         tagUTXO(utxoId, tagId);
-        toast({
-          title: "Tag applied",
-          description: "The tag has been applied to the UTXO",
-        });
+        toast("Tag applied. The tag has been applied to the UTXO");
       }
     }
   };
@@ -190,10 +180,7 @@ const UTXOTable = () => {
     
     toggleUTXOSelection(utxo);
     
-    toast({
-      title: "UTXO Selection Updated",
-      description: "Navigate to Risk Simulator to analyze transaction privacy",
-    });
+    toast("UTXO Selection Updated. Navigate to Risk Simulator to analyze transaction privacy");
   };
 
   const clearFilters = () => {
@@ -232,10 +219,7 @@ const UTXOTable = () => {
   const handleAmountEdit = useCallback((utxoId: string, newValue: string) => {
     // This is just for demo purposes - in a real app you'd need to handle 
     // blockchain transactions to change UTXO amount
-    toast({
-      title: "Not Editable",
-      description: "UTXO amount cannot be edited - this would require a blockchain transaction"
-    });
+    toast("Not Editable. UTXO amount cannot be edited - this would require a blockchain transaction");
   }, []);
 
   const handleDateEdit = useCallback((utxoId: string, dateString: string | null) => {
@@ -252,21 +236,14 @@ const UTXOTable = () => {
       utxo.notes
     );
     
-    toast({
-      title: "Date Updated",
-      description: "The acquisition date has been updated"
-    });
+    toast("Date Updated. The acquisition date has been updated");
     
     // Auto-populate BTC price based on the new date
     if (dateString) {
       autoPopulateUTXOCostBasis(utxoId)
         .then(success => {
           if (!success) {
-            toast({
-              title: "Price Update Failed",
-              description: "Could not fetch historical Bitcoin price for the selected date",
-              variant: "destructive"
-            });
+            toast("Price Update Failed. Could not fetch historical Bitcoin price for the selected date");
           }
         })
         .catch(err => {
@@ -286,11 +263,7 @@ const UTXOTable = () => {
     
     const parsedValue = parseFloat(newValue);
     if (isNaN(parsedValue) && newValue !== '') {
-      toast({
-        title: "Invalid Value",
-        description: "Please enter a valid number",
-        variant: "destructive"
-      });
+      toast("Invalid Value. Please enter a valid number");
       return;
     }
 
@@ -316,10 +289,7 @@ const UTXOTable = () => {
     // we need to make sure it's updated in the wallet context
     // This should be implemented in the WalletContext, but we're working with what we have
     
-    toast({
-      title: "BTC Price Updated",
-      description: "The Bitcoin price and cost basis have been updated"
-    });
+    toast("BTC Price Updated. The Bitcoin price and cost basis have been updated");
     
     setEditableUtxo(null);
   }, [walletData, updateUtxoCostBasis]);
@@ -332,11 +302,7 @@ const UTXOTable = () => {
     
     const parsedValue = parseFloat(newValue);
     if (isNaN(parsedValue) && newValue !== '') {
-      toast({
-        title: "Invalid Value",
-        description: "Please enter a valid number",
-        variant: "destructive"
-      });
+      toast("Invalid Value. Please enter a valid number");
       return;
     }
     
@@ -348,10 +314,7 @@ const UTXOTable = () => {
       utxo.notes
     );
     
-    toast({
-      title: "Cost Basis Updated",
-      description: "The cost basis has been updated"
-    });
+    toast("Cost Basis Updated. The cost basis has been updated");
     
     setEditableUtxo(null);
   }, [walletData, updateUtxoCostBasis]);
@@ -370,10 +333,7 @@ const UTXOTable = () => {
       newValue
     );
     
-    toast({
-      title: "Notes Updated",
-      description: "The notes have been updated"
-    });
+    toast("Notes Updated. The notes have been updated");
     
     setEditableUtxo(null);
   }, [walletData, updateUtxoCostBasis]);
