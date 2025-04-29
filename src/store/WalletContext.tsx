@@ -343,7 +343,115 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       return false;
     }
   };
-  
+
+  const generateBalanceTrend = (days: number, initialBalance: number, totalBalance: number) => {
+    const trend: number[] = [];
+    let value = initialBalance;
+    
+    for (let i = 0; i <= days; i++) {
+      const monthlyEffect = Math.sin(i * (2 * Math.PI / 30)) * 0.005;
+      const longTermTrend = 0.0003 + (Math.random() * 0.0002);
+      const dailyFluctuation = ((Math.random() - 0.45) * 0.003);
+      
+      value = value * (1 + monthlyEffect + longTermTrend + dailyFluctuation);
+      value = Math.max(value, initialBalance * 0.7);
+      
+      trend.push(value);
+    }
+    
+    const smoothedTrend: number[] = [];
+    const windowSize = Math.min(5, Math.floor(days / 20));
+    
+    for (let i = 0; i < trend.length; i++) {
+      let sum = 0;
+      let count = 0;
+      
+      for (let j = Math.max(0, i - windowSize); j <= Math.min(trend.length - 1, i + windowSize); j++) {
+        sum += trend[j];
+        count++;
+      }
+      
+      smoothedTrend.push(sum / count);
+    }
+    
+    smoothedTrend[smoothedTrend.length - 1] = totalBalance;
+    
+    return smoothedTrend;
+  };
+
+  const generatePriceTrend = (days: number, currentPriceValue: number, currentPrice: number) => {
+    const trend: number[] = [];
+    let value = currentPriceValue;
+    
+    for (let i = 0; i <= days; i++) {
+      const cycleEffect = Math.sin(i * (2 * Math.PI / 120)) * 0.01;
+      const longTermTrend = 0.0005 + (Math.random() * 0.0002);
+      const dailyFluctuation = ((Math.random() - 0.5) * 0.005);
+      
+      value = value * (1 + cycleEffect + longTermTrend + dailyFluctuation);
+      
+      trend.push(value);
+    }
+    
+    const smoothedTrend: number[] = [];
+    const windowSize = Math.min(5, Math.floor(days / 20));
+    
+    for (let i = 0; i < trend.length; i++) {
+      let sum = 0;
+      let count = 0;
+      
+      for (let j = Math.max(0, i - windowSize); j <= Math.min(trend.length - 1, i + windowSize); j++) {
+        sum += trend[j];
+        count++;
+      }
+      
+      smoothedTrend.push(sum / count);
+    }
+    
+    smoothedTrend[smoothedTrend.length - 1] = currentPrice;
+    
+    return smoothedTrend;
+  };
+
+  const generateHistoricalData = (days: number, totalBalance: number, currentPrice: number) => {
+    const dates: string[] = [];
+    const now = new Date();
+    
+    for (let i = days; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      dates.push(date.toISOString().split('T')[0]);
+    }
+    
+    let initialBalance = totalBalance * 0.8;
+    if (days > 90) initialBalance = totalBalance * 0.7;
+    if (days > 180) initialBalance = totalBalance * 0.6;
+    if (days > 300) initialBalance = totalBalance * 0.5;
+    
+    const balances = generateBalanceTrend(days, initialBalance, totalBalance);
+    
+    let currentPriceValue = currentPrice * 0.8;
+    if (days > 90) currentPriceValue = currentPrice * 0.7;
+    if (days > 180) currentPriceValue = currentPrice * 0.65;
+    if (days > 300) currentPriceValue = currentPrice * 0.6;
+    
+    const priceTrends = generatePriceTrend(days, currentPriceValue, currentPrice);
+    
+    return dates.map((date, index) => {
+      const balance = balances[index];
+      const price = priceTrends[index];
+      const fiatValue = balance * price;
+      const fiatGain = fiatValue - (balance * price * 0.7);
+      
+      return {
+        date,
+        balance,
+        fiatValue,
+        fiatGain
+      };
+    });
+  };
+
   const getPortfolioData = async (): Promise<PortfolioData | null> => {
     if (!walletData) return null;
     
@@ -402,117 +510,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         fiatValue: amount * currentPrice
       }));
       
-      const generateHistoricalData = (days: number) => {
-        const dates: string[] = [];
-        const now = new Date();
-        
-        for (let i = days; i >= 0; i--) {
-          const date = new Date(now);
-          date.setDate(date.getDate() - i);
-          dates.push(date.toISOString().split('T')[0]);
-        }
-        
-        let initialBalance = totalBalance * 0.8;
-        if (days > 90) initialBalance = totalBalance * 0.7;
-        if (days > 180) initialBalance = totalBalance * 0.6;
-        if (days > 300) initialBalance = totalBalance * 0.5;
-        
-        const generateTrend = () => {
-          const trend: number[] = [];
-          let value = initialBalance;
-          
-          for (let i = 0; i <= days; i++) {
-            const monthlyEffect = Math.sin(i * (2 * Math.PI / 30)) * 0.005;
-            const longTermTrend = 0.0003 + (Math.random() * 0.0002);
-            const dailyFluctuation = ((Math.random() - 0.45) * 0.003);
-            
-            value = value * (1 + monthlyEffect + longTermTrend + dailyFluctuation);
-            value = Math.max(value, initialBalance * 0.7);
-            
-            trend.push(value);
-          }
-          
-          const smoothedTrend: number[] = [];
-          const windowSize = Math.min(5, Math.floor(days / 20));
-          
-          for (let i = 0; i < trend.length; i++) {
-            let sum = 0;
-            let count = 0;
-            
-            for (let j = Math.max(0, i - windowSize); j <= Math.min(trend.length - 1, i + windowSize); j++) {
-              sum += trend[j];
-              count++;
-            }
-            
-            smoothedTrend.push(sum / count);
-          }
-          
-          smoothedTrend[smoothedTrend.length - 1] = totalBalance;
-          
-          return smoothedTrend;
-        };
-        
-        const balances = generateTrend();
-        
-        const priceTrend: number[] = [];
-        let currentPriceValue = currentPrice * 0.8;
-        
-        if (days > 90) currentPriceValue = currentPrice * 0.7;
-        if (days > 180) currentPriceValue = currentPrice * 0.65;
-        if (days > 300) currentPriceValue = currentPrice * 0.6;
-        
-        const generateTrend = () => {
-          const trend: number[] = [];
-          let value = currentPriceValue;
-          
-          for (let i = 0; i <= days; i++) {
-            const cycleEffect = Math.sin(i * (2 * Math.PI / 120)) * 0.01;
-            const longTermTrend = 0.0005 + (Math.random() * 0.0002);
-            const dailyFluctuation = ((Math.random() - 0.5) * 0.005);
-            
-            value = value * (1 + cycleEffect + longTermTrend + dailyFluctuation);
-            
-            trend.push(value);
-          }
-          
-          const smoothedTrend: number[] = [];
-          const windowSize = Math.min(5, Math.floor(days / 20));
-          
-          for (let i = 0; i < trend.length; i++) {
-            let sum = 0;
-            let count = 0;
-            
-            for (let j = Math.max(0, i - windowSize); j <= Math.min(trend.length - 1, i + windowSize); j++) {
-              sum += trend[j];
-              count++;
-            }
-            
-            smoothedTrend.push(sum / count);
-          }
-          
-          smoothedTrend[smoothedTrend.length - 1] = currentPrice;
-          
-          return smoothedTrend;
-        };
-        
-        const priceTrend = generateTrend();
-        
-        return dates.map((date, index) => {
-          const balance = balances[index];
-          const price = priceTrend[index];
-          const fiatValue = balance * price;
-          const fiatGain = fiatValue - (balance * price * 0.7);
-          
-          return {
-            date,
-            balance,
-            fiatValue,
-            fiatGain
-          };
-        });
-      };
-      
-      const balanceHistory = generateHistoricalData(365);
+      const balanceHistory = generateHistoricalData(365, totalBalance, currentPrice);
       
       return {
         currentValue,
