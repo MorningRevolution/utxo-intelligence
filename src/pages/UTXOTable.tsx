@@ -21,13 +21,13 @@ import {
 } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import { useWallet } from "@/store/WalletContext";
 import { TagSelector } from "@/components/utxo/TagSelector";
 import { UTXODetailsModal } from "@/components/utxo/UTXODetailsModal";
 import { formatBTC, formatTxid, getRiskColor } from "@/utils/utxo-utils";
-import { ArrowUpDown, Filter, MoreVertical, Tag, Eye, Info, Bookmark, Edit, Calendar as CalendarIcon, DollarSign, Pencil, Check, X } from "lucide-react";
+import { ArrowUpDown, Filter, MoreVertical, Tag, Eye, Info, Bookmark, Edit, CalendarIcon, DollarSign, Pencil, Check, X } from "lucide-react";
 import { UTXO } from "@/types/utxo";
 
 const UTXOTable = () => {
@@ -222,16 +222,17 @@ const UTXOTable = () => {
     toast("Not Editable. UTXO amount cannot be edited - this would require a blockchain transaction");
   }, []);
 
-  const handleDateEdit = useCallback((utxoId: string, dateString: string | null) => {
-    if (!walletData) return;
+  const handleDateEdit = useCallback((utxoId: string, date: Date | undefined) => {
+    if (!walletData || !date) return;
     
+    const dateStr = format(date, 'yyyy-MM-dd');
     const utxo = walletData.utxos.find(u => u.txid === utxoId);
     if (!utxo) return;
     
     // Use the existing values for other fields
     updateUtxoCostBasis(
       utxoId,
-      dateString,
+      dateStr,
       utxo.acquisitionFiatValue,
       utxo.notes
     );
@@ -239,17 +240,15 @@ const UTXOTable = () => {
     toast("Date Updated. The acquisition date has been updated");
     
     // Auto-populate BTC price based on the new date
-    if (dateString) {
-      autoPopulateUTXOCostBasis(utxoId)
-        .then(success => {
-          if (!success) {
-            toast("Price Update Failed. Could not fetch historical Bitcoin price for the selected date");
-          }
-        })
-        .catch(err => {
-          console.error("Error auto-populating price:", err);
-        });
-    }
+    autoPopulateUTXOCostBasis(utxoId)
+      .then(success => {
+        if (!success) {
+          toast("Price Update Failed. Could not fetch historical Bitcoin price for the selected date");
+        }
+      })
+      .catch(err => {
+        console.error("Error auto-populating price:", err);
+      });
     
     setEditableUtxo(null);
     setDatePickerOpen(null);
@@ -559,24 +558,12 @@ const UTXOTable = () => {
                               <Calendar
                                 mode="single"
                                 selected={utxo.acquisitionDate ? new Date(utxo.acquisitionDate) : undefined}
-                                onSelect={(date) => {
-                                  const dateStr = date ? format(date, 'yyyy-MM-dd') : null;
-                                  handleDateEdit(utxo.txid, dateStr);
-                                }}
+                                onSelect={(date) => handleDateEdit(utxo.txid, date)}
                                 initialFocus
+                                className="p-3 pointer-events-auto"
                               />
                             </PopoverContent>
                           </Popover>
-                          <div className="flex justify-end mt-2 space-x-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              onClick={cancelEditing} 
-                              className="h-7 px-2"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
                         </TableCell>
                       ) : (
                         <EditableCell
@@ -666,22 +653,24 @@ const UTXOTable = () => {
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end space-x-2">
                           {isEditing ? (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={cancelEditing}
-                              className="h-8 w-8"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={cancelEditing}
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Cancel
+                              </Button>
+                            </div>
                           ) : (
                             <Button 
-                              variant="ghost" 
-                              size="icon" 
+                              variant="outline" 
+                              size="sm"
                               onClick={() => startEditing(utxo.txid)}
-                              className="h-8 w-8"
                             >
-                              <Edit className="h-4 w-4" />
+                              <Edit className="h-4 w-4 mr-1" />
+                              Edit
                             </Button>
                           )}
                           
