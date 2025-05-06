@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChartArea, ChartLine, Wallet, CircleDollarSign, Calendar, DollarSign, Pencil } from "lucide-react";
+import { ChartArea, ChartLine, Wallet, CircleDollarSign, Calendar as CalendarIcon, DollarSign, Pencil, Check, X } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { AddUTXOModal } from "@/components/portfolio/AddUTXOModal";
 import { getCurrentBitcoinPrice } from "@/services/coingeckoService";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Plus, Check, X, Filter, ArrowUpDown, MoreVertical, Tag } from "lucide-react";
+import { Plus, Filter, ArrowUpDown, MoreVertical, Tag } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { UTXODetailsModal } from "@/components/utxo/UTXODetailsModal";
 import { TagSelector } from "@/components/utxo/TagSelector";
 import {
@@ -232,16 +233,17 @@ function Portfolio() {
   };
 
   // Handle editing functions for UTXO fields
-  const handleDateEdit = useCallback((utxoId: string, dateString: string | null) => {
-    if (!walletData) return;
+  const handleDateEdit = useCallback((utxoId: string, date: Date | undefined) => {
+    if (!walletData || !date) return;
     
+    const dateStr = format(date, 'yyyy-MM-dd');
     const utxo = walletData.utxos.find(u => u.txid === utxoId);
     if (!utxo) return;
     
     // Use the existing values for other fields
     updateUtxoCostBasis(
       utxoId,
-      dateString,
+      dateStr,
       utxo.acquisitionFiatValue,
       utxo.notes
     );
@@ -249,17 +251,15 @@ function Portfolio() {
     toast("Acquisition date updated");
     
     // Auto-populate BTC price based on the new date
-    if (dateString) {
-      autoPopulateUTXOCostBasis(utxoId)
-        .then(success => {
-          if (!success) {
-            toast.error("Could not fetch historical Bitcoin price for the selected date");
-          }
-        })
-        .catch(err => {
-          console.error("Error auto-populating price:", err);
-        });
-    }
+    autoPopulateUTXOCostBasis(utxoId)
+      .then(success => {
+        if (!success) {
+          toast.error("Could not fetch historical Bitcoin price for the selected date");
+        }
+      })
+      .catch(err => {
+        console.error("Error auto-populating price:", err);
+      });
     
     setEditableUtxo(null);
     setDatePickerOpen(null);
@@ -523,7 +523,7 @@ function Portfolio() {
                   </TableHead>
                   <TableHead>
                     <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionDate')}>
-                      <Calendar className="mr-1 h-4 w-4" />
+                      <CalendarIcon className="mr-1 h-4 w-4" />
                       Acq. Date
                       <ArrowUpDown className="ml-2 h-4 w-4" />
                     </div>
@@ -610,10 +610,7 @@ function Portfolio() {
                                 <Calendar
                                   mode="single"
                                   selected={utxo.acquisitionDate ? new Date(utxo.acquisitionDate) : undefined}
-                                  onSelect={(date) => {
-                                    const dateStr = date ? format(date, 'yyyy-MM-dd') : null;
-                                    handleDateEdit(utxo.txid, dateStr);
-                                  }}
+                                  onSelect={(date) => handleDateEdit(utxo.txid, date)}
                                   disabled={(date) => date > new Date()}
                                   initialFocus
                                   className="p-3 pointer-events-auto"
