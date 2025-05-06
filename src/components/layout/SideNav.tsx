@@ -23,59 +23,77 @@ export function SideNav() {
   const location = useLocation();
   const { hasWallet } = useWallet();
 
-  const routes = [
+  // Define main routes
+  const mainRoutes = [
     {
       name: "Dashboard",
       path: "/",
       icon: <Home className="mr-2 h-5 w-5" />,
-      disabled: false
-    },
-    {
-      name: "Wallet Import",
-      path: "/wallet-import",
-      icon: <Wallet className="mr-2 h-5 w-5" />,
-      disabled: false
+      disabled: false,
+      subItems: [
+        {
+          name: "Portfolio",
+          path: "/portfolio",
+          icon: <ChartLine className="mr-2 h-4 w-4" />,
+          disabled: !hasWallet
+        },
+        {
+          name: "Risk Simulator",
+          path: "/risk-simulator",
+          icon: <AlertTriangle className="mr-2 h-4 w-4" />,
+          disabled: !hasWallet
+        }
+      ]
     },
     {
       name: "UTXO Table",
       path: "/utxo-table",
       icon: <Table className="mr-2 h-5 w-5" />,
-      disabled: !hasWallet
-    },
-    {
-      name: "Portfolio",
-      path: "/portfolio",
-      icon: <ChartLine className="mr-2 h-5 w-5" />,
-      disabled: !hasWallet
-    },
-    {
-      name: "Risk Simulator",
-      path: "/risk-simulator",
-      icon: <AlertTriangle className="mr-2 h-5 w-5" />,
-      disabled: !hasWallet
-    },
-    {
-      name: "Report Export",
-      path: "/report-export",
-      icon: <FileText className="mr-2 h-5 w-5" />,
-      disabled: !hasWallet
+      disabled: !hasWallet,
+      subItems: []
     },
     {
       name: "AI Assistant",
       path: "/ai-assistant",
       icon: <Bot className="mr-2 h-5 w-5" />,
-      disabled: false
+      disabled: false,
+      subItems: []
     },
     {
       name: "Settings",
       path: "/settings",
       icon: <Settings className="mr-2 h-5 w-5" />,
-      disabled: false
+      disabled: false,
+      subItems: [
+        {
+          name: "Wallet Import",
+          path: "/wallet-import",
+          icon: <Wallet className="mr-2 h-4 w-4" />,
+          disabled: false
+        },
+        {
+          name: "Report Export",
+          path: "/report-export",
+          icon: <FileText className="mr-2 h-4 w-4" />,
+          disabled: !hasWallet
+        }
+      ]
     }
   ];
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
+  };
+
+  // Check if a path or any of its subItems is active
+  const isPathActive = (path: string, subItems: any[] = []) => {
+    if (location.pathname === path) return true;
+    return subItems.some(item => location.pathname === item.path);
+  };
+
+  // Check if any subitem is expanded
+  const isExpanded = (subItems: any[] = []) => {
+    return subItems.some(item => location.pathname === item.path);
   };
 
   return (
@@ -112,13 +130,13 @@ export function SideNav() {
         
         <nav className="mt-8">
           <ul className="space-y-2 px-2">
-            {routes.map((route) => (
-              <li key={route.path}>
+            {mainRoutes.map((route) => (
+              <li key={route.path} className="space-y-1">
                 <Link
                   to={route.disabled ? "#" : route.path}
                   className={cn(
                     "flex items-center px-4 py-2 rounded-md transition-colors",
-                    location.pathname === route.path
+                    isPathActive(route.path, route.subItems)
                       ? "bg-sidebar-primary text-sidebar-primary-foreground"
                       : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     route.disabled && "opacity-50 cursor-not-allowed pointer-events-none"
@@ -126,7 +144,7 @@ export function SideNav() {
                   onClick={(e) => {
                     if (route.disabled) {
                       e.preventDefault();
-                    } else {
+                    } else if (route.subItems.length === 0) {
                       setIsOpen(false);
                     }
                   }}
@@ -134,6 +152,38 @@ export function SideNav() {
                   {route.icon}
                   <span>{route.name}</span>
                 </Link>
+                
+                {/* Render subitems if there are any */}
+                {route.subItems.length > 0 && (
+                  <div className={cn(
+                    "pl-6 space-y-1",
+                    isExpanded(route.subItems) ? "block" : "hidden md:block"
+                  )}>
+                    {route.subItems.map(subItem => (
+                      <Link
+                        key={subItem.path}
+                        to={subItem.disabled ? "#" : subItem.path}
+                        className={cn(
+                          "flex items-center px-4 py-1.5 text-sm rounded-md transition-colors",
+                          location.pathname === subItem.path
+                            ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                          subItem.disabled && "opacity-50 cursor-not-allowed pointer-events-none"
+                        )}
+                        onClick={(e) => {
+                          if (subItem.disabled) {
+                            e.preventDefault();
+                          } else {
+                            setIsOpen(false);
+                          }
+                        }}
+                      >
+                        {subItem.icon}
+                        <span>{subItem.name}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </li>
             ))}
           </ul>
