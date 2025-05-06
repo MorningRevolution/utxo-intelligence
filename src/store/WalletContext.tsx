@@ -34,6 +34,7 @@ interface WalletContextType {
   getPortfolioData: () => Promise<PortfolioData | null>;
   selectedCurrency: SupportedCurrency;
   setSelectedCurrency: (currency: SupportedCurrency) => void;
+  deleteUTXO: (utxoId: string) => void;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -177,6 +178,27 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       utxos: updatedUtxos
     });
   };
+
+  const deleteUTXO = useCallback((utxoId: string) => {
+    if (!walletData) return;
+    
+    console.log(`WalletContext: Deleting UTXO ${utxoId.substring(0, 8)}`);
+    
+    // Remove from selected UTXOs if present
+    setSelectedUTXOs(prev => 
+      prev.filter(utxo => utxo.txid !== utxoId)
+    );
+    
+    // Remove from wallet data
+    const updatedUtxos = walletData.utxos.filter(utxo => utxo.txid !== utxoId);
+    const newTotalBalance = updatedUtxos.reduce((sum, utxo) => sum + utxo.amount, 0);
+    
+    setWalletData({
+      ...walletData,
+      utxos: updatedUtxos,
+      totalBalance: newTotalBalance
+    });
+  }, [walletData]);
 
   const selectUTXO = useCallback((utxo: UTXO) => {
     setSelectedUTXOs(prev => addUTXOToSelection(prev, utxo));
@@ -549,7 +571,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     autoPopulateUTXOCostBasis,
     getPortfolioData,
     selectedCurrency,
-    setSelectedCurrency
+    setSelectedCurrency,
+    deleteUTXO
   };
 
   return (

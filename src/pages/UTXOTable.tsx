@@ -12,6 +12,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
@@ -19,6 +20,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
@@ -27,7 +38,7 @@ import { useWallet } from "@/store/WalletContext";
 import { TagSelector } from "@/components/utxo/TagSelector";
 import { UTXODetailsModal } from "@/components/utxo/UTXODetailsModal";
 import { formatBTC, formatTxid, getRiskColor } from "@/utils/utxo-utils";
-import { ArrowUpDown, Filter, MoreVertical, Tag, Eye, Info, Bookmark, Edit, CalendarIcon, DollarSign, Pencil, Check, X } from "lucide-react";
+import { ArrowUpDown, Filter, MoreVertical, Tag, Eye, Info, Bookmark, Edit, CalendarIcon, DollarSign, Pencil, Check, X, Trash2 } from "lucide-react";
 import { UTXO } from "@/types/utxo";
 
 const UTXOTable = () => {
@@ -38,7 +49,8 @@ const UTXOTable = () => {
     tags, 
     tagUTXO,
     updateUtxoCostBasis,
-    autoPopulateUTXOCostBasis, 
+    autoPopulateUTXOCostBasis,
+    deleteUTXO,
     hasWallet,
     isUTXOSelected,
     toggleUTXOSelection,
@@ -56,6 +68,8 @@ const UTXOTable = () => {
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [editableUtxo, setEditableUtxo] = useState<string | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState<string | null>(null);
+  const [deleteUtxoId, setDeleteUtxoId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
 
   useEffect(() => {
     return () => {
@@ -64,6 +78,8 @@ const UTXOTable = () => {
       setModalOpen(false);
       setEditableUtxo(null);
       setDatePickerOpen(null);
+      setDeleteUtxoId(null);
+      setDeleteDialogOpen(false);
     };
   }, [location.pathname]);
 
@@ -176,7 +192,7 @@ const UTXOTable = () => {
   };
 
   const handleAddToSimulation = (utxo: UTXO) => {
-    console.log('UTXOTable: Adding to simulation:', utxo.txid.substring(0, 8), 'vout:', utxo.vout);
+    console.log('UTXOTable: Adding to simulation:', utxo.txid.substring(0, 6), 'vout:', utxo.vout);
     
     toggleUTXOSelection(utxo);
     
@@ -216,6 +232,12 @@ const UTXOTable = () => {
     setDatePickerOpen(null);
   };
   
+  const handleTxidEdit = useCallback((utxoId: string, newValue: string) => {
+    // This is just for demo purposes - in a real app you'd need to handle 
+    // blockchain transactions to change UTXO txid
+    toast("Not Editable. UTXO Transaction ID cannot be edited - this is an immutable blockchain record");
+  }, []);
+
   const handleAmountEdit = useCallback((utxoId: string, newValue: string) => {
     // This is just for demo purposes - in a real app you'd need to handle 
     // blockchain transactions to change UTXO amount
@@ -336,6 +358,34 @@ const UTXOTable = () => {
     
     setEditableUtxo(null);
   }, [walletData, updateUtxoCostBasis]);
+
+  // Handle UTXO deletion
+  const confirmDeleteUtxo = (utxoId: string) => {
+    setDeleteUtxoId(utxoId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteUtxo = () => {
+    if (!deleteUtxoId) return;
+    
+    // Call the deleteUTXO function from WalletContext
+    if (deleteUTXO && typeof deleteUTXO === 'function') {
+      deleteUTXO(deleteUtxoId);
+      toast("UTXO Deleted. The UTXO has been removed from your wallet");
+    } else {
+      toast.error("Delete Failed. Unable to delete UTXO at this time");
+      console.error("deleteUTXO function not available in WalletContext");
+    }
+    
+    // Reset state
+    setDeleteUtxoId(null);
+    setDeleteDialogOpen(false);
+  };
+
+  const cancelDeleteUtxo = () => {
+    setDeleteUtxoId(null);
+    setDeleteDialogOpen(false);
+  };
 
   if (!walletData) {
     return (
@@ -520,7 +570,16 @@ const UTXOTable = () => {
                   
                   return (
                     <TableRow key={utxo.txid + "-" + utxo.vout}>
-                      <TableCell className="font-mono">
+                      {/* TxID Cell - Read-only since it's a blockchain value */}
+                      <EditableCell
+                        isEditing={isEditing}
+                        initialValue={formatTxid(utxo.txid)}
+                        onSave={(value) => handleTxidEdit(utxo.txid, value)}
+                        inputType="text"
+                        placeholder="TxID"
+                        readonly={true}
+                        className="font-mono"
+                      >
                         <div className="flex items-center gap-2">
                           {isUTXOSelected(utxo) && (
                             <div className="bg-green-500/10 text-green-500 p-1 rounded">
@@ -529,14 +588,21 @@ const UTXOTable = () => {
                           )}
                           {formatTxid(utxo.txid)}
                         </div>
-                      </TableCell>
+                      </EditableCell>
                       
                       {/* Amount Cell - Read-only since it's a blockchain value */}
-                      <TableCell>
+                      <EditableCell
+                        isEditing={isEditing}
+                        initialValue={String(utxo.amount)}
+                        onSave={(value) => handleAmountEdit(utxo.txid, value)}
+                        inputType="number"
+                        placeholder="Amount"
+                        readonly={true}
+                      >
                         {formatBTC(utxo.amount)}
-                      </TableCell>
+                      </EditableCell>
                       
-                      {/* Acquisition Date Cell - Editable */}
+                      {/* Acquisition Date Cell - Editable with calendar */}
                       {isEditing ? (
                         <TableCell>
                           <Popover open={datePickerOpen === utxo.txid} onOpenChange={(open) => {
@@ -618,7 +684,7 @@ const UTXOTable = () => {
                         className="max-w-[200px]"
                       />
                       
-                      {/* Tags Cell */}
+                      {/* Tags Cell - Not directly editable in the row */}
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {utxo.tags.map((tagName, index) => {
@@ -641,7 +707,7 @@ const UTXOTable = () => {
                         </div>
                       </TableCell>
                       
-                      {/* Risk Cell */}
+                      {/* Risk Cell - Not editable */}
                       <TableCell>
                         <div className="flex items-center">
                           <div className={`w-3 h-3 rounded-full ${getRiskColor(utxo.privacyRisk)}`}></div>
@@ -724,6 +790,14 @@ const UTXOTable = () => {
                                   )}
                                 </Tooltip>
                               </TooltipProvider>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => confirmDeleteUtxo(utxo.txid)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete UTXO
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -743,6 +817,25 @@ const UTXOTable = () => {
         onOpenChange={handleModalOpenChange}
         onTagUpdate={handleTagSelection}
       />
+      
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => !open && cancelDeleteUtxo()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete UTXO</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this UTXO? This action removes it from your wallet tracking, 
+              but does not affect the actual UTXO on the blockchain.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteUtxo} className="bg-destructive hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

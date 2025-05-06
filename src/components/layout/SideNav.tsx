@@ -13,15 +13,19 @@ import {
   X,
   Shield,
   Settings,
-  ChartLine
+  ChartLine,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/store/WalletContext";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export function SideNav() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const { hasWallet } = useWallet();
+  const [openSections, setOpenSections] = useState<string[]>([]);
 
   // Define main routes
   const mainRoutes = [
@@ -91,9 +95,28 @@ export function SideNav() {
     return subItems.some(item => location.pathname === item.path);
   };
 
-  // Check if any subitem is expanded
-  const isExpanded = (subItems: any[] = []) => {
+  // Check if any subitem is active for a section
+  const isSectionActive = (path: string, subItems: any[] = []) => {
+    if (location.pathname === path) return true;
     return subItems.some(item => location.pathname === item.path);
+  };
+
+  // Toggle section open/close state
+  const toggleSection = (sectionName: string) => {
+    setOpenSections(prev => 
+      prev.includes(sectionName) 
+        ? prev.filter(name => name !== sectionName)
+        : [...prev, sectionName]
+    );
+  };
+
+  // Check if a section is open
+  const isSectionOpen = (sectionName: string) => {
+    return openSections.includes(sectionName) || 
+           mainRoutes.some(route => 
+             route.name === sectionName && 
+             route.subItems.some(item => location.pathname === item.path)
+           );
   };
 
   return (
@@ -132,57 +155,86 @@ export function SideNav() {
           <ul className="space-y-2 px-2">
             {mainRoutes.map((route) => (
               <li key={route.path} className="space-y-1">
-                <Link
-                  to={route.disabled ? "#" : route.path}
-                  className={cn(
-                    "flex items-center px-4 py-2 rounded-md transition-colors",
-                    isPathActive(route.path, route.subItems)
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                    route.disabled && "opacity-50 cursor-not-allowed pointer-events-none"
-                  )}
-                  onClick={(e) => {
-                    if (route.disabled) {
-                      e.preventDefault();
-                    } else if (route.subItems.length === 0) {
-                      setIsOpen(false);
-                    }
-                  }}
-                >
-                  {route.icon}
-                  <span>{route.name}</span>
-                </Link>
-                
-                {/* Render subitems if there are any */}
-                {route.subItems.length > 0 && (
-                  <div className={cn(
-                    "pl-6 space-y-1",
-                    isExpanded(route.subItems) ? "block" : "hidden md:block"
-                  )}>
-                    {route.subItems.map(subItem => (
-                      <Link
-                        key={subItem.path}
-                        to={subItem.disabled ? "#" : subItem.path}
+                {route.subItems.length > 0 ? (
+                  <Collapsible
+                    open={isSectionOpen(route.name)}
+                    onOpenChange={() => toggleSection(route.name)}
+                    className={cn(
+                      "border rounded-md",
+                      isSectionActive(route.path, route.subItems) && "border-sidebar-accent bg-sidebar-accent/10"
+                    )}
+                  >
+                    <CollapsibleTrigger className="w-full">
+                      <div
                         className={cn(
-                          "flex items-center px-4 py-1.5 text-sm rounded-md transition-colors",
-                          location.pathname === subItem.path
-                            ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                          subItem.disabled && "opacity-50 cursor-not-allowed pointer-events-none"
+                          "flex items-center justify-between px-4 py-2 rounded-md transition-colors",
+                          isSectionActive(route.path, route.subItems)
+                            ? "text-sidebar-primary-foreground"
+                            : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
+                          route.disabled && "opacity-50 cursor-not-allowed"
                         )}
-                        onClick={(e) => {
-                          if (subItem.disabled) {
-                            e.preventDefault();
-                          } else {
-                            setIsOpen(false);
-                          }
-                        }}
                       >
-                        {subItem.icon}
-                        <span>{subItem.name}</span>
-                      </Link>
-                    ))}
-                  </div>
+                        <div className="flex items-center">
+                          {route.icon}
+                          <span>{route.name}</span>
+                        </div>
+                        {isSectionOpen(route.name) ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </div>
+                    </CollapsibleTrigger>
+                    
+                    <CollapsibleContent>
+                      <div className="pl-6 space-y-1 pt-1 pb-2">
+                        {route.subItems.map(subItem => (
+                          <Link
+                            key={subItem.path}
+                            to={subItem.disabled ? "#" : subItem.path}
+                            className={cn(
+                              "flex items-center px-4 py-1.5 text-sm rounded-md transition-colors",
+                              location.pathname === subItem.path
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                              subItem.disabled && "opacity-50 cursor-not-allowed pointer-events-none"
+                            )}
+                            onClick={(e) => {
+                              if (subItem.disabled) {
+                                e.preventDefault();
+                              } else {
+                                setIsOpen(false);
+                              }
+                            }}
+                          >
+                            {subItem.icon}
+                            <span>{subItem.name}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ) : (
+                  <Link
+                    to={route.disabled ? "#" : route.path}
+                    className={cn(
+                      "flex items-center px-4 py-2 rounded-md transition-colors",
+                      isPathActive(route.path, route.subItems)
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                      route.disabled && "opacity-50 cursor-not-allowed pointer-events-none"
+                    )}
+                    onClick={(e) => {
+                      if (route.disabled) {
+                        e.preventDefault();
+                      } else {
+                        setIsOpen(false);
+                      }
+                    }}
+                  >
+                    {route.icon}
+                    <span>{route.name}</span>
+                  </Link>
                 )}
               </li>
             ))}
