@@ -113,10 +113,11 @@ interface EditableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement>
   initialValue: string;
   inputType?: "text" | "number" | "date";
   placeholder?: string;
+  isDisabled?: boolean; // Replace readonly with isDisabled for better semantics
 }
 
 const EditableCell = React.forwardRef<HTMLTableCellElement, EditableCellProps>(
-  ({ className, isEditing, onSave, initialValue, inputType = "text", placeholder = "Enter value...", ...props }, ref) => {
+  ({ className, isEditing, onSave, initialValue, inputType = "text", placeholder = "Enter value...", isDisabled = false, children, ...props }, ref) => {
     const [value, setValue] = React.useState(initialValue);
     
     React.useEffect(() => {
@@ -128,13 +129,13 @@ const EditableCell = React.forwardRef<HTMLTableCellElement, EditableCellProps>(
     };
     
     const handleBlur = () => {
-      if (onSave && value !== initialValue) {
+      if (onSave && value !== initialValue && !isDisabled) {
         onSave(value);
       }
     };
     
     const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && onSave) {
+      if (e.key === 'Enter' && onSave && !isDisabled) {
         onSave(value);
       }
     };
@@ -148,13 +149,17 @@ const EditableCell = React.forwardRef<HTMLTableCellElement, EditableCellProps>(
             onChange={handleChange}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
-            className="w-full bg-background border-border border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
+            className={cn(
+              "w-full bg-background border-border border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary",
+              isDisabled && "opacity-60 bg-muted cursor-not-allowed"
+            )}
             placeholder={placeholder}
-            autoFocus
+            disabled={isDisabled}
+            autoFocus={!isDisabled}
           />
         ) : (
-          <div className="cursor-pointer hover:bg-muted/30 px-2 py-1 rounded truncate">
-            {initialValue || <span className="text-muted-foreground text-sm italic">Empty</span>}
+          <div className={cn("px-2 py-1 rounded truncate", !isDisabled && "cursor-pointer hover:bg-muted/30")}>
+            {children || initialValue || <span className="text-muted-foreground text-sm italic">Empty</span>}
           </div>
         )}
       </TableCell>

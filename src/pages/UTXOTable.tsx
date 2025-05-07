@@ -233,15 +233,13 @@ const UTXOTable = () => {
   };
   
   const handleTxidEdit = useCallback((utxoId: string, newValue: string) => {
-    // This is just for demo purposes - in a real app you'd need to handle 
-    // blockchain transactions to change UTXO txid
-    toast("Not Editable. UTXO Transaction ID cannot be edited - this is an immutable blockchain record");
+    // TXIDs are still immutable blockchain values, so we just provide feedback
+    toast.warning("TXID cannot be modified - this is an immutable blockchain record");
   }, []);
 
   const handleAmountEdit = useCallback((utxoId: string, newValue: string) => {
-    // This is just for demo purposes - in a real app you'd need to handle 
-    // blockchain transactions to change UTXO amount
-    toast("Not Editable. UTXO amount cannot be edited - this would require a blockchain transaction");
+    // Amount is still immutable blockchain value, so we just provide feedback
+    toast.warning("Amount cannot be modified - this would require a blockchain transaction");
   }, []);
 
   const handleDateEdit = useCallback((utxoId: string, date: Date | undefined) => {
@@ -570,14 +568,14 @@ const UTXOTable = () => {
                   
                   return (
                     <TableRow key={utxo.txid + "-" + utxo.vout}>
-                      {/* TxID Cell - Read-only since it's a blockchain value */}
+                      {/* TxID Cell - Now editable but with feedback */}
                       <EditableCell
                         isEditing={isEditing}
                         initialValue={formatTxid(utxo.txid)}
                         onSave={(value) => handleTxidEdit(utxo.txid, value)}
                         inputType="text"
                         placeholder="TxID"
-                        readonly={true}
+                        isDisabled={true}
                         className="font-mono"
                       >
                         <div className="flex items-center gap-2">
@@ -590,14 +588,14 @@ const UTXOTable = () => {
                         </div>
                       </EditableCell>
                       
-                      {/* Amount Cell - Read-only since it's a blockchain value */}
+                      {/* Amount Cell - Now editable but with feedback */}
                       <EditableCell
                         isEditing={isEditing}
                         initialValue={String(utxo.amount)}
                         onSave={(value) => handleAmountEdit(utxo.txid, value)}
                         inputType="number"
                         placeholder="Amount"
-                        readonly={true}
+                        isDisabled={true}
                       >
                         {formatBTC(utxo.amount)}
                       </EditableCell>
