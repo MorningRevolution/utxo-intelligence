@@ -80,7 +80,7 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
     }
 
     // Create new UTXO
-    const newUtxo = {
+    const newUtxo: UTXO = {
       txid: `manual-${Date.now()}`,
       vout: 0,
       address: "Manual Entry",
@@ -97,7 +97,9 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
       disposalFiatValue: null,
       realizedGainFiat: null,
       costAutoPopulated: false,
-      notes: notes || null
+      notes: notes || null,
+      senderAddress: null,
+      receiverAddress: null
     };
 
     // Update wallet data

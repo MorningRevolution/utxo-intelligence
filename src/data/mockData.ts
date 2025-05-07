@@ -102,10 +102,13 @@ export const mockUTXOs: UTXO[] = Array.from({ length: 25 }, (_, i) => {
     }
   }
   
+  // Generate random addresses
+  const randomAddress = () => `bc1${Math.random().toString(36).substring(2, 38)}`;
+  
   return {
     txid: `tx${i + 1}_${Math.random().toString(36).substring(2, 15)}`,
     vout: Math.floor(Math.random() * 4),
-    address: `bc1${Math.random().toString(36).substring(2, 38)}`,
+    address: randomAddress(),
     amount,
     confirmations: Math.floor(Math.random() * 1000) + 1,
     scriptPubKey: `0014${Math.random().toString(36).substring(2, 38)}`,
@@ -119,7 +122,9 @@ export const mockUTXOs: UTXO[] = Array.from({ length: 25 }, (_, i) => {
     disposalFiatValue: null,
     realizedGainFiat: null,
     costAutoPopulated: Math.random() > 0.7, // 30% are auto-populated
-    notes: Math.random() > 0.6 ? `Demo UTXO #${i + 1} - ${selectedTags.join(', ')}` : null
+    notes: Math.random() > 0.6 ? `Demo UTXO #${i + 1} - ${selectedTags.join(', ')}` : null,
+    senderAddress: Math.random() > 0.3 ? randomAddress() : null,
+    receiverAddress: Math.random() > 0.3 ? randomAddress() : null
   };
 });
 
@@ -190,7 +195,9 @@ export const mockWalletJson = `{
       "address": "bc1qu6jf0q7cjmj9pz4ymmwdj6tt4rdh2z9vqzt3xw",
       "amount": 0.25,
       "confirmations": 145,
-      "scriptPubKey": "00141a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r"
+      "scriptPubKey": "00141a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r",
+      "senderAddress": null,
+      "receiverAddress": null
     },
     {
       "txid": "2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u",
@@ -198,7 +205,9 @@ export const mockWalletJson = `{
       "address": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
       "amount": 0.15,
       "confirmations": 234,
-      "scriptPubKey": "00142b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r"
+      "scriptPubKey": "00142b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r",
+      "senderAddress": null,
+      "receiverAddress": null
     }
   ]
 }`;

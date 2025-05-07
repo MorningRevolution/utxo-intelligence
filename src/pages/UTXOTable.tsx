@@ -442,7 +442,7 @@ const UTXOTable = () => {
   const visibleColumns = getVisibleColumns();
 
   return (
-    <div className="container px-4 md:px-8 py-6 pl-[76px] md:pl-[268px]">
+    <div className="container px-4 md:px-8 py-6 md:ml-[268px]">
       <div className="flex flex-col md:flex-row justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-foreground">UTXO Management</h1>
         
@@ -544,7 +544,7 @@ const UTXOTable = () => {
           </div>
         </div>
 
-        <div className="rounded-md border border-border overflow-x-auto">
+        <div className="rounded-md border border-border overflow-x-auto md:overflow-visible">
           <Table>
             <TableCaption>
               {filteredUtxos.length} of {walletData.utxos.length} UTXOs • Total Balance: {formatBTC(walletData.totalBalance)}
