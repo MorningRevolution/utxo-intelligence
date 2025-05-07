@@ -154,7 +154,7 @@ export const TagSelector = ({
                   {tags.map((tag) => {
                     const isTagApplied = walletData?.utxos.find(u => u.txid === utxoId)?.tags.some(tagName => {
                       const existingTag = tags.find(t => t.name === tagName);
-                      return existingTag?.id === tagId;
+                      return existingTag?.id === tag.id; // Fixed here: tagId -> tag.id
                     });
                     
                     return (
