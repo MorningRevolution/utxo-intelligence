@@ -152,9 +152,9 @@ export const TagSelector = ({
               <ScrollArea className="h-[180px] pr-4">
                 <div className="space-y-1">
                   {tags.map((tag) => {
-                    const isSelected = walletData?.utxos.find(u => u.txid === utxoId)?.tags.some(tagName => {
+                    const isTagApplied = walletData?.utxos.find(u => u.txid === utxoId)?.tags.some(tagName => {
                       const existingTag = tags.find(t => t.name === tagName);
-                      return existingTag?.id === tag.id;
+                      return existingTag?.id === tagId;
                     });
                     
                     return (
@@ -162,7 +162,7 @@ export const TagSelector = ({
                         key={tag.id} 
                         className={cn(
                           "flex items-center justify-between p-2 rounded-md cursor-pointer hover:bg-muted/50",
-                          isSelected && "bg-muted"
+                          isTagApplied && "bg-muted"
                         )}
                         onClick={(e) => handleTagSelect(e, tag.id)}
                         data-testid={`tag-item-${tag.id}`}
@@ -182,7 +182,7 @@ export const TagSelector = ({
                           />
                           <span className="text-foreground">{tag.name}</span>
                         </div>
-                        {isSelected && <Check className="h-4 w-4 text-primary" />}
+                        {isTagApplied && <Check className="h-4 w-4 text-primary" />}
                       </div>
                     );
                   })}

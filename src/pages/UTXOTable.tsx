@@ -1,3 +1,4 @@
+
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { 
@@ -38,12 +39,14 @@ import { useWallet } from "@/store/WalletContext";
 import { TagSelector } from "@/components/utxo/TagSelector";
 import { UTXODetailsModal } from "@/components/utxo/UTXODetailsModal";
 import { formatBTC, formatTxid, getRiskColor } from "@/utils/utxo-utils";
-import { ArrowUpDown, Filter, MoreVertical, Tag, Eye, Info, Bookmark, Edit, CalendarIcon, DollarSign, Pencil, Check, X, Trash2 } from "lucide-react";
+import { ArrowUpDown, Filter, MoreVertical, Tag, Bookmark, CalendarIcon, DollarSign, Pencil, Check, X, Trash2 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { UTXO } from "@/types/utxo";
 
 const UTXOTable = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile();
   const { 
     walletData, 
     tags, 
@@ -175,12 +178,6 @@ const UTXOTable = () => {
         toast("Tag applied. The tag has been applied to the UTXO");
       }
     }
-  };
-
-  const handleViewDetails = (utxo: UTXO) => {
-    console.log("UTXOTable: Opening details modal for:", utxo.txid.substring(0, 8));
-    setDetailsUtxoId(utxo.txid);
-    setModalOpen(true);
   };
 
   const handleModalOpenChange = (open: boolean) => {
@@ -394,31 +391,56 @@ const UTXOTable = () => {
     );
   }
 
+  // Define which columns to show based on screen size
+  const getVisibleColumns = () => {
+    if (isMobile) {
+      return {
+        txid: true,
+        amount: true,
+        date: false,
+        btcPrice: false,
+        costBasis: false,
+        notes: false,
+        tags: true,
+        risk: true,
+        actions: true
+      };
+    }
+    return {
+      txid: true,
+      amount: true,
+      date: true,
+      btcPrice: true,
+      costBasis: true,
+      notes: true,
+      tags: true,
+      risk: true,
+      actions: true
+    };
+  };
+  
+  const visibleColumns = getVisibleColumns();
+
   return (
     <div className="container px-2 md:px-4 py-6">
       <div className="flex flex-col md:flex-row justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-foreground">UTXO Management</h1>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate("/risk-simulator")}
-          >
-            <Eye className="mr-2 h-4 w-4" />
-            Risk Simulator
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate("/portfolio")}
-          >
-            <Info className="mr-2 h-4 w-4" />
-            Portfolio Dashboard
-          </Button>
-        </div>
+        
+        {!isMobile && (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/risk-simulator")}
+            >
+              <Bookmark className="mr-2 h-4 w-4" />
+              Risk Simulator
+            </Button>
+          </div>
+        )}
       </div>
 
-      <div className="bg-card rounded-lg shadow-lg p-4 mb-8">
+      <div className="bg-card rounded-lg shadow-lg p-2 md:p-4 mb-8">
         <div className="flex flex-col md:flex-row gap-4 mb-4">
           <div className="flex-1">
             <Input
@@ -429,7 +451,7 @@ const UTXOTable = () => {
             />
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
@@ -437,12 +459,14 @@ const UTXOTable = () => {
                   Tags
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px] bg-card text-foreground">
+              <DropdownMenuContent align="end" className="w-[200px] bg-popover text-popover-foreground">
                 {tags.map((tag) => (
                   <DropdownMenuItem 
                     key={tag.id}
                     className="flex items-center gap-2"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       if (selectedTags.includes(tag.id)) {
                         setSelectedTags(selectedTags.filter(id => id !== tag.id));
                       } else {
@@ -467,12 +491,14 @@ const UTXOTable = () => {
                   Risk
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-card text-foreground">
+              <DropdownMenuContent align="end" className="bg-popover text-popover-foreground">
                 {['low', 'medium', 'high'].map((risk) => (
                   <DropdownMenuItem
                     key={risk}
                     className="flex items-center gap-2"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       if (selectedRisk.includes(risk)) {
                         setSelectedRisk(selectedRisk.filter(r => r !== risk));
                       } else {
@@ -505,60 +531,86 @@ const UTXOTable = () => {
             </TableCaption>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[150px]">
-                  <div className="flex items-center cursor-pointer" onClick={() => handleSort('txid')}>
-                    TxID
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center cursor-pointer" onClick={() => handleSort('amount')}>
-                    Amount
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionDate')}>
-                    <CalendarIcon className="mr-1 h-4 w-4" />
-                    Acq. Date
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionBtcPrice')}>
-                    <DollarSign className="mr-1 h-4 w-4" />
-                    BTC Price
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionFiatValue')}>
-                    Cost Basis
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </div>
-                </TableHead>
-                <TableHead className="min-w-[100px]">
-                  Notes
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center">
-                    <Tag className="mr-1 h-4 w-4" />
-                    Tags
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center cursor-pointer" onClick={() => handleSort('privacyRisk')}>
-                    Risk
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </div>
-                </TableHead>
-                <TableHead className="text-center">Actions</TableHead>
+                {visibleColumns.txid && (
+                  <TableHead className="w-[150px]">
+                    <div className="flex items-center cursor-pointer" onClick={() => handleSort('txid')}>
+                      TxID
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </div>
+                  </TableHead>
+                )}
+                
+                {visibleColumns.amount && (
+                  <TableHead>
+                    <div className="flex items-center cursor-pointer" onClick={() => handleSort('amount')}>
+                      Amount
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </div>
+                  </TableHead>
+                )}
+                
+                {visibleColumns.date && (
+                  <TableHead>
+                    <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionDate')}>
+                      <CalendarIcon className="mr-1 h-4 w-4" />
+                      Acq. Date
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </div>
+                  </TableHead>
+                )}
+                
+                {visibleColumns.btcPrice && (
+                  <TableHead>
+                    <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionBtcPrice')}>
+                      <DollarSign className="mr-1 h-4 w-4" />
+                      BTC Price
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </div>
+                  </TableHead>
+                )}
+                
+                {visibleColumns.costBasis && (
+                  <TableHead>
+                    <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionFiatValue')}>
+                      Cost Basis
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </div>
+                  </TableHead>
+                )}
+                
+                {visibleColumns.notes && (
+                  <TableHead className="min-w-[100px]">
+                    Notes
+                  </TableHead>
+                )}
+                
+                {visibleColumns.tags && (
+                  <TableHead>
+                    <div className="flex items-center">
+                      <Tag className="mr-1 h-4 w-4" />
+                      Tags
+                    </div>
+                  </TableHead>
+                )}
+                
+                {visibleColumns.risk && (
+                  <TableHead>
+                    <div className="flex items-center cursor-pointer" onClick={() => handleSort('privacyRisk')}>
+                      Risk
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </div>
+                  </TableHead>
+                )}
+                
+                {visibleColumns.actions && (
+                  <TableHead className="text-center">Actions</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUtxos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-foreground">
+                  <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length} className="text-center py-8 text-foreground">
                     No UTXOs matching the current filters
                   </TableCell>
                 </TableRow>
@@ -569,237 +621,253 @@ const UTXOTable = () => {
                   return (
                     <TableRow key={utxo.txid + "-" + utxo.vout}>
                       {/* TxID Cell - Now editable but with feedback */}
-                      <EditableCell
-                        isEditing={isEditing}
-                        initialValue={formatTxid(utxo.txid)}
-                        onSave={(value) => handleTxidEdit(utxo.txid, value)}
-                        inputType="text"
-                        placeholder="TxID"
-                        isDisabled={true}
-                        className="font-mono"
-                      >
-                        <div className="flex items-center gap-2">
-                          {isUTXOSelected(utxo) && (
-                            <div className="bg-green-500/10 text-green-500 p-1 rounded">
-                              <Check className="h-4 w-4" />
-                            </div>
-                          )}
-                          {formatTxid(utxo.txid)}
-                        </div>
-                      </EditableCell>
+                      {visibleColumns.txid && (
+                        <EditableCell
+                          isEditing={isEditing}
+                          initialValue={formatTxid(utxo.txid)}
+                          onSave={(value) => handleTxidEdit(utxo.txid, value)}
+                          inputType="text"
+                          placeholder="TxID"
+                          isDisabled={true}
+                          className="font-mono"
+                        >
+                          <div className="flex items-center gap-2">
+                            {isUTXOSelected(utxo) && (
+                              <div className="bg-green-500/10 text-green-500 p-1 rounded">
+                                <Check className="h-4 w-4" />
+                              </div>
+                            )}
+                            {formatTxid(utxo.txid)}
+                          </div>
+                        </EditableCell>
+                      )}
                       
                       {/* Amount Cell - Now editable but with feedback */}
-                      <EditableCell
-                        isEditing={isEditing}
-                        initialValue={String(utxo.amount)}
-                        onSave={(value) => handleAmountEdit(utxo.txid, value)}
-                        inputType="number"
-                        placeholder="Amount"
-                        isDisabled={true}
-                      >
-                        {formatBTC(utxo.amount)}
-                      </EditableCell>
+                      {visibleColumns.amount && (
+                        <EditableCell
+                          isEditing={isEditing}
+                          initialValue={String(utxo.amount)}
+                          onSave={(value) => handleAmountEdit(utxo.txid, value)}
+                          inputType="number"
+                          placeholder="Amount"
+                          isDisabled={true}
+                        >
+                          {formatBTC(utxo.amount)}
+                        </EditableCell>
+                      )}
                       
                       {/* Acquisition Date Cell - Editable with calendar */}
-                      {isEditing ? (
-                        <TableCell>
-                          <Popover open={datePickerOpen === utxo.txid} onOpenChange={(open) => {
-                            if (open) setDatePickerOpen(utxo.txid);
-                            else setDatePickerOpen(null);
-                          }}>
-                            <PopoverTrigger asChild>
-                              <Button 
-                                variant="outline" 
-                                className="w-full justify-start text-left font-normal"
-                                size="sm"
-                              >
-                                {utxo.acquisitionDate 
-                                  ? format(new Date(utxo.acquisitionDate), "PPP")
-                                  : "Select date"}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={utxo.acquisitionDate ? new Date(utxo.acquisitionDate) : undefined}
-                                onSelect={(date) => handleDateEdit(utxo.txid, date)}
-                                initialFocus
-                                className="p-3 pointer-events-auto"
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        </TableCell>
-                      ) : (
-                        <EditableCell
-                          isEditing={false}
-                          initialValue={utxo.acquisitionDate 
-                            ? new Date(utxo.acquisitionDate).toLocaleDateString() 
-                            : ""}
-                          onSave={() => startEditing(utxo.txid)}
-                          inputType="text"
-                          placeholder="Set date..."
-                        />
+                      {visibleColumns.date && (
+                        isEditing ? (
+                          <TableCell>
+                            <Popover open={datePickerOpen === utxo.txid} onOpenChange={(open) => {
+                              if (open) setDatePickerOpen(utxo.txid);
+                              else setDatePickerOpen(null);
+                            }}>
+                              <PopoverTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  className="w-full justify-start text-left font-normal"
+                                  size="sm"
+                                >
+                                  {utxo.acquisitionDate 
+                                    ? format(new Date(utxo.acquisitionDate), "PPP")
+                                    : "Select date"}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={utxo.acquisitionDate ? new Date(utxo.acquisitionDate) : undefined}
+                                  onSelect={(date) => handleDateEdit(utxo.txid, date)}
+                                  initialFocus
+                                  className="p-3 pointer-events-auto"
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </TableCell>
+                        ) : (
+                          <EditableCell
+                            isEditing={false}
+                            initialValue={utxo.acquisitionDate 
+                              ? new Date(utxo.acquisitionDate).toLocaleDateString() 
+                              : ""}
+                            onSave={() => startEditing(utxo.txid)}
+                            inputType="text"
+                            placeholder="Set date..."
+                          />
+                        )
                       )}
                       
                       {/* BTC Price Cell - Editable */}
-                      <EditableCell
-                        isEditing={isEditing}
-                        initialValue={utxo.acquisitionBtcPrice !== null 
-                          ? String(utxo.acquisitionBtcPrice)
-                          : ""}
-                        onSave={(value) => handleBtcPriceEdit(utxo.txid, value)}
-                        inputType="number"
-                        placeholder="Enter BTC price..."
-                      />
+                      {visibleColumns.btcPrice && (
+                        <EditableCell
+                          isEditing={isEditing}
+                          initialValue={utxo.acquisitionBtcPrice !== null 
+                            ? String(utxo.acquisitionBtcPrice)
+                            : ""}
+                          onSave={(value) => handleBtcPriceEdit(utxo.txid, value)}
+                          inputType="number"
+                          placeholder="Enter BTC price..."
+                        />
+                      )}
                       
                       {/* Cost Basis Cell - Editable */}
-                      <EditableCell
-                        isEditing={isEditing}
-                        initialValue={utxo.acquisitionFiatValue !== null 
-                          ? String(utxo.acquisitionFiatValue)
-                          : ""}
-                        onSave={(value) => handleCostBasisEdit(utxo.txid, value)}
-                        inputType="number"
-                        placeholder="Enter cost basis..."
-                      >
-                        <div className="flex items-center">
-                          {utxo.acquisitionFiatValue !== null 
-                            ? formatCurrency(utxo.acquisitionFiatValue) 
+                      {visibleColumns.costBasis && (
+                        <EditableCell
+                          isEditing={isEditing}
+                          initialValue={utxo.acquisitionFiatValue !== null 
+                            ? String(utxo.acquisitionFiatValue)
                             : ""}
-                          {utxo.costAutoPopulated && !isEditing && (
-                            <span className="ml-1 text-xs text-muted-foreground">(auto)</span>
-                          )}
-                        </div>
-                      </EditableCell>
+                          onSave={(value) => handleCostBasisEdit(utxo.txid, value)}
+                          inputType="number"
+                          placeholder="Enter cost basis..."
+                        >
+                          <div className="flex items-center">
+                            {utxo.acquisitionFiatValue !== null 
+                              ? formatCurrency(utxo.acquisitionFiatValue) 
+                              : ""}
+                            {utxo.costAutoPopulated && !isEditing && (
+                              <span className="ml-1 text-xs text-muted-foreground">(auto)</span>
+                            )}
+                          </div>
+                        </EditableCell>
+                      )}
                       
                       {/* Notes Cell - Editable */}
-                      <EditableCell
-                        isEditing={isEditing}
-                        initialValue={utxo.notes || ""}
-                        onSave={(value) => handleNotesEdit(utxo.txid, value)}
-                        inputType="text"
-                        placeholder="Add notes..."
-                        className="max-w-[200px]"
-                      />
+                      {visibleColumns.notes && (
+                        <EditableCell
+                          isEditing={isEditing}
+                          initialValue={utxo.notes || ""}
+                          onSave={(value) => handleNotesEdit(utxo.txid, value)}
+                          inputType="text"
+                          placeholder="Add notes..."
+                          className="max-w-[200px]"
+                        />
+                      )}
                       
                       {/* Tags Cell - Not directly editable in the row */}
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {utxo.tags.map((tagName, index) => {
-                            const tag = tags.find(t => t.name === tagName);
-                            return tag ? (
-                              <Badge 
-                                key={index}
-                                style={{ 
-                                  backgroundColor: tag.color, 
-                                  color: '#ffffff' 
-                                }} 
-                              >
-                                {tagName}
-                              </Badge>
-                            ) : null;
-                          })}
-                          {utxo.tags.length === 0 && (
-                            <span className="text-muted-foreground text-sm">No tags</span>
-                          )}
-                        </div>
-                      </TableCell>
+                      {visibleColumns.tags && (
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {utxo.tags.map((tagName, index) => {
+                              const tag = tags.find(t => t.name === tagName);
+                              return tag ? (
+                                <Badge 
+                                  key={index}
+                                  style={{ 
+                                    backgroundColor: tag.color, 
+                                    color: '#ffffff' 
+                                  }} 
+                                >
+                                  {tagName}
+                                </Badge>
+                              ) : null;
+                            })}
+                            {utxo.tags.length === 0 && (
+                              <span className="text-muted-foreground text-sm">No tags</span>
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
                       
                       {/* Risk Cell - Not editable */}
-                      <TableCell>
-                        <div className="flex items-center">
-                          <div className={`w-3 h-3 rounded-full ${getRiskColor(utxo.privacyRisk)}`}></div>
-                          <span className="ml-2 capitalize">{utxo.privacyRisk}</span>
-                        </div>
-                      </TableCell>
+                      {visibleColumns.risk && (
+                        <TableCell>
+                          <div className="flex items-center">
+                            <div className={`w-3 h-3 rounded-full ${getRiskColor(utxo.privacyRisk)}`}></div>
+                            <span className="ml-2 capitalize">{utxo.privacyRisk}</span>
+                          </div>
+                        </TableCell>
+                      )}
                       
                       {/* Actions Cell */}
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end space-x-2">
-                          {isEditing ? (
-                            <div className="flex gap-2">
+                      {visibleColumns.actions && (
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            {isEditing ? (
+                              <div className="flex gap-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={cancelEditing}
+                                  className="whitespace-nowrap"
+                                >
+                                  <X className="h-4 w-4 mr-1" />
+                                  {!isMobile && "Cancel"}
+                                </Button>
+                              </div>
+                            ) : (
                               <Button 
                                 variant="outline" 
                                 size="sm"
-                                onClick={cancelEditing}
+                                onClick={() => startEditing(utxo.txid)}
+                                className="whitespace-nowrap"
                               >
-                                <X className="h-4 w-4 mr-1" />
-                                Cancel
+                                <Pencil className="h-4 w-4 mr-1" />
+                                {!isMobile && "Edit"}
                               </Button>
-                            </div>
-                          ) : (
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => startEditing(utxo.txid)}
-                            >
-                              <Edit className="h-4 w-4 mr-1" />
-                              Edit
-                            </Button>
-                          )}
-                          
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-card text-foreground">
-                              <DropdownMenuItem onClick={() => handleViewDetails(utxo)}>
-                                <Info className="mr-2 h-4 w-4" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                }}
-                              >
-                                <TagSelector 
-                                  utxoId={utxo.txid}
-                                  onSelect={(tagId, remove) => handleTagSelection(utxo.txid, tagId, remove)}
-                                  utxoTags={utxo.tags}
-                                  trigger={
-                                    <div className="flex items-center w-full">
-                                      <Tag className="mr-2 h-4 w-4" />
-                                      <span>Manage Tags</span>
-                                    </div>
-                                  }
-                                />
-                              </DropdownMenuItem>
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div>
-                                      <DropdownMenuItem 
-                                        onClick={() => !isUTXOSelected(utxo) && handleAddToSimulation(utxo)}
-                                        disabled={isUTXOSelected(utxo)}
-                                        className={isUTXOSelected(utxo) ? "cursor-not-allowed opacity-50" : ""}
-                                      >
-                                        <Bookmark className="mr-2 h-4 w-4" />
-                                        {isUTXOSelected(utxo) ? "Already in Simulation" : "Add to Simulation"}
-                                      </DropdownMenuItem>
-                                    </div>
-                                  </TooltipTrigger>
-                                  {isUTXOSelected(utxo) && (
-                                    <TooltipContent>
-                                      <p>Already added to simulation</p>
-                                    </TooltipContent>
-                                  )}
-                                </Tooltip>
-                              </TooltipProvider>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                onClick={() => confirmDeleteUtxo(utxo.txid)}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete UTXO
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
+                            )}
+                            
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-popover text-popover-foreground">
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                  }}
+                                >
+                                  <TagSelector 
+                                    utxoId={utxo.txid}
+                                    onSelect={(tagId, remove) => handleTagSelection(utxo.txid, tagId, remove)}
+                                    utxoTags={utxo.tags}
+                                    trigger={
+                                      <div className="flex items-center w-full">
+                                        <Tag className="mr-2 h-4 w-4" />
+                                        <span>Manage Tags</span>
+                                      </div>
+                                    }
+                                  />
+                                </DropdownMenuItem>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div>
+                                        <DropdownMenuItem 
+                                          onClick={() => !isUTXOSelected(utxo) && handleAddToSimulation(utxo)}
+                                          disabled={isUTXOSelected(utxo)}
+                                          className={isUTXOSelected(utxo) ? "cursor-not-allowed opacity-50" : ""}
+                                        >
+                                          <Bookmark className="mr-2 h-4 w-4" />
+                                          {isUTXOSelected(utxo) ? "Already in Simulation" : "Add to Simulation"}
+                                        </DropdownMenuItem>
+                                      </div>
+                                    </TooltipTrigger>
+                                    {isUTXOSelected(utxo) && (
+                                      <TooltipContent>
+                                        <p>Already added to simulation</p>
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                </TooltipProvider>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => confirmDeleteUtxo(utxo.txid)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete UTXO
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   );
                 })
@@ -818,7 +886,7 @@ const UTXOTable = () => {
       
       {/* Delete confirmation dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => !open && cancelDeleteUtxo()}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-[90vw] md:max-w-[500px]">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete UTXO</AlertDialogTitle>
             <AlertDialogDescription>
@@ -826,9 +894,9 @@ const UTXOTable = () => {
               but does not affect the actual UTXO on the blockchain.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteUtxo} className="bg-destructive hover:bg-destructive/90">
+          <AlertDialogFooter className="flex-col space-y-2 sm:flex-row sm:justify-end sm:space-x-2 sm:space-y-0">
+            <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteUtxo} className="w-full sm:w-auto bg-destructive hover:bg-destructive/90">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

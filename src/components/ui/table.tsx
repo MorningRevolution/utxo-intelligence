@@ -113,7 +113,7 @@ interface EditableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement>
   initialValue: string;
   inputType?: "text" | "number" | "date";
   placeholder?: string;
-  isDisabled?: boolean; // Replace readonly with isDisabled for better semantics
+  isDisabled?: boolean;
 }
 
 const EditableCell = React.forwardRef<HTMLTableCellElement, EditableCellProps>(
@@ -141,7 +141,7 @@ const EditableCell = React.forwardRef<HTMLTableCellElement, EditableCellProps>(
     };
     
     return (
-      <TableCell ref={ref} className={cn(className)} {...props}>
+      <TableCell ref={ref} className={cn("min-w-[80px]", className)} {...props}>
         {isEditing ? (
           <input
             type={inputType}
@@ -150,7 +150,7 @@ const EditableCell = React.forwardRef<HTMLTableCellElement, EditableCellProps>(
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             className={cn(
-              "w-full bg-background border-border border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary",
+              "w-full bg-background border-border border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary text-sm",
               isDisabled && "opacity-60 bg-muted cursor-not-allowed"
             )}
             placeholder={placeholder}
@@ -158,7 +158,13 @@ const EditableCell = React.forwardRef<HTMLTableCellElement, EditableCellProps>(
             autoFocus={!isDisabled}
           />
         ) : (
-          <div className={cn("px-2 py-1 rounded truncate", !isDisabled && "cursor-pointer hover:bg-muted/30")}>
+          <div 
+            className={cn(
+              "px-2 py-1 rounded truncate", 
+              !isDisabled && "cursor-pointer hover:bg-muted/30",
+              "break-words"
+            )}
+          >
             {children || initialValue || <span className="text-muted-foreground text-sm italic">Empty</span>}
           </div>
         )}
