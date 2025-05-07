@@ -83,7 +83,7 @@ export const TagSelector = ({
     const tag = tags.find(t => t.id === tagId);
     const isTagApplied = walletData?.utxos.find(u => u.txid === utxoId)?.tags.some(tagName => {
       const existingTag = tags.find(t => t.name === tagName);
-      return existingTag?.id === tagId;
+      return existingTag?.id === tag.id;
     });
     
     if (tag) {
@@ -134,9 +134,9 @@ export const TagSelector = ({
         {trigger ? trigger : defaultTrigger}
       </div>
 
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <Dialog open={isOpen} onOpenChange={setIsOpen} modal={false}>
         <DialogContent 
-          className="bg-background text-foreground p-4 border border-border shadow-md w-72 max-w-[95vw]"
+          className="bg-background text-foreground p-4 border border-border shadow-md w-72 max-w-[95vw] z-50"
           onClick={(e) => e.stopPropagation()}
           data-testid="tag-selector-dialog"
         >
@@ -154,7 +154,7 @@ export const TagSelector = ({
                   {tags.map((tag) => {
                     const isTagApplied = walletData?.utxos.find(u => u.txid === utxoId)?.tags.some(tagName => {
                       const existingTag = tags.find(t => t.name === tagName);
-                      return existingTag?.id === tag.id; // Fixed here: tagId -> tag.id
+                      return existingTag?.id === tag.id;
                     });
                     
                     return (
@@ -278,4 +278,3 @@ export const TagSelector = ({
     </>
   );
 };
-

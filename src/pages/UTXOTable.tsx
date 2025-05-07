@@ -52,6 +52,7 @@ const UTXOTable = () => {
     tags, 
     tagUTXO,
     updateUtxoCostBasis,
+    updateUtxoAddresses,
     autoPopulateUTXOCostBasis,
     deleteUTXO,
     hasWallet,
@@ -67,8 +68,6 @@ const UTXOTable = () => {
     key: 'amount',
     direction: 'desc'
   });
-  const [detailsUtxoId, setDetailsUtxoId] = useState<string | null>(null);
-  const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [editableUtxo, setEditableUtxo] = useState<string | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState<string | null>(null);
   const [deleteUtxoId, setDeleteUtxoId] = useState<string | null>(null);
@@ -77,8 +76,6 @@ const UTXOTable = () => {
   useEffect(() => {
     return () => {
       console.log("UTXOTable: Component unmounting, clearing state");
-      setDetailsUtxoId(null);
-      setModalOpen(false);
       setEditableUtxo(null);
       setDatePickerOpen(null);
       setDeleteUtxoId(null);
@@ -180,14 +177,6 @@ const UTXOTable = () => {
     }
   };
 
-  const handleModalOpenChange = (open: boolean) => {
-    setModalOpen(open);
-    if (!open) {
-      console.log("UTXOTable: Closing details modal, clearing state");
-      setDetailsUtxoId(null);
-    }
-  };
-
   const handleAddToSimulation = (utxo: UTXO) => {
     console.log('UTXOTable: Adding to simulation:', utxo.txid.substring(0, 6), 'vout:', utxo.vout);
     
@@ -238,6 +227,37 @@ const UTXOTable = () => {
     // Amount is still immutable blockchain value, so we just provide feedback
     toast.warning("Amount cannot be modified - this would require a blockchain transaction");
   }, []);
+
+  // New handlers for sender and receiver addresses
+  const handleSenderAddressEdit = useCallback((utxoId: string, newValue: string) => {
+    if (!walletData) return;
+    
+    const utxo = walletData.utxos.find(u => u.txid === utxoId);
+    if (!utxo) return;
+    
+    // Update the sender address
+    if (updateUtxoAddresses && typeof updateUtxoAddresses === 'function') {
+      updateUtxoAddresses(utxoId, newValue, utxo.receiverAddress || "");
+      toast("Sender Address Updated. The sender address has been updated");
+    }
+    
+    setEditableUtxo(null);
+  }, [walletData, updateUtxoAddresses]);
+
+  const handleReceiverAddressEdit = useCallback((utxoId: string, newValue: string) => {
+    if (!walletData) return;
+    
+    const utxo = walletData.utxos.find(u => u.txid === utxoId);
+    if (!utxo) return;
+    
+    // Update the receiver address
+    if (updateUtxoAddresses && typeof updateUtxoAddresses === 'function') {
+      updateUtxoAddresses(utxoId, utxo.senderAddress || "", newValue);
+      toast("Receiver Address Updated. The receiver address has been updated");
+    }
+    
+    setEditableUtxo(null);
+  }, [walletData, updateUtxoAddresses]);
 
   const handleDateEdit = useCallback((utxoId: string, date: Date | undefined) => {
     if (!walletData || !date) return;
@@ -300,10 +320,6 @@ const UTXOTable = () => {
       acquisitionBtcPrice: newValue === '' ? null : parsedValue,
       costAutoPopulated: false
     };
-    
-    // Since updateUtxoCostBasis doesn't directly update the BTC price field,
-    // we need to make sure it's updated in the wallet context
-    // This should be implemented in the WalletContext, but we're working with what we have
     
     toast("BTC Price Updated. The Bitcoin price and cost basis have been updated");
     
@@ -396,6 +412,8 @@ const UTXOTable = () => {
     if (isMobile) {
       return {
         txid: true,
+        senderAddress: false,
+        receiverAddress: false,
         amount: true,
         date: false,
         btcPrice: false,
@@ -408,6 +426,8 @@ const UTXOTable = () => {
     }
     return {
       txid: true,
+      senderAddress: true,
+      receiverAddress: true,
       amount: true,
       date: true,
       btcPrice: true,
@@ -422,7 +442,7 @@ const UTXOTable = () => {
   const visibleColumns = getVisibleColumns();
 
   return (
-    <div className="container px-2 md:px-4 py-6">
+    <div className="container px-4 md:px-8 py-6 pl-[76px] md:pl-[268px]">
       <div className="flex flex-col md:flex-row justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-foreground">UTXO Management</h1>
         
@@ -459,7 +479,7 @@ const UTXOTable = () => {
                   Tags
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px] bg-popover text-popover-foreground">
+              <DropdownMenuContent align="end" className="w-[200px] bg-popover text-popover-foreground z-50">
                 {tags.map((tag) => (
                   <DropdownMenuItem 
                     key={tag.id}
@@ -491,7 +511,7 @@ const UTXOTable = () => {
                   Risk
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-popover text-popover-foreground">
+              <DropdownMenuContent align="end" className="bg-popover text-popover-foreground z-50">
                 {['low', 'medium', 'high'].map((risk) => (
                   <DropdownMenuItem
                     key={risk}
@@ -535,6 +555,24 @@ const UTXOTable = () => {
                   <TableHead className="w-[150px]">
                     <div className="flex items-center cursor-pointer" onClick={() => handleSort('txid')}>
                       TxID
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </div>
+                  </TableHead>
+                )}
+                
+                {visibleColumns.senderAddress && (
+                  <TableHead>
+                    <div className="flex items-center cursor-pointer" onClick={() => handleSort('senderAddress')}>
+                      Sender Address
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </div>
+                  </TableHead>
+                )}
+
+                {visibleColumns.receiverAddress && (
+                  <TableHead>
+                    <div className="flex items-center cursor-pointer" onClick={() => handleSort('receiverAddress')}>
+                      Receiver Address
                       <ArrowUpDown className="ml-2 h-4 w-4" />
                     </div>
                   </TableHead>
@@ -642,6 +680,30 @@ const UTXOTable = () => {
                         </EditableCell>
                       )}
                       
+                      {/* Sender Address Cell */}
+                      {visibleColumns.senderAddress && (
+                        <EditableCell
+                          isEditing={isEditing}
+                          initialValue={utxo.senderAddress || ""}
+                          onSave={(value) => handleSenderAddressEdit(utxo.txid, value)}
+                          inputType="text"
+                          placeholder="Enter sender address..."
+                          className="font-mono text-xs"
+                        />
+                      )}
+
+                      {/* Receiver Address Cell */}
+                      {visibleColumns.receiverAddress && (
+                        <EditableCell
+                          isEditing={isEditing}
+                          initialValue={utxo.receiverAddress || ""}
+                          onSave={(value) => handleReceiverAddressEdit(utxo.txid, value)}
+                          inputType="text"
+                          placeholder="Enter receiver address..."
+                          className="font-mono text-xs"
+                        />
+                      )}
+                      
                       {/* Amount Cell - Now editable but with feedback */}
                       {visibleColumns.amount && (
                         <EditableCell
@@ -675,7 +737,7 @@ const UTXOTable = () => {
                                     : "Select date"}
                                 </Button>
                               </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
+                              <PopoverContent className="w-auto p-0 z-50" align="start">
                                 <Calendar
                                   mode="single"
                                   selected={utxo.acquisitionDate ? new Date(utxo.acquisitionDate) : undefined}
@@ -815,7 +877,7 @@ const UTXOTable = () => {
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="bg-popover text-popover-foreground">
+                              <DropdownMenuContent align="end" className="bg-popover text-popover-foreground z-50">
                                 <DropdownMenuItem
                                   onClick={(e) => {
                                     e.preventDefault();
@@ -876,17 +938,10 @@ const UTXOTable = () => {
           </Table>
         </div>
       </div>
-
-      <UTXODetailsModal 
-        utxoId={detailsUtxoId}
-        open={modalOpen} 
-        onOpenChange={handleModalOpenChange}
-        onTagUpdate={handleTagSelection}
-      />
       
       {/* Delete confirmation dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => !open && cancelDeleteUtxo()}>
-        <AlertDialogContent className="max-w-[90vw] md:max-w-[500px]">
+        <AlertDialogContent className="max-w-[90vw] md:max-w-[500px] bg-background z-50">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete UTXO</AlertDialogTitle>
             <AlertDialogDescription>
