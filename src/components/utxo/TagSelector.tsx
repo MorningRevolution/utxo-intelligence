@@ -81,19 +81,19 @@ export const TagSelector = ({
     e.stopPropagation();
     
     const tag = tags.find(t => t.id === tagId);
+    if (!tag) return;
+    
     const isTagApplied = walletData?.utxos.find(u => u.txid === utxoId)?.tags.some(tagName => {
       const existingTag = tags.find(t => t.name === tagName);
       return existingTag?.id === tag.id;
     });
     
-    if (tag) {
-      if (isTagApplied) {
-        console.log("TagSelector: Removing tag:", tag.name);
-        onSelect(tagId, true);
-      } else {
-        console.log("TagSelector: Adding tag:", tag.name);
-        onSelect(tagId, false);
-      }
+    if (isTagApplied) {
+      console.log("TagSelector: Removing tag:", tag.name);
+      onSelect(tagId, true);
+    } else {
+      console.log("TagSelector: Adding tag:", tag.name);
+      onSelect(tagId, false);
     }
     
     setTimeout(() => {

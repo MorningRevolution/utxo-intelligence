@@ -30,6 +30,7 @@ interface WalletContextType {
   preselectedForSimulation: boolean;
   setPreselectedForSimulation: (value: boolean) => void;
   updateUtxoCostBasis: (utxoId: string, acquisitionDate: string | null, acquisitionFiatValue: number | null, notes: string | null) => void;
+  updateUtxoAddresses: (utxoId: string, senderAddress: string, receiverAddress: string) => void;
   autoPopulateUTXOCostBasis: (utxoId: string) => Promise<boolean>;
   getPortfolioData: () => Promise<PortfolioData | null>;
   selectedCurrency: SupportedCurrency;
@@ -325,6 +326,28 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     });
   };
   
+  const updateUtxoAddresses = useCallback((utxoId: string, senderAddress: string, receiverAddress: string) => {
+    if (!walletData) return;
+    
+    console.log(`WalletContext: Updating UTXO ${utxoId.substring(0, 8)} addresses:`, {sender: senderAddress, receiver: receiverAddress});
+    
+    const updatedUtxos = walletData.utxos.map(utxo => {
+      if (utxo.txid === utxoId) {
+        return {
+          ...utxo,
+          senderAddress,
+          receiverAddress
+        };
+      }
+      return utxo;
+    });
+    
+    setWalletData({
+      ...walletData,
+      utxos: updatedUtxos
+    });
+  }, [walletData]);
+
   const autoPopulateUTXOCostBasis = async (utxoId: string): Promise<boolean> => {
     if (!walletData) return false;
     
@@ -568,6 +591,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     preselectedForSimulation,
     setPreselectedForSimulation,
     updateUtxoCostBasis,
+    updateUtxoAddresses,
     autoPopulateUTXOCostBasis,
     getPortfolioData,
     selectedCurrency,

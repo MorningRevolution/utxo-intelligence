@@ -1,4 +1,3 @@
-
 export interface UTXO {
   txid: string;
   vout: number;
@@ -17,8 +16,8 @@ export interface UTXO {
   realizedGainFiat: number | null;
   costAutoPopulated: boolean;
   notes: string | null;
-  senderAddress?: string | null;
-  receiverAddress?: string | null;
+  senderAddress: string | null;
+  receiverAddress: string | null;
 }
 
 export interface WalletData {
