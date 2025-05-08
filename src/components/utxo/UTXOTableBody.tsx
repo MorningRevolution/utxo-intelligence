@@ -121,7 +121,7 @@ export const UTXOTableBody = ({
         <TableHeader>
           <TableRow>
             {visibleColumns.txid && (
-              <TableHead>
+              <TableHead className="w-[150px]">
                 <div className="flex items-center cursor-pointer" onClick={() => handleSort('txid')}>
                   TxID
                   <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -130,7 +130,7 @@ export const UTXOTableBody = ({
             )}
             
             {visibleColumns.senderAddress && (
-              <TableHead>
+              <TableHead className="max-w-[180px]">
                 <div className="flex items-center cursor-pointer" onClick={() => handleSort('senderAddress')}>
                   Sender Address
                   <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -139,7 +139,7 @@ export const UTXOTableBody = ({
             )}
 
             {visibleColumns.receiverAddress && (
-              <TableHead>
+              <TableHead className="max-w-[180px]">
                 <div className="flex items-center cursor-pointer" onClick={() => handleSort('receiverAddress')}>
                   Receiver Address
                   <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -148,7 +148,7 @@ export const UTXOTableBody = ({
             )}
             
             {visibleColumns.amount && (
-              <TableHead>
+              <TableHead className="w-[120px]">
                 <div className="flex items-center cursor-pointer" onClick={() => handleSort('amount')}>
                   Amount
                   <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -157,7 +157,7 @@ export const UTXOTableBody = ({
             )}
             
             {visibleColumns.date && (
-              <TableHead>
+              <TableHead className="w-[150px]">
                 <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionDate')}>
                   <CalendarIcon className="mr-1 h-4 w-4" />
                   Acq. Date
@@ -167,7 +167,7 @@ export const UTXOTableBody = ({
             )}
             
             {visibleColumns.btcPrice && (
-              <TableHead>
+              <TableHead className="w-[130px]">
                 <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionBtcPrice')}>
                   <DollarSign className="mr-1 h-4 w-4" />
                   BTC Price
@@ -177,7 +177,7 @@ export const UTXOTableBody = ({
             )}
             
             {visibleColumns.costBasis && (
-              <TableHead>
+              <TableHead className="w-[130px]">
                 <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionFiatValue')}>
                   Cost Basis
                   <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -186,13 +186,13 @@ export const UTXOTableBody = ({
             )}
             
             {visibleColumns.notes && (
-              <TableHead className="min-w-[100px]">
+              <TableHead className="max-w-[150px]">
                 Notes
               </TableHead>
             )}
             
             {visibleColumns.tags && (
-              <TableHead>
+              <TableHead className="max-w-[180px]">
                 <div className="flex items-center">
                   <Tag className="mr-1 h-4 w-4" />
                   Tags
@@ -201,7 +201,7 @@ export const UTXOTableBody = ({
             )}
             
             {visibleColumns.risk && (
-              <TableHead>
+              <TableHead className="w-[110px]">
                 <div className="flex items-center cursor-pointer" onClick={() => handleSort('privacyRisk')}>
                   Risk
                   <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -210,7 +210,7 @@ export const UTXOTableBody = ({
             )}
             
             {visibleColumns.actions && (
-              <TableHead className="text-center">Actions</TableHead>
+              <TableHead className="w-[100px] text-center">Actions</TableHead>
             )}
           </TableRow>
         </TableHeader>
@@ -236,7 +236,7 @@ export const UTXOTableBody = ({
                       inputType="text"
                       placeholder="TxID"
                       isDisabled={true}
-                      className="font-mono"
+                      className="font-mono break-all"
                     >
                       <div className="flex items-center gap-2">
                         {isUTXOSelected(utxo) && (
@@ -257,7 +257,7 @@ export const UTXOTableBody = ({
                       onSave={(value) => handleSenderAddressEdit(utxo.txid, value)}
                       inputType="text"
                       placeholder="Enter sender address..."
-                      className="font-mono text-xs"
+                      className="font-mono text-xs break-all"
                     />
                   )}
 
@@ -269,7 +269,7 @@ export const UTXOTableBody = ({
                       onSave={(value) => handleReceiverAddressEdit(utxo.txid, value)}
                       inputType="text"
                       placeholder="Enter receiver address..."
-                      className="font-mono text-xs"
+                      className="font-mono text-xs break-all"
                     />
                   )}
                   
@@ -373,13 +373,13 @@ export const UTXOTableBody = ({
                       onSave={(value) => handleNotesEdit(utxo.txid, value)}
                       inputType="text"
                       placeholder="Add notes..."
-                      className="max-w-[200px]"
+                      className="max-w-[150px] break-all"
                     />
                   )}
                   
                   {/* Tags Cell - Not directly editable in the row */}
                   {visibleColumns.tags && (
-                    <TableCell>
+                    <TableCell className="max-w-[180px]">
                       <div className="flex flex-wrap gap-1">
                         {utxo.tags.map((tagName, index) => {
                           const tag = tags.find(t => t.name === tagName);

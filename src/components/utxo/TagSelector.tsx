@@ -103,11 +103,9 @@ export const TagSelector = ({
     }, 0);
   };
 
-  const handleOpenChange = (open: boolean) => {
-    // Only allow setting to true from the trigger, closing is handled by the Done button
-    if (open) {
-      setIsOpen(true);
-    }
+  // Remove the openChange handler as we want to control closing only via the Done button
+  const handleOpenDialog = () => {
+    setIsOpen(true);
   };
 
   const handleCloseDialog = () => {
@@ -128,7 +126,7 @@ export const TagSelector = ({
           e.stopPropagation();
           e.preventDefault();
           console.log("TagSelector trigger clicked");
-          setIsOpen(true);
+          handleOpenDialog();
         }}
         className="cursor-pointer"
         data-testid="tag-selector-wrapper"
@@ -137,7 +135,7 @@ export const TagSelector = ({
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             e.stopPropagation();
-            setIsOpen(true);
+            handleOpenDialog();
           }
         }}
       >
@@ -146,7 +144,6 @@ export const TagSelector = ({
 
       <Dialog 
         open={isOpen} 
-        onOpenChange={handleOpenChange}
         modal={true}
       >
         <DialogContent 
