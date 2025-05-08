@@ -138,22 +138,6 @@ export const TagSelector = ({
           className="bg-background text-foreground p-4 border border-border shadow-md w-72 max-w-[95vw] z-50"
           onClick={(e) => e.stopPropagation()}
           data-testid="tag-selector-dialog"
-          onMouseLeave={(e) => {
-            // Only close if moving completely away from the dialog
-            // Check if the mouse is outside the dialog boundaries with a small buffer
-            const rect = e.currentTarget.getBoundingClientRect();
-            const bufferPx = 20; // Buffer of 20px around the dialog
-            
-            if (
-              e.clientX < rect.left - bufferPx || 
-              e.clientX > rect.right + bufferPx ||
-              e.clientY < rect.top - bufferPx || 
-              e.clientY > rect.bottom + bufferPx
-            ) {
-              // The mouse is definitely leaving the dialog area
-              // We don't close automatically; only Done button should close the dialog
-            }
-          }}
         >
           <DialogTitle className="font-medium text-foreground">Manage Tags</DialogTitle>
           <DialogDescription className="sr-only">

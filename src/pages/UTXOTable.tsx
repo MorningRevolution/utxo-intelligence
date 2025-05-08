@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { 
@@ -442,7 +441,7 @@ const UTXOTable = () => {
   const visibleColumns = getVisibleColumns();
 
   return (
-    <div className="container px-4 md:px-8 py-6 md:ml-[268px]">
+    <div className="container px-4 md:px-8 py-6">
       <div className="flex flex-col md:flex-row justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-foreground">UTXO Management</h1>
         
