@@ -103,6 +103,17 @@ export const TagSelector = ({
     }, 0);
   };
 
+  const handleOpenChange = (open: boolean) => {
+    // Only allow setting to true from the trigger, closing is handled by the Done button
+    if (open) {
+      setIsOpen(true);
+    }
+  };
+
+  const handleCloseDialog = () => {
+    setIsOpen(false);
+  };
+
   const defaultTrigger = (
     <div className="flex items-center cursor-pointer" tabIndex={0} data-testid="tag-selector-default-trigger">
       <TagIcon className="h-4 w-4 mr-1" />
@@ -133,7 +144,11 @@ export const TagSelector = ({
         {trigger ? trigger : defaultTrigger}
       </div>
 
-      <Dialog open={isOpen} onOpenChange={setIsOpen} modal={false}>
+      <Dialog 
+        open={isOpen} 
+        onOpenChange={handleOpenChange}
+        modal={true}
+      >
         <DialogContent 
           className="bg-background text-foreground p-4 border border-border shadow-md w-72 max-w-[95vw] z-50"
           onClick={(e) => e.stopPropagation()}
@@ -264,7 +279,7 @@ export const TagSelector = ({
               onClick={(e) => {
                 e.stopPropagation();
                 console.log("TagSelector dialog closing via Done button");
-                setIsOpen(false);
+                handleCloseDialog();
               }}
               data-testid="tag-selector-close"
               tabIndex={0}
