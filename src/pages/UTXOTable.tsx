@@ -544,7 +544,7 @@ const UTXOTable = () => {
           </div>
         </div>
 
-        <div className="rounded-md border border-border overflow-x-auto md:overflow-visible">
+        <div className="rounded-md border border-border">
           <Table>
             <TableCaption>
               {filteredUtxos.length} of {walletData.utxos.length} UTXOs • Total Balance: {formatBTC(walletData.totalBalance)}
