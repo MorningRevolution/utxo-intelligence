@@ -1,7 +1,8 @@
+
 import { UTXO } from "@/types/utxo";
 import { useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Wallet } from "lucide-react";
 import { useWallet } from "@/store/WalletContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { getBitcoinHistoricalPrice } from "@/services/coingeckoService";
 
 interface AddUTXOModalProps {
@@ -34,8 +42,12 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
   const [acquisitionFiatValue, setAcquisitionFiatValue] = useState("");
   const [acquisitionBtcPrice, setAcquisitionBtcPrice] = useState("");
   const [notes, setNotes] = useState("");
+  const [selectedWallet, setSelectedWallet] = useState<string>("");
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Define available wallets (for demonstration)
+  const availableWallets = walletData ? [walletData.name, "Wallet 2"] : [];
 
   const fetchBtcPrice = async () => {
     if (!acquisitionDate) return;
@@ -79,6 +91,9 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
       return;
     }
 
+    // If no wallet is selected, use the default wallet
+    const walletName = selectedWallet || walletData.name;
+
     // Create new UTXO
     const newUtxo: UTXO = {
       txid: `manual-${Date.now()}`,
@@ -99,7 +114,8 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
       costAutoPopulated: false,
       notes: notes || null,
       senderAddress: null,
-      receiverAddress: null
+      receiverAddress: null,
+      walletName: walletName !== walletData.name ? walletName : undefined  // Only set if different from default
     };
 
     // Update wallet data
@@ -119,6 +135,7 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
       setAcquisitionFiatValue("");
       setAcquisitionBtcPrice("");
       setNotes("");
+      setSelectedWallet("");
       
       // Close modal and trigger refresh by passing true
       onOpenChange(true);
@@ -136,11 +153,12 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
     setAcquisitionFiatValue("");
     setAcquisitionBtcPrice("");
     setNotes("");
+    setSelectedWallet("");
     onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && handleCancel()}>
+    <Dialog open={open} onOpenChange={(open) => !open && handleCancel()} modal={true}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add New UTXO</DialogTitle>
@@ -163,6 +181,30 @@ export function AddUTXOModal({ open, onOpenChange }: AddUTXOModalProps) {
               onChange={(e) => setAmount(e.target.value)}
               placeholder="Enter BTC amount"
             />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="wallet" className="text-sm font-medium">
+              Wallet
+            </label>
+            <Select value={selectedWallet} onValueChange={setSelectedWallet}>
+              <SelectTrigger id="wallet" className="w-full">
+                <SelectValue placeholder={walletData ? walletData.name : "Select wallet"} />
+              </SelectTrigger>
+              <SelectContent>
+                {availableWallets.map((wallet) => (
+                  <SelectItem key={wallet} value={wallet}>
+                    <div className="flex items-center gap-2">
+                      <Wallet className="h-4 w-4" />
+                      <span>{wallet}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Leave empty to use your default wallet
+            </p>
           </div>
 
           <div className="space-y-2">

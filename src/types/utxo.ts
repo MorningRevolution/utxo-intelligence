@@ -18,6 +18,7 @@ export interface UTXO {
   notes: string | null;
   senderAddress: string | null;
   receiverAddress: string | null;
+  walletName?: string; // Which wallet this UTXO belongs to
 }
 
 export interface WalletData {

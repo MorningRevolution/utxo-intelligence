@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Filter, Tag } from "lucide-react";
+import { Filter, Tag, Wallet } from "lucide-react";
 import { useWallet } from "@/store/WalletContext";
 import { getRiskColor } from "@/utils/utxo-utils";
 
@@ -18,7 +18,10 @@ interface UTXOFiltersProps {
   setSelectedTags: (tags: string[]) => void;
   selectedRisk: string[];
   setSelectedRisk: (risk: string[]) => void;
+  selectedWallet: string;
+  setSelectedWallet: (wallet: string) => void;
   clearFilters: () => void;
+  onAddUTXO: () => void;
 }
 
 export const UTXOFilters = ({
@@ -28,19 +31,32 @@ export const UTXOFilters = ({
   setSelectedTags,
   selectedRisk,
   setSelectedRisk,
+  selectedWallet,
+  setSelectedWallet,
   clearFilters,
+  onAddUTXO,
 }: UTXOFiltersProps) => {
-  const { tags } = useWallet();
+  const { tags, walletData } = useWallet();
+  
+  // Get unique wallet names from wallet data
+  const wallets = walletData ? ["All Wallets", walletData.name, "Wallet 2"] : ["All Wallets"];
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 mb-4">
-      <div className="flex-1">
-        <Input
-          placeholder="Search by txid, address, tag or notes..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full"
-        />
+    <div className="flex flex-col space-y-4 mb-4">
+      <div className="flex flex-col md:flex-row justify-between gap-3">
+        <div className="flex-1">
+          <Input
+            placeholder="Search by txid, address, tag or notes..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full"
+          />
+        </div>
+        <div className="flex justify-end">
+          <Button onClick={onAddUTXO} className="whitespace-nowrap">
+            Add UTXO
+          </Button>
+        </div>
       </div>
       
       <div className="flex flex-wrap gap-2">
@@ -107,8 +123,36 @@ export const UTXOFilters = ({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Wallet className="mr-2 h-4 w-4" />
+              {selectedWallet || "All Wallets"}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-popover text-popover-foreground z-50">
+            {wallets.map((wallet) => (
+              <DropdownMenuItem
+                key={wallet}
+                className="flex items-center gap-2"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSelectedWallet(wallet === "All Wallets" ? "" : wallet);
+                }}
+              >
+                <Wallet className="mr-2 h-4 w-4" />
+                <span>{wallet}</span>
+                {(wallet === "All Wallets" && selectedWallet === "") || (wallet === selectedWallet) ? (
+                  <span className="ml-auto">✓</span>
+                ) : null}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
         
-        {(searchTerm || selectedTags.length > 0 || selectedRisk.length > 0) && (
+        {(searchTerm || selectedTags.length > 0 || selectedRisk.length > 0 || selectedWallet) && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
             Clear Filters
           </Button>

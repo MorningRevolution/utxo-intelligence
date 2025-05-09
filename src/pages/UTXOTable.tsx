@@ -1,7 +1,7 @@
+
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import {
   AlertDialog,
@@ -13,37 +13,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Table, TableBody, TableCaption, TableCell, 
-  TableHead, TableHeader, TableRow 
-} from "@/components/ui/table";
-import { EditableCell } from "@/components/ui/table";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
 import { useWallet } from "@/store/WalletContext";
 import { UTXOFilters } from "@/components/utxo/UTXOFilters";
 import { UTXOTableBody } from "@/components/utxo/UTXOTableBody";
-import { TagSelector } from "@/components/utxo/TagSelector";
-import { formatBTC, formatTxid, getRiskColor } from "@/utils/utxo-utils";
-import { 
-  ArrowUpDown, MoreVertical, Tag, Bookmark, CalendarIcon, 
-  DollarSign, Pencil, Check, X, Trash2, Filter 
-} from "lucide-react";
+import { AddUTXOModal } from "@/components/portfolio/AddUTXOModal";
+import { Bookmark } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UTXO } from "@/types/utxo";
 
@@ -68,6 +43,7 @@ const UTXOTable = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedRisk, setSelectedRisk] = useState<string[]>([]);
+  const [selectedWallet, setSelectedWallet] = useState<string>("");
   const [sortConfig, setSortConfig] = useState<{ key: keyof UTXO; direction: 'asc' | 'desc' }>({
     key: 'amount',
     direction: 'desc'
@@ -76,6 +52,7 @@ const UTXOTable = () => {
   const [datePickerOpen, setDatePickerOpen] = useState<string | null>(null);
   const [deleteUtxoId, setDeleteUtxoId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
+  const [addUTXOModalOpen, setAddUTXOModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     return () => {
@@ -98,6 +75,13 @@ const UTXOTable = () => {
     if (!walletData) return [];
 
     return walletData.utxos.filter(utxo => {
+      // For demonstration, we'll pretend some UTXOs belong to "Wallet 2"
+      const walletName = utxo.walletName || walletData.name;
+      
+      const matchesWallet = 
+        selectedWallet === "" || 
+        walletName === selectedWallet;
+      
       const matchesSearch = 
         searchTerm === "" || 
         utxo.txid.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -116,7 +100,7 @@ const UTXOTable = () => {
         selectedRisk.length === 0 || 
         selectedRisk.includes(utxo.privacyRisk);
       
-      return matchesSearch && matchesTags && matchesRisk;
+      return matchesSearch && matchesTags && matchesRisk && matchesWallet;
     }).sort((a, b) => {
       if (sortConfig.key === 'amount') {
         return sortConfig.direction === 'asc' 
@@ -146,6 +130,15 @@ const UTXOTable = () => {
           : bValue - aValue;
       }
       
+      // Special case for walletName which doesn't exist in UTXO type
+      if (sortConfig.key === 'walletName') {
+        const aWallet = a.walletName || walletData.name;
+        const bWallet = b.walletName || walletData.name;
+        return sortConfig.direction === 'asc'
+          ? aWallet.localeCompare(bWallet)
+          : bWallet.localeCompare(aWallet);
+      }
+      
       const aValue = String(a[sortConfig.key] || '');
       const bValue = String(b[sortConfig.key] || '');
       
@@ -154,7 +147,7 @@ const UTXOTable = () => {
       }
       return bValue.localeCompare(aValue);
     });
-  }, [walletData, searchTerm, selectedTags, selectedRisk, sortConfig, tags]);
+  }, [walletData, searchTerm, selectedTags, selectedRisk, selectedWallet, sortConfig, tags]);
 
   const handleSort = (key: keyof UTXO) => {
     setSortConfig(prev => ({
@@ -193,23 +186,7 @@ const UTXOTable = () => {
     setSearchTerm("");
     setSelectedTags([]);
     setSelectedRisk([]);
-  };
-
-  const getCurrencySymbol = () => {
-    switch (selectedCurrency) {
-      case 'usd': return '$';
-      case 'eur': return '€';
-      case 'gbp': return '£';
-      case 'jpy': return '¥';
-      case 'aud': return 'A$';
-      case 'cad': return 'C$';
-      default: return '$';
-    }
-  };
-
-  const formatCurrency = (value: number | null) => {
-    if (value === null) return 'N/A';
-    return `${getCurrencySymbol()}${value.toLocaleString()}`;
+    setSelectedWallet("");
   };
 
   // Handle editing functions
@@ -222,17 +199,6 @@ const UTXOTable = () => {
     setDatePickerOpen(null);
   };
   
-  const handleTxidEdit = useCallback((utxoId: string, newValue: string) => {
-    // TXIDs are still immutable blockchain values, so we just provide feedback
-    toast.warning("TXID cannot be modified - this is an immutable blockchain record");
-  }, []);
-
-  const handleAmountEdit = useCallback((utxoId: string, newValue: string) => {
-    // Amount is still immutable blockchain value, so we just provide feedback
-    toast.warning("Amount cannot be modified - this would require a blockchain transaction");
-  }, []);
-
-  // New handlers for sender and receiver addresses
   const handleSenderAddressEdit = useCallback((utxoId: string, newValue: string) => {
     if (!walletData) return;
     
@@ -402,6 +368,14 @@ const UTXOTable = () => {
     setDeleteDialogOpen(false);
   };
 
+  const handleAddUTXO = () => {
+    setAddUTXOModalOpen(true);
+  };
+
+  const handleAddUTXOClose = (success: boolean) => {
+    setAddUTXOModalOpen(false);
+  };
+
   if (!walletData) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
@@ -416,6 +390,7 @@ const UTXOTable = () => {
     if (isMobile) {
       return {
         txid: true,
+        wallet: true,
         senderAddress: false,
         receiverAddress: false,
         amount: true,
@@ -430,6 +405,7 @@ const UTXOTable = () => {
     }
     return {
       txid: true,
+      wallet: true,
       senderAddress: true,
       receiverAddress: true,
       amount: true,
@@ -472,31 +448,32 @@ const UTXOTable = () => {
           setSelectedTags={setSelectedTags}
           selectedRisk={selectedRisk}
           setSelectedRisk={setSelectedRisk}
+          selectedWallet={selectedWallet}
+          setSelectedWallet={setSelectedWallet}
           clearFilters={clearFilters}
+          onAddUTXO={handleAddUTXO}
         />
 
-        <div className="overflow-hidden rounded-md border border-border">
-          <UTXOTableBody 
-            filteredUtxos={filteredUtxos}
-            walletData={walletData}
-            visibleColumns={visibleColumns}
-            sortConfig={sortConfig}
-            handleSort={handleSort}
-            editableUtxo={editableUtxo}
-            setEditableUtxo={setEditableUtxo}
-            datePickerOpen={datePickerOpen}
-            setDatePickerOpen={setDatePickerOpen}
-            confirmDeleteUtxo={confirmDeleteUtxo}
-            handleTagSelection={handleTagSelection}
-            handleAddToSimulation={handleAddToSimulation}
-            handleSenderAddressEdit={handleSenderAddressEdit}
-            handleReceiverAddressEdit={handleReceiverAddressEdit}
-            handleDateEdit={handleDateEdit}
-            handleBtcPriceEdit={handleBtcPriceEdit}
-            handleCostBasisEdit={handleCostBasisEdit}
-            handleNotesEdit={handleNotesEdit}
-          />
-        </div>
+        <UTXOTableBody 
+          filteredUtxos={filteredUtxos}
+          walletData={walletData}
+          visibleColumns={visibleColumns}
+          sortConfig={sortConfig}
+          handleSort={handleSort}
+          editableUtxo={editableUtxo}
+          setEditableUtxo={setEditableUtxo}
+          datePickerOpen={datePickerOpen}
+          setDatePickerOpen={setDatePickerOpen}
+          confirmDeleteUtxo={confirmDeleteUtxo}
+          handleTagSelection={handleTagSelection}
+          handleAddToSimulation={handleAddToSimulation}
+          handleSenderAddressEdit={handleSenderAddressEdit}
+          handleReceiverAddressEdit={handleReceiverAddressEdit}
+          handleDateEdit={handleDateEdit}
+          handleBtcPriceEdit={handleBtcPriceEdit}
+          handleCostBasisEdit={handleCostBasisEdit}
+          handleNotesEdit={handleNotesEdit}
+        />
       </div>
       
       {/* Delete confirmation dialog */}
@@ -517,6 +494,12 @@ const UTXOTable = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add UTXO Modal */}
+      <AddUTXOModal 
+        open={addUTXOModalOpen} 
+        onOpenChange={handleAddUTXOClose}
+      />
     </div>
   );
 };
