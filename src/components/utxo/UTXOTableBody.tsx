@@ -1,9 +1,8 @@
-
 import { useCallback } from "react";
 import { format } from "date-fns";
 import { 
   Table, TableBody, TableCaption, TableCell, 
-  TableHead, TableHeader, TableRow, EditableCell
+  TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useWallet } from "@/store/WalletContext";
 import { TagSelector } from "@/components/utxo/TagSelector";
@@ -50,6 +50,49 @@ interface UTXOTableBodyProps {
   handleCostBasisEdit: (utxoId: string, newValue: string) => void;
   handleNotesEdit: (utxoId: string, newValue: string) => void;
 }
+
+interface EditableCellProps {
+  isEditing: boolean;
+  initialValue: string;
+  onSave: (value: string) => void;
+  inputType?: string;
+  placeholder?: string;
+  isDisabled?: boolean;
+  className?: string;
+  children?: React.ReactNode;
+}
+
+const EditableCell = ({
+  isEditing,
+  initialValue,
+  onSave,
+  inputType = "text",
+  placeholder,
+  isDisabled = false,
+  className,
+  children,
+}: EditableCellProps) => {
+  if (isEditing) {
+    return (
+      <TableCell className={className}>
+        <Input
+          type={inputType}
+          defaultValue={initialValue}
+          onBlur={(e) => onSave(e.target.value)}
+          placeholder={placeholder}
+          disabled={isDisabled}
+          className="w-full h-8"
+          autoFocus={!isDisabled}
+        />
+      </TableCell>
+    );
+  }
+  return (
+    <TableCell className={className}>
+      {children || initialValue}
+    </TableCell>
+  );
+};
 
 export const UTXOTableBody = ({
   filteredUtxos,
@@ -113,8 +156,8 @@ export const UTXOTableBody = ({
   };
 
   return (
-    <div className="overflow-hidden border border-border rounded-md">
-      <div className="overflow-hidden">
+    <div className="rounded-md border border-border overflow-hidden">
+      <div className="w-full">
         <Table>
           <TableCaption>
             {filteredUtxos.length} of {walletData.utxos.length} UTXOs • Total Balance: {formatBTC(walletData.totalBalance)}
@@ -122,7 +165,7 @@ export const UTXOTableBody = ({
           <TableHeader>
             <TableRow>
               {visibleColumns.txid && (
-                <TableHead className="w-[150px]">
+                <TableHead className="w-[100px] lg:w-[140px]">
                   <div className="flex items-center cursor-pointer" onClick={() => handleSort('txid')}>
                     TxID
                     <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -131,7 +174,7 @@ export const UTXOTableBody = ({
               )}
               
               {visibleColumns.wallet && (
-                <TableHead className="w-[120px]">
+                <TableHead className="w-[90px] lg:w-[110px]">
                   <div className="flex items-center cursor-pointer" onClick={() => handleSort('walletName')}>
                     <Wallet className="mr-1 h-4 w-4" />
                     Wallet
@@ -141,25 +184,25 @@ export const UTXOTableBody = ({
               )}
               
               {visibleColumns.senderAddress && (
-                <TableHead className="max-w-[180px]">
+                <TableHead className="max-w-[120px] lg:max-w-[150px]">
                   <div className="flex items-center cursor-pointer" onClick={() => handleSort('senderAddress')}>
-                    Sender Address
+                    Sender
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </div>
                 </TableHead>
               )}
 
               {visibleColumns.receiverAddress && (
-                <TableHead className="max-w-[180px]">
+                <TableHead className="max-w-[120px] lg:max-w-[150px]">
                   <div className="flex items-center cursor-pointer" onClick={() => handleSort('receiverAddress')}>
-                    Receiver Address
+                    Receiver
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </div>
                 </TableHead>
               )}
               
               {visibleColumns.amount && (
-                <TableHead className="w-[120px]">
+                <TableHead className="w-[80px] lg:w-[100px]">
                   <div className="flex items-center cursor-pointer" onClick={() => handleSort('amount')}>
                     Amount
                     <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -168,17 +211,17 @@ export const UTXOTableBody = ({
               )}
               
               {visibleColumns.date && (
-                <TableHead className="w-[150px]">
+                <TableHead className="w-[110px] lg:w-[130px]">
                   <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionDate')}>
                     <CalendarIcon className="mr-1 h-4 w-4" />
-                    Acq. Date
+                    Date
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </div>
                 </TableHead>
               )}
               
               {visibleColumns.btcPrice && (
-                <TableHead className="w-[130px]">
+                <TableHead className="w-[100px] lg:w-[120px]">
                   <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionBtcPrice')}>
                     <DollarSign className="mr-1 h-4 w-4" />
                     BTC Price
@@ -188,7 +231,7 @@ export const UTXOTableBody = ({
               )}
               
               {visibleColumns.costBasis && (
-                <TableHead className="w-[130px]">
+                <TableHead className="w-[100px] lg:w-[120px]">
                   <div className="flex items-center cursor-pointer" onClick={() => handleSort('acquisitionFiatValue')}>
                     Cost Basis
                     <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -197,13 +240,13 @@ export const UTXOTableBody = ({
               )}
               
               {visibleColumns.notes && (
-                <TableHead className="max-w-[150px]">
+                <TableHead className="max-w-[120px] lg:max-w-[140px]">
                   Notes
                 </TableHead>
               )}
               
               {visibleColumns.tags && (
-                <TableHead className="max-w-[180px]">
+                <TableHead className="max-w-[120px] lg:max-w-[160px]">
                   <div className="flex items-center">
                     <Tag className="mr-1 h-4 w-4" />
                     Tags
@@ -212,7 +255,7 @@ export const UTXOTableBody = ({
               )}
               
               {visibleColumns.risk && (
-                <TableHead className="w-[110px]">
+                <TableHead className="w-[90px]">
                   <div className="flex items-center cursor-pointer" onClick={() => handleSort('privacyRisk')}>
                     Risk
                     <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -221,7 +264,7 @@ export const UTXOTableBody = ({
               )}
               
               {visibleColumns.actions && (
-                <TableHead className="w-[100px] text-center">Actions</TableHead>
+                <TableHead className="w-[80px] text-right">Actions</TableHead>
               )}
             </TableRow>
           </TableHeader>
@@ -396,13 +439,13 @@ export const UTXOTableBody = ({
                         onSave={(value) => handleNotesEdit(utxo.txid, value)}
                         inputType="text"
                         placeholder="Add notes..."
-                        className="max-w-[150px] break-all"
+                        className="max-w-[120px] lg:max-w-[140px] break-all"
                       />
                     )}
                     
                     {/* Tags Cell - Not directly editable in the row */}
                     {visibleColumns.tags && (
-                      <TableCell className="max-w-[180px]">
+                      <TableCell className="max-w-[120px] lg:max-w-[160px]">
                         <div className="flex flex-wrap gap-1">
                           {utxo.tags.map((tagName, index) => {
                             const tag = tags.find(t => t.name === tagName);
@@ -438,34 +481,30 @@ export const UTXOTableBody = ({
                     {/* Actions Cell */}
                     {visibleColumns.actions && (
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end space-x-2">
+                        <div className="flex items-center justify-end space-x-1">
                           {isEditing ? (
-                            <div className="flex gap-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={cancelEditing}
-                                className="whitespace-nowrap"
-                              >
-                                <X className="h-4 w-4 mr-1" />
-                                {!isMobile && "Cancel"}
-                              </Button>
-                            </div>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={cancelEditing}
+                              className="p-1 h-8 w-8"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
                           ) : (
                             <Button 
                               variant="outline" 
                               size="sm"
                               onClick={() => startEditing(utxo.txid)}
-                              className="whitespace-nowrap"
+                              className="p-1 h-8 w-8"
                             >
-                              <Pencil className="h-4 w-4 mr-1" />
-                              {!isMobile && "Edit"}
+                              <Pencil className="h-4 w-4" />
                             </Button>
                           )}
                           
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Button variant="ghost" size="sm" className="p-1 h-8 w-8">
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
