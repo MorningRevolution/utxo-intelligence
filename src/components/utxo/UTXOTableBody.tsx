@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import { format } from "date-fns";
 import { 
   Table, TableBody, TableCaption, TableCell, 
-  TableHead, TableHeader, TableRow 
+  TableHead, TableHeader, TableRow, EditableCell 
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -407,7 +407,7 @@ export const UTXOTableBody = ({
                           initialValue={utxo.acquisitionDate 
                             ? new Date(utxo.acquisitionDate).toLocaleDateString() 
                             : ""}
-                          onSave={() => startEditing(utxo.txid)}
+                          onSave={() => {}} // This won't be called as isEditing is false
                           inputType="text"
                           placeholder="Set date..."
                         />
@@ -500,7 +500,7 @@ export const UTXOTableBody = ({
                       </TableCell>
                     )}
                     
-                    {/* Actions Cell - Modified to move Edit functionality to dropdown */}
+                    {/* Actions Cell */}
                     {visibleColumns.actions && (
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end">

@@ -195,81 +195,85 @@ function Portfolio() {
         </ToggleGroup>
       </div>
       
-      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="mb-6">
-        <TabsList className="mb-4">
-          <TabsTrigger value="balance">
-            <ChartLine className="mr-2 h-4 w-4" />
-            Balance History
-          </TabsTrigger>
-          <TabsTrigger value="fiat">
-            <CircleDollarSign className="mr-2 h-4 w-4" />
-            Fiat Value
-          </TabsTrigger>
-          <TabsTrigger value="allocation">
-            <ChartArea className="mr-2 h-4 w-4" />
-            Tag Allocation
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="balance" className="h-[400px]">
-          <BalanceChart 
-            data={getFilteredChartData()} 
-            height={350}
-            timeFilter={timeFilter} 
-          />
-        </TabsContent>
-        
-        <TabsContent value="fiat" className="h-[400px]">
-          <FiatValueChart 
-            data={getFilteredChartData()} 
-            height={350}
-            currencySymbol={selectedCurrency.toUpperCase()}
-            timeFilter={timeFilter}
-          />
-        </TabsContent>
-        
-        <TabsContent value="allocation" className="h-[400px]">
-          <TagAllocationChart data={portfolioData.tagAllocation} height={350} />
-        </TabsContent>
-      </Tabs>
-      
-      <Card className="bg-dark-card border-dark-border shadow-lg">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>UTXO Management</CardTitle>
-            <CardDescription>
-              Manage your UTXOs and their cost basis information
-            </CardDescription>
+      <div className="space-y-6">
+        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="mb-6">
+          <TabsList className="mb-4">
+            <TabsTrigger value="balance">
+              <ChartLine className="mr-2 h-4 w-4" />
+              Balance History
+            </TabsTrigger>
+            <TabsTrigger value="fiat">
+              <CircleDollarSign className="mr-2 h-4 w-4" />
+              Fiat Value
+            </TabsTrigger>
+            <TabsTrigger value="allocation">
+              <ChartArea className="mr-2 h-4 w-4" />
+              Tag Allocation
+            </TabsTrigger>
+          </TabsList>
+          
+          <div className="h-[400px]">
+            <TabsContent value="balance" className="h-full mt-0">
+              <BalanceChart 
+                data={getFilteredChartData()} 
+                height={350}
+                timeFilter={timeFilter} 
+              />
+            </TabsContent>
+            
+            <TabsContent value="fiat" className="h-full mt-0">
+              <FiatValueChart 
+                data={getFilteredChartData()} 
+                height={350}
+                currencySymbol={selectedCurrency.toUpperCase()}
+                timeFilter={timeFilter}
+              />
+            </TabsContent>
+            
+            <TabsContent value="allocation" className="h-full mt-0">
+              <TagAllocationChart data={portfolioData.tagAllocation} height={350} />
+            </TabsContent>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => setIsAddUTXOModalOpen(true)}
-              className="ml-4"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add UTXO
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => navigate("/utxo-table")}
-            >
-              View All UTXOs
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+        </Tabs>
+        
+        <Card className="bg-dark-card border-dark-border shadow-lg mt-8">
+          <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <p className="text-muted-foreground">
-                You have {walletData?.utxos.length} UTXOs with a total balance of {formatBTC(walletData!.totalBalance)}
-              </p>
+              <CardTitle>UTXO Management</CardTitle>
+              <CardDescription>
+                Manage your UTXOs and their cost basis information
+              </CardDescription>
             </div>
-            <Button onClick={() => navigate("/utxo-table")}>
-              Go to UTXO Manager
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setIsAddUTXOModalOpen(true)}
+                className="ml-4"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add UTXO
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => navigate("/utxo-table")}
+              >
+                View All UTXOs
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div>
+                <p className="text-muted-foreground">
+                  You have {walletData?.utxos.length} UTXOs with a total balance of {formatBTC(walletData!.totalBalance)}
+                </p>
+              </div>
+              <Button onClick={() => navigate("/utxo-table")}>
+                Go to UTXO Manager
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <AddUTXOModal
         open={isAddUTXOModalOpen}
