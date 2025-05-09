@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { Button } from "@/components/ui/button";
@@ -164,12 +163,12 @@ const UTXOTable = () => {
         if (utxo && tag) {
           console.log(`UTXOTable: Removing tag ${tag.name} from UTXO ${utxoId.substring(0, 8)}`);
           tagUTXO(utxoId, null, tag.name);
-          toast("Tag removed. The tag has been removed from the UTXO");
+          toast("Tag removed from UTXO");
         }
       } else {
         console.log(`UTXOTable: Adding tag ${tagId} to UTXO ${utxoId.substring(0, 8)}`);
         tagUTXO(utxoId, tagId);
-        toast("Tag applied. The tag has been applied to the UTXO");
+        toast("Tag applied to UTXO");
       }
     }
   };
@@ -179,7 +178,7 @@ const UTXOTable = () => {
     
     toggleUTXOSelection(utxo);
     
-    toast("UTXO Selection Updated. Navigate to Risk Simulator to analyze transaction privacy");
+    toast("UTXO added to simulation");
   };
 
   const clearFilters = () => {
@@ -205,10 +204,13 @@ const UTXOTable = () => {
     const utxo = walletData.utxos.find(u => u.txid === utxoId);
     if (!utxo) return;
     
-    // Update the sender address
-    if (updateUtxoAddresses && typeof updateUtxoAddresses === 'function') {
-      updateUtxoAddresses(utxoId, newValue, utxo.receiverAddress || "");
-      toast("Sender Address Updated. The sender address has been updated");
+    // Only update if changed
+    if (utxo.senderAddress !== newValue) {
+      // Update the sender address
+      if (updateUtxoAddresses && typeof updateUtxoAddresses === 'function') {
+        updateUtxoAddresses(utxoId, newValue, utxo.receiverAddress || "");
+        toast("Sender address updated");
+      }
     }
     
     setEditableUtxo(null);
@@ -220,10 +222,13 @@ const UTXOTable = () => {
     const utxo = walletData.utxos.find(u => u.txid === utxoId);
     if (!utxo) return;
     
-    // Update the receiver address
-    if (updateUtxoAddresses && typeof updateUtxoAddresses === 'function') {
-      updateUtxoAddresses(utxoId, utxo.senderAddress || "", newValue);
-      toast("Receiver Address Updated. The receiver address has been updated");
+    // Only update if changed
+    if (utxo.receiverAddress !== newValue) {
+      // Update the receiver address
+      if (updateUtxoAddresses && typeof updateUtxoAddresses === 'function') {
+        updateUtxoAddresses(utxoId, utxo.senderAddress || "", newValue);
+        toast("Receiver address updated");
+      }
     }
     
     setEditableUtxo(null);
@@ -236,26 +241,29 @@ const UTXOTable = () => {
     const utxo = walletData.utxos.find(u => u.txid === utxoId);
     if (!utxo) return;
     
-    // Use the existing values for other fields
-    updateUtxoCostBasis(
-      utxoId,
-      dateStr,
-      utxo.acquisitionFiatValue,
-      utxo.notes
-    );
-    
-    toast("Date Updated. The acquisition date has been updated");
-    
-    // Auto-populate BTC price based on the new date
-    autoPopulateUTXOCostBasis(utxoId)
-      .then(success => {
-        if (!success) {
-          toast("Price Update Failed. Could not fetch historical Bitcoin price for the selected date");
-        }
-      })
-      .catch(err => {
-        console.error("Error auto-populating price:", err);
-      });
+    // Only update if changed
+    if (utxo.acquisitionDate !== dateStr) {
+      // Use the existing values for other fields
+      updateUtxoCostBasis(
+        utxoId,
+        dateStr,
+        utxo.acquisitionFiatValue,
+        utxo.notes
+      );
+      
+      toast("Acquisition date updated");
+      
+      // Auto-populate BTC price based on the new date
+      autoPopulateUTXOCostBasis(utxoId)
+        .then(success => {
+          if (!success) {
+            toast.error("Could not fetch historical Bitcoin price for the selected date");
+          }
+        })
+        .catch(err => {
+          console.error("Error auto-populating price:", err);
+        });
+    }
     
     setEditableUtxo(null);
     setDatePickerOpen(null);
@@ -269,29 +277,34 @@ const UTXOTable = () => {
     
     const parsedValue = parseFloat(newValue);
     if (isNaN(parsedValue) && newValue !== '') {
-      toast("Invalid Value. Please enter a valid number");
+      toast.error("Please enter a valid number");
       return;
     }
 
-    // Calculate new acquisition fiat value based on BTC price and amount
-    const newAcquisitionFiatValue = newValue === '' ? null : parsedValue * utxo.amount;
-    
-    // Update the UTXO with the new BTC price and calculated fiat value
-    updateUtxoCostBasis(
-      utxoId,
-      utxo.acquisitionDate,
-      newAcquisitionFiatValue,
-      utxo.notes
-    );
-    
-    // Also update the BTC price directly in the UTXO
-    const updatedUtxo = {
-      ...utxo,
-      acquisitionBtcPrice: newValue === '' ? null : parsedValue,
-      costAutoPopulated: false
-    };
-    
-    toast("BTC Price Updated. The Bitcoin price and cost basis have been updated");
+    // Only update if changed
+    if ((utxo.acquisitionBtcPrice !== parsedValue) && 
+        !(utxo.acquisitionBtcPrice === null && newValue === '')) {
+      
+      // Calculate new acquisition fiat value based on BTC price and amount
+      const newAcquisitionFiatValue = newValue === '' ? null : parsedValue * utxo.amount;
+      
+      // Update the UTXO with the new BTC price and calculated fiat value
+      updateUtxoCostBasis(
+        utxoId,
+        utxo.acquisitionDate,
+        newAcquisitionFiatValue,
+        utxo.notes
+      );
+      
+      // Also update the BTC price directly in the UTXO
+      const updatedUtxo = {
+        ...utxo,
+        acquisitionBtcPrice: newValue === '' ? null : parsedValue,
+        costAutoPopulated: false
+      };
+      
+      toast("BTC price and cost basis updated");
+    }
     
     setEditableUtxo(null);
   }, [walletData, updateUtxoCostBasis]);
@@ -304,19 +317,23 @@ const UTXOTable = () => {
     
     const parsedValue = parseFloat(newValue);
     if (isNaN(parsedValue) && newValue !== '') {
-      toast("Invalid Value. Please enter a valid number");
+      toast.error("Please enter a valid number");
       return;
     }
     
-    // Use the existing values for other fields
-    updateUtxoCostBasis(
-      utxoId,
-      utxo.acquisitionDate,
-      newValue === '' ? null : parsedValue,
-      utxo.notes
-    );
-    
-    toast("Cost Basis Updated. The cost basis has been updated");
+    // Only update if changed
+    const newCostBasis = newValue === '' ? null : parsedValue;
+    if (utxo.acquisitionFiatValue !== newCostBasis) {
+      // Use the existing values for other fields
+      updateUtxoCostBasis(
+        utxoId,
+        utxo.acquisitionDate,
+        newCostBasis,
+        utxo.notes
+      );
+      
+      toast("Cost basis updated");
+    }
     
     setEditableUtxo(null);
   }, [walletData, updateUtxoCostBasis]);
@@ -327,15 +344,18 @@ const UTXOTable = () => {
     const utxo = walletData.utxos.find(u => u.txid === utxoId);
     if (!utxo) return;
     
-    // Use the existing values for other fields
-    updateUtxoCostBasis(
-      utxoId,
-      utxo.acquisitionDate,
-      utxo.acquisitionFiatValue,
-      newValue
-    );
-    
-    toast("Notes Updated. The notes have been updated");
+    // Only update if changed
+    if (utxo.notes !== newValue) {
+      // Use the existing values for other fields
+      updateUtxoCostBasis(
+        utxoId,
+        utxo.acquisitionDate,
+        utxo.acquisitionFiatValue,
+        newValue
+      );
+      
+      toast("Notes updated");
+    }
     
     setEditableUtxo(null);
   }, [walletData, updateUtxoCostBasis]);
@@ -352,9 +372,9 @@ const UTXOTable = () => {
     // Call the deleteUTXO function from WalletContext
     if (deleteUTXO && typeof deleteUTXO === 'function') {
       deleteUTXO(deleteUtxoId);
-      toast("UTXO Deleted. The UTXO has been removed from your wallet");
+      toast("UTXO deleted from wallet");
     } else {
-      toast.error("Delete Failed. Unable to delete UTXO at this time");
+      toast.error("Unable to delete UTXO at this time");
       console.error("deleteUTXO function not available in WalletContext");
     }
     
@@ -374,6 +394,9 @@ const UTXOTable = () => {
 
   const handleAddUTXOClose = (success: boolean) => {
     setAddUTXOModalOpen(false);
+    if (success) {
+      toast("New UTXO added successfully");
+    }
   };
 
   if (!walletData) {

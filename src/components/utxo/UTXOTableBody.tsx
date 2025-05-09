@@ -1,3 +1,4 @@
+
 import { useCallback } from "react";
 import { format } from "date-fns";
 import { 
@@ -155,6 +156,26 @@ export const UTXOTableBody = ({
     return `${getCurrencySymbol()}${value.toLocaleString()}`;
   };
 
+  // Format BTC amounts trimming trailing zeros (up to 8 decimals)
+  const formatBitcoinAmount = (amount: number): string => {
+    if (amount === 0) return '0';
+    
+    // Format to 8 decimal places
+    const formatted = amount.toFixed(8);
+    
+    // Remove trailing zeros
+    const trimmed = formatted.replace(/\.?0+$/, '');
+    
+    // If the result ends with a decimal point, remove it
+    return trimmed.endsWith('.') ? trimmed.slice(0, -1) : trimmed;
+  };
+
+  // Format BTC price with $ prefix and thousands separators
+  const formatBtcPrice = (price: number | null): string => {
+    if (price === null) return 'N/A';
+    return `$${price.toLocaleString()}`;
+  };
+
   return (
     <div className="rounded-md border border-border overflow-hidden">
       <div className="w-full">
@@ -264,7 +285,7 @@ export const UTXOTableBody = ({
               )}
               
               {visibleColumns.actions && (
-                <TableHead className="w-[80px] text-right">Actions</TableHead>
+                <TableHead className="w-[60px] text-right">Actions</TableHead>
               )}
             </TableRow>
           </TableHeader>
@@ -305,13 +326,10 @@ export const UTXOTableBody = ({
                       </EditableCell>
                     )}
                     
-                    {/* Wallet Cell */}
+                    {/* Wallet Cell - Simplified to only display name */}
                     {visibleColumns.wallet && (
                       <TableCell className="whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <Wallet className="h-4 w-4 text-muted-foreground" />
-                          <span>{walletName}</span>
-                        </div>
+                        {walletName}
                       </TableCell>
                     )}
                     
@@ -349,7 +367,7 @@ export const UTXOTableBody = ({
                         placeholder="Amount"
                         isDisabled={true}
                       >
-                        {formatBTC(utxo.amount)}
+                        {formatBitcoinAmount(utxo.amount)} BTC
                       </EditableCell>
                     )}
                     
@@ -406,7 +424,11 @@ export const UTXOTableBody = ({
                         onSave={(value) => handleBtcPriceEdit(utxo.txid, value)}
                         inputType="number"
                         placeholder="Enter BTC price..."
-                      />
+                      >
+                        {utxo.acquisitionBtcPrice !== null 
+                          ? formatBtcPrice(utxo.acquisitionBtcPrice) 
+                          : ""}
+                      </EditableCell>
                     )}
                     
                     {/* Cost Basis Cell - Editable */}
@@ -478,10 +500,10 @@ export const UTXOTableBody = ({
                       </TableCell>
                     )}
                     
-                    {/* Actions Cell */}
+                    {/* Actions Cell - Modified to move Edit functionality to dropdown */}
                     {visibleColumns.actions && (
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end space-x-1">
+                        <div className="flex items-center justify-end">
                           {isEditing ? (
                             <Button 
                               variant="outline" 
@@ -492,70 +514,65 @@ export const UTXOTableBody = ({
                               <X className="h-4 w-4" />
                             </Button>
                           ) : (
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => startEditing(utxo.txid)}
-                              className="p-1 h-8 w-8"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="p-1 h-8 w-8">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-popover text-popover-foreground z-50">
+                                <DropdownMenuItem onClick={() => startEditing(utxo.txid)}>
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  Edit UTXO
+                                </DropdownMenuItem>
+                                <div onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                }}>
+                                  <TagSelector 
+                                    utxoId={utxo.txid}
+                                    onSelect={(tagId, remove) => handleTagSelection(utxo.txid, tagId, remove)}
+                                    utxoTags={utxo.tags}
+                                    trigger={
+                                      <div className="flex items-center w-full px-2 py-1.5 text-sm">
+                                        <Tag className="mr-2 h-4 w-4" />
+                                        <span>Manage Tags</span>
+                                      </div>
+                                    }
+                                  />
+                                </div>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div>
+                                        <DropdownMenuItem 
+                                          onClick={() => !isUTXOSelected(utxo) && handleAddToSimulation(utxo)}
+                                          disabled={isUTXOSelected(utxo)}
+                                          className={isUTXOSelected(utxo) ? "cursor-not-allowed opacity-50" : ""}
+                                        >
+                                          <Bookmark className="mr-2 h-4 w-4" />
+                                          {isUTXOSelected(utxo) ? "Already in Simulation" : "Add to Simulation"}
+                                        </DropdownMenuItem>
+                                      </div>
+                                    </TooltipTrigger>
+                                    {isUTXOSelected(utxo) && (
+                                      <TooltipContent>
+                                        <p>Already added to simulation</p>
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                </TooltipProvider>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => confirmDeleteUtxo(utxo.txid)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete UTXO
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           )}
-                          
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="p-1 h-8 w-8">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-popover text-popover-foreground z-50">
-                              <div onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                              }}>
-                                <TagSelector 
-                                  utxoId={utxo.txid}
-                                  onSelect={(tagId, remove) => handleTagSelection(utxo.txid, tagId, remove)}
-                                  utxoTags={utxo.tags}
-                                  trigger={
-                                    <div className="flex items-center w-full px-2 py-1.5 text-sm">
-                                      <Tag className="mr-2 h-4 w-4" />
-                                      <span>Manage Tags</span>
-                                    </div>
-                                  }
-                                />
-                              </div>
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div>
-                                      <DropdownMenuItem 
-                                        onClick={() => !isUTXOSelected(utxo) && handleAddToSimulation(utxo)}
-                                        disabled={isUTXOSelected(utxo)}
-                                        className={isUTXOSelected(utxo) ? "cursor-not-allowed opacity-50" : ""}
-                                      >
-                                        <Bookmark className="mr-2 h-4 w-4" />
-                                        {isUTXOSelected(utxo) ? "Already in Simulation" : "Add to Simulation"}
-                                      </DropdownMenuItem>
-                                    </div>
-                                  </TooltipTrigger>
-                                  {isUTXOSelected(utxo) && (
-                                    <TooltipContent>
-                                      <p>Already added to simulation</p>
-                                    </TooltipContent>
-                                  )}
-                                </Tooltip>
-                              </TooltipProvider>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                onClick={() => confirmDeleteUtxo(utxo.txid)}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete UTXO
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
                         </div>
                       </TableCell>
                     )}
