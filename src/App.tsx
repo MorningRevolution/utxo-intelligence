@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { WalletProvider } from "./store/WalletContext";
 import { TaxConfigProvider } from "./store/TaxConfigContext";
 import { Layout } from "./components/layout/Layout";
+import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import WalletImport from "./pages/WalletImport";
 import UTXOTable from "./pages/UTXOTable";
@@ -30,7 +31,8 @@ const App = () => (
           <BrowserRouter>
             <Layout>
               <Routes>
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/" element={<Index />} />
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/wallet-import" element={<WalletImport />} />
                 <Route path="/utxo-table" element={<UTXOTable />} />
                 <Route path="/risk-simulator" element={<RiskSimulator />} />
