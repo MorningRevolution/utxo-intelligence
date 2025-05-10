@@ -188,7 +188,7 @@ const UTXOTable = () => {
     setSelectedWallet("");
   };
 
-  // Handle editing functions
+  // Handle editing functions - Updated for better handling of TxID changes
   const startEditing = (utxoId: string) => {
     setEditableUtxo(utxoId);
   };
@@ -295,13 +295,6 @@ const UTXOTable = () => {
         newAcquisitionFiatValue,
         utxo.notes
       );
-      
-      // Also update the BTC price directly in the UTXO
-      const updatedUtxo = {
-        ...utxo,
-        acquisitionBtcPrice: newValue === '' ? null : parsedValue,
-        costAutoPopulated: false
-      };
       
       toast("BTC price and cost basis updated");
     }

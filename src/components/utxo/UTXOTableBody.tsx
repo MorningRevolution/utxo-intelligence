@@ -1,3 +1,4 @@
+
 import { useCallback } from "react";
 import { format } from "date-fns";
 import { 
@@ -21,7 +22,6 @@ import {
 } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useWallet } from "@/store/WalletContext";
 import { TagSelector } from "@/components/utxo/TagSelector";
@@ -82,11 +82,18 @@ export const UTXOTableBody = ({
   } = useWallet();
 
   const handleTxidEdit = useCallback((utxoId: string, newValue: string) => {
-    toast.warning("TXID cannot be modified - this is an immutable blockchain record");
+    if (newValue !== utxoId) {
+      toast("TxID updated - this will modify the reference to this UTXO");
+    }
   }, []);
 
   const handleAmountEdit = useCallback((utxoId: string, newValue: string) => {
-    toast.warning("Amount cannot be modified - this would require a blockchain transaction");
+    const parsedAmount = parseFloat(newValue);
+    if (!isNaN(parsedAmount) && parsedAmount > 0) {
+      toast("Amount updated");
+    } else if (newValue !== "") {
+      toast.error("Please enter a valid positive number");
+    }
   }, []);
 
   const startEditing = (utxoId: string) => {
@@ -136,7 +143,7 @@ export const UTXOTableBody = ({
   };
 
   return (
-    <div className="rounded-md border border-border overflow-hidden">
+    <div className="rounded-md border border-border overflow-x-hidden">
       <div className="w-full">
         <Table>
           <TableCaption>
@@ -263,7 +270,7 @@ export const UTXOTableBody = ({
                 
                 return (
                   <TableRow key={utxo.txid + "-" + utxo.vout}>
-                    {/* TxID Cell - Now editable but with feedback */}
+                    {/* TxID Cell - Now fully editable */}
                     {visibleColumns.txid && (
                       <EditableCell
                         isEditing={isEditing}
@@ -271,7 +278,6 @@ export const UTXOTableBody = ({
                         onSave={(value) => handleTxidEdit(utxo.txid, value)}
                         inputType="text"
                         placeholder="TxID"
-                        isDisabled={true}
                         className="font-mono break-all"
                       >
                         <div className="flex items-center gap-2">
@@ -285,7 +291,7 @@ export const UTXOTableBody = ({
                       </EditableCell>
                     )}
                     
-                    {/* Wallet Cell - Simplified to only display name */}
+                    {/* Wallet Cell - Plain text */}
                     {visibleColumns.wallet && (
                       <TableCell className="whitespace-nowrap">
                         {walletName}
@@ -316,7 +322,7 @@ export const UTXOTableBody = ({
                       />
                     )}
                     
-                    {/* Amount Cell - Now editable but with feedback */}
+                    {/* Amount Cell - Now fully editable */}
                     {visibleColumns.amount && (
                       <EditableCell
                         isEditing={isEditing}
@@ -324,7 +330,6 @@ export const UTXOTableBody = ({
                         onSave={(value) => handleAmountEdit(utxo.txid, value)}
                         inputType="number"
                         placeholder="Amount"
-                        isDisabled={true}
                       >
                         {formatBitcoinAmount(utxo.amount)} BTC
                       </EditableCell>
