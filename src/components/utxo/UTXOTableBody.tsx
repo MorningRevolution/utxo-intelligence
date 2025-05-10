@@ -1,4 +1,3 @@
-
 import { useCallback } from "react";
 import { format } from "date-fns";
 import { 
@@ -83,7 +82,6 @@ export const UTXOTableBody = ({
     tags, 
     selectedCurrency,
     isUTXOSelected,
-    wallets = [], // Default to empty array for safety
   } = useWallet();
 
   // Default handlers if not provided
@@ -111,12 +109,12 @@ export const UTXOTableBody = ({
   const onWalletNameEdit = useCallback((utxoId: string, newValue: string) => {
     if (handleWalletNameEdit) {
       handleWalletNameEdit(utxoId, newValue);
-    } else if (wallets.some(w => w.name === newValue) || newValue.trim() !== "") {
+    } else if (newValue.trim() !== "") {
       toast("Wallet updated (no change handler provided)");
     } else {
       toast.error("Please enter a valid wallet name");
     }
-  }, [handleWalletNameEdit, wallets]);
+  }, [handleWalletNameEdit]);
 
   const startEditing = (utxoId: string) => {
     setEditableUtxo(utxoId);

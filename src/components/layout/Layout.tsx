@@ -14,8 +14,8 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-background flex">
       {!isHomePage && <SideNav />}
-      <main className={`flex-1 p-4 ${!isHomePage ? "ml-0 md:ml-64" : ""} transition-all duration-300 ease-in-out`}>
-        <div className={`${isHomePage ? "" : "container mx-auto py-6"}`}>
+      <main className={`flex-1 p-4 ${!isHomePage ? "ml-0 md:ml-64" : ""} transition-all duration-300 ease-in-out overflow-x-hidden`}>
+        <div className={`${isHomePage ? "" : "container mx-auto py-6"} overflow-x-hidden`}>
           {children}
         </div>
       </main>

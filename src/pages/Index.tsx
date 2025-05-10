@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Shield, Coins, FileText, WalletIcon, Info, Lock, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Shield, Coins, FileText, WalletIcon, Info, Lock, Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 
@@ -14,15 +14,18 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section */}
+      {/* Hero Section with Privacy Question */}
       <div className="container mx-auto px-4 py-16 md:py-24">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-            Master Your Bitcoin UTXOs
+            Three years ago, you received a UTXO.<br />
+            Today you spend it.<br />
+            <span className="text-primary mt-2 block">Are you ready to link your identity?</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-10 max-w-3xl mx-auto">
-            Unspent Transaction Outputs (UTXOs) are the building blocks of Bitcoin transactions.
-            Our tools help you manage them effectively for better privacy, tax efficiency, and portfolio control.
+            Every time you move your bitcoin, you create a pattern. Without proper UTXO management, 
+            these patterns can reveal your identity, spending habits, and total holdings. 
+            Take control of your financial sovereignty with UTXO Intelligence.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Button 
@@ -45,7 +48,7 @@ const Index = () => {
       
       <Separator className="my-12" />
       
-      {/* What is a UTXO - Educational Section */}
+      {/* What is a UTXO - Educational Section (Enhanced) */}
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-8">What is a UTXO?</h2>
@@ -91,6 +94,112 @@ const Index = () => {
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <Separator className="my-12" />
+
+      {/* UTXOs and Identity - New Educational Section */}
+      <div className="container mx-auto px-4 py-12">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-8">How UTXOs Accumulate and Impact Your Privacy</h2>
+          
+          <div className="bg-card border border-border rounded-lg shadow-sm overflow-hidden">
+            <div className="grid md:grid-cols-3 divide-x divide-border">
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="font-bold text-primary">1</span>
+                  </div>
+                  <h3 className="text-lg font-medium">Acquisition</h3>
+                </div>
+                <p className="text-muted-foreground">
+                  Every time you receive bitcoin, you create a new UTXO linked to your address. 
+                  Whether from an exchange, a friend, or a merchant refund, these UTXOs build up in your wallet over time.
+                </p>
+              </div>
+              
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="font-bold text-primary">2</span>
+                  </div>
+                  <h3 className="text-lg font-medium">Spending</h3>
+                </div>
+                <p className="text-muted-foreground">
+                  When you spend bitcoin, your wallet selects specific UTXOs to use. Without careful management, 
+                  you might combine UTXOs from different sources, unintentionally linking separate parts of your financial life.
+                </p>
+              </div>
+              
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="font-bold text-primary">3</span>
+                  </div>
+                  <h3 className="text-lg font-medium">Identity Linking</h3>
+                </div>
+                <p className="text-muted-foreground">
+                  Each transaction provides clues that blockchain analysis can use to deanonymize you. 
+                  For example, using a KYC exchange UTXO alongside a personal wallet UTXO links both to your identity.
+                </p>
+              </div>
+            </div>
+            
+            <div className="p-6 bg-muted/50 border-t border-border">
+              <div className="flex items-start">
+                <AlertTriangle className="text-amber-500 mr-4 h-6 w-6 shrink-0 mt-1" />
+                <div>
+                  <h4 className="font-medium mb-2">The Privacy Risk</h4>
+                  <p className="text-muted-foreground mb-4">
+                    Without proper UTXO management, you risk:
+                  </p>
+                  <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
+                    <li>Revealing your complete transaction history to anyone who knows a single address</li>
+                    <li>Linking your identity to all your bitcoin holdings</li>
+                    <li>Creating patterns that could be used for targeting or surveillance</li>
+                    <li>Losing the fungibility advantages that bitcoin should provide</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Visual Analogy */}
+          <div className="mt-12 bg-background border border-border rounded-lg p-8">
+            <h3 className="text-xl font-semibold text-center mb-6">The Digital Money Trail Analogy</h3>
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="bg-muted p-6 rounded-lg border border-border">
+                <h4 className="font-medium mb-3 flex items-center">
+                  <EyeOff className="mr-2 h-5 w-5 text-primary" />
+                  Traditional Cash
+                </h4>
+                <p className="text-muted-foreground">
+                  When you spend physical cash, it leaves no digital trail. Each bill is indistinguishable, 
+                  with no history of who owned it before. There's no way to connect your different cash purchases.
+                </p>
+              </div>
+              
+              <div className="bg-muted p-6 rounded-lg border border-border">
+                <h4 className="font-medium mb-3 flex items-center">
+                  <Eye className="mr-2 h-5 w-5 text-amber-500" />
+                  Unmanaged Bitcoin
+                </h4>
+                <p className="text-muted-foreground">
+                  By contrast, poorly managed bitcoin transactions create a permanent, public record that links your activity. 
+                  It's like having serial-numbered bills where anyone can see their complete ownership history.
+                </p>
+              </div>
+            </div>
+            
+            <div className="mt-8 p-6 bg-primary/5 border border-primary/20 rounded-lg text-center">
+              <h4 className="font-medium mb-2 text-primary">UTXO Intelligence Restores Your Privacy</h4>
+              <p className="text-muted-foreground">
+                Our tools help you maintain the cash-like properties of bitcoin by intelligently managing your UTXOs, 
+                avoiding unnecessary links, and maintaining separate financial contexts.
+              </p>
             </div>
           </div>
         </div>
