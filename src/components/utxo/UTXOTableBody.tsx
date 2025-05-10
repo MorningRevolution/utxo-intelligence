@@ -50,9 +50,10 @@ interface UTXOTableBodyProps {
   handleBtcPriceEdit: (utxoId: string, newValue: string) => void;
   handleCostBasisEdit: (utxoId: string, newValue: string) => void;
   handleNotesEdit: (utxoId: string, newValue: string) => void;
+  handleTxidEdit?: (utxoId: string, newValue: string) => void;
+  handleAmountEdit?: (utxoId: string, newValue: string) => void;
+  handleWalletNameEdit?: (utxoId: string, newValue: string) => void;
 }
-
-// Removing local EditableCell component as we're now using the imported one from ui/table
 
 export const UTXOTableBody = ({
   filteredUtxos,
@@ -73,28 +74,49 @@ export const UTXOTableBody = ({
   handleBtcPriceEdit,
   handleCostBasisEdit,
   handleNotesEdit,
+  handleTxidEdit,
+  handleAmountEdit,
+  handleWalletNameEdit,
 }: UTXOTableBodyProps) => {
   const isMobile = useIsMobile();
   const { 
     tags, 
     selectedCurrency,
     isUTXOSelected,
+    wallets = [], // Default to empty array for safety
   } = useWallet();
 
-  const handleTxidEdit = useCallback((utxoId: string, newValue: string) => {
-    if (newValue !== utxoId) {
-      toast("TxID updated - this will modify the reference to this UTXO");
+  // Default handlers if not provided
+  const onTxidEdit = useCallback((utxoId: string, newValue: string) => {
+    if (handleTxidEdit) {
+      handleTxidEdit(utxoId, newValue);
+    } else if (newValue !== utxoId) {
+      toast.info("TxID changes require special handling and will be applied in the next update");
     }
-  }, []);
+  }, [handleTxidEdit]);
 
-  const handleAmountEdit = useCallback((utxoId: string, newValue: string) => {
-    const parsedAmount = parseFloat(newValue);
-    if (!isNaN(parsedAmount) && parsedAmount > 0) {
-      toast("Amount updated");
-    } else if (newValue !== "") {
-      toast.error("Please enter a valid positive number");
+  const onAmountEdit = useCallback((utxoId: string, newValue: string) => {
+    if (handleAmountEdit) {
+      handleAmountEdit(utxoId, newValue);
+    } else {
+      const parsedAmount = parseFloat(newValue);
+      if (!isNaN(parsedAmount) && parsedAmount > 0) {
+        toast("Amount updated (no change handler provided)");
+      } else if (newValue !== "") {
+        toast.error("Please enter a valid positive number");
+      }
     }
-  }, []);
+  }, [handleAmountEdit]);
+
+  const onWalletNameEdit = useCallback((utxoId: string, newValue: string) => {
+    if (handleWalletNameEdit) {
+      handleWalletNameEdit(utxoId, newValue);
+    } else if (wallets.some(w => w.name === newValue) || newValue.trim() !== "") {
+      toast("Wallet updated (no change handler provided)");
+    } else {
+      toast.error("Please enter a valid wallet name");
+    }
+  }, [handleWalletNameEdit, wallets]);
 
   const startEditing = (utxoId: string) => {
     setEditableUtxo(utxoId);
@@ -143,7 +165,7 @@ export const UTXOTableBody = ({
   };
 
   return (
-    <div className="rounded-md border border-border overflow-x-hidden">
+    <div className="rounded-md border border-border overflow-hidden overflow-x-hidden">
       <div className="w-full">
         <Table>
           <TableCaption>
@@ -265,17 +287,17 @@ export const UTXOTableBody = ({
             ) : (
               filteredUtxos.map((utxo) => {
                 const isEditing = editableUtxo === utxo.txid;
-                // Determine walletName (for demo purposes)
+                // Get the wallet name (for demo purposes)
                 const walletName = utxo.walletName || walletData.name;
                 
                 return (
                   <TableRow key={utxo.txid + "-" + utxo.vout}>
-                    {/* TxID Cell - Now fully editable */}
+                    {/* TxID Cell - Fully editable */}
                     {visibleColumns.txid && (
                       <EditableCell
                         isEditing={isEditing}
-                        initialValue={formatTxid(utxo.txid)}
-                        onSave={(value) => handleTxidEdit(utxo.txid, value)}
+                        initialValue={utxo.txid}
+                        onSave={(value) => onTxidEdit(utxo.txid, value)}
                         inputType="text"
                         placeholder="TxID"
                         className="font-mono break-all"
@@ -291,11 +313,16 @@ export const UTXOTableBody = ({
                       </EditableCell>
                     )}
                     
-                    {/* Wallet Cell - Plain text */}
+                    {/* Wallet Cell - Now editable */}
                     {visibleColumns.wallet && (
-                      <TableCell className="whitespace-nowrap">
-                        {walletName}
-                      </TableCell>
+                      <EditableCell
+                        isEditing={isEditing}
+                        initialValue={walletName || ""}
+                        onSave={(value) => onWalletNameEdit(utxo.txid, value)}
+                        inputType="text"
+                        placeholder="Enter wallet name..."
+                        className="whitespace-nowrap"
+                      />
                     )}
                     
                     {/* Sender Address Cell */}
@@ -322,12 +349,12 @@ export const UTXOTableBody = ({
                       />
                     )}
                     
-                    {/* Amount Cell - Now fully editable */}
+                    {/* Amount Cell - Editable */}
                     {visibleColumns.amount && (
                       <EditableCell
                         isEditing={isEditing}
                         initialValue={String(utxo.amount)}
-                        onSave={(value) => handleAmountEdit(utxo.txid, value)}
+                        onSave={(value) => onAmountEdit(utxo.txid, value)}
                         inputType="number"
                         placeholder="Amount"
                       >

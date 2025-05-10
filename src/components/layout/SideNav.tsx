@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
   Home, 
@@ -24,6 +24,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 export function SideNav() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { hasWallet } = useWallet();
   const [openSections, setOpenSections] = useState<string[]>([]);
 
@@ -31,7 +32,7 @@ export function SideNav() {
   const mainRoutes = [
     {
       name: "Dashboard",
-      path: "/",
+      path: "/dashboard",
       icon: <Home className="mr-2 h-5 w-5" />,
       disabled: false,
       subItems: [
@@ -80,6 +81,12 @@ export function SideNav() {
           path: "/report-export",
           icon: <FileText className="mr-2 h-4 w-4" />,
           disabled: !hasWallet
+        },
+        {
+          name: "Tax Settings",
+          path: "/settings/tax",
+          icon: <FileText className="mr-2 h-4 w-4" />,
+          disabled: !hasWallet
         }
       ]
     }
@@ -102,12 +109,30 @@ export function SideNav() {
   };
 
   // Toggle section open/close state
-  const toggleSection = (sectionName: string) => {
+  const toggleSection = (sectionName: string, path: string) => {
+    if (path) {
+      navigate(path);
+    }
+    
     setOpenSections(prev => 
       prev.includes(sectionName) 
         ? prev.filter(name => name !== sectionName)
         : [...prev, sectionName]
     );
+  };
+
+  // Handle main item click
+  const handleMainItemClick = (route: any) => {
+    if (route.disabled) return;
+    
+    // If has subitems, toggle section
+    if (route.subItems.length > 0) {
+      toggleSection(route.name, route.path);
+    } else {
+      // No subitems, just navigate
+      navigate(route.path);
+      setIsOpen(false);
+    }
   };
 
   // Check if a section is open
@@ -158,21 +183,26 @@ export function SideNav() {
                 {route.subItems.length > 0 ? (
                   <Collapsible
                     open={isSectionOpen(route.name)}
-                    onOpenChange={() => toggleSection(route.name)}
+                    onOpenChange={() => {}}
                     className={cn(
                       "border rounded-md",
                       isSectionActive(route.path, route.subItems) && "border-sidebar-accent bg-sidebar-accent/10"
                     )}
                   >
-                    <CollapsibleTrigger className="w-full">
+                    <CollapsibleTrigger asChild>
                       <div
                         className={cn(
-                          "flex items-center justify-between px-4 py-2 rounded-md transition-colors",
+                          "flex items-center justify-between px-4 py-2 rounded-md transition-colors cursor-pointer",
                           isSectionActive(route.path, route.subItems)
                             ? "text-sidebar-primary-foreground"
                             : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
                           route.disabled && "opacity-50 cursor-not-allowed"
                         )}
+                        onClick={() => {
+                          if (!route.disabled) {
+                            handleMainItemClick(route);
+                          }
+                        }}
                       >
                         <div className="flex items-center">
                           {route.icon}
@@ -215,26 +245,24 @@ export function SideNav() {
                     </CollapsibleContent>
                   </Collapsible>
                 ) : (
-                  <Link
-                    to={route.disabled ? "#" : route.path}
+                  <div
                     className={cn(
-                      "flex items-center px-4 py-2 rounded-md transition-colors",
+                      "flex items-center px-4 py-2 rounded-md transition-colors cursor-pointer",
                       isPathActive(route.path, route.subItems)
                         ? "bg-sidebar-primary text-sidebar-primary-foreground"
                         : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                       route.disabled && "opacity-50 cursor-not-allowed pointer-events-none"
                     )}
-                    onClick={(e) => {
-                      if (route.disabled) {
-                        e.preventDefault();
-                      } else {
+                    onClick={() => {
+                      if (!route.disabled) {
+                        navigate(route.path);
                         setIsOpen(false);
                       }
                     }}
                   >
                     {route.icon}
                     <span>{route.name}</span>
-                  </Link>
+                  </div>
                 )}
               </li>
             ))}
