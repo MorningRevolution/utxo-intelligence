@@ -1,9 +1,8 @@
-
 import { useCallback } from "react";
 import { format } from "date-fns";
 import { 
   Table, TableBody, TableCaption, TableCell, 
-  TableHead, TableHeader, TableRow, EditableCell 
+  TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +29,7 @@ import { formatBTC, formatTxid, getRiskColor } from "@/utils/utxo-utils";
 import { ArrowUpDown, MoreVertical, Tag, Bookmark, CalendarIcon, DollarSign, Pencil, Check, X, Trash2, Wallet } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UTXO } from "@/types/utxo";
+import { EditableCell } from "@/components/ui/table";
 
 interface UTXOTableBodyProps {
   filteredUtxos: UTXO[];
@@ -52,48 +52,7 @@ interface UTXOTableBodyProps {
   handleNotesEdit: (utxoId: string, newValue: string) => void;
 }
 
-interface EditableCellProps {
-  isEditing: boolean;
-  initialValue: string;
-  onSave: (value: string) => void;
-  inputType?: string;
-  placeholder?: string;
-  isDisabled?: boolean;
-  className?: string;
-  children?: React.ReactNode;
-}
-
-const EditableCell = ({
-  isEditing,
-  initialValue,
-  onSave,
-  inputType = "text",
-  placeholder,
-  isDisabled = false,
-  className,
-  children,
-}: EditableCellProps) => {
-  if (isEditing) {
-    return (
-      <TableCell className={className}>
-        <Input
-          type={inputType}
-          defaultValue={initialValue}
-          onBlur={(e) => onSave(e.target.value)}
-          placeholder={placeholder}
-          disabled={isDisabled}
-          className="w-full h-8"
-          autoFocus={!isDisabled}
-        />
-      </TableCell>
-    );
-  }
-  return (
-    <TableCell className={className}>
-      {children || initialValue}
-    </TableCell>
-  );
-};
+// Removing local EditableCell component as we're now using the imported one from ui/table
 
 export const UTXOTableBody = ({
   filteredUtxos,

@@ -146,7 +146,7 @@ function Portfolio() {
     <div className="container py-6">
       <h1 className="text-3xl font-bold mb-6">Portfolio Dashboard</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card className="bg-dark-card border-dark-border shadow-lg">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">BTC Balance</CardTitle>
@@ -184,7 +184,7 @@ function Portfolio() {
         </Card>
       </div>
       
-      <div className="mb-4">
+      <div className="mb-6">
         <ToggleGroup type="single" value={timeFilter} onValueChange={(value) => value && setTimeFilter(value as TimeFilter)}>
           <ToggleGroupItem value="30d">30 days</ToggleGroupItem>
           <ToggleGroupItem value="90d">90 days</ToggleGroupItem>
@@ -195,9 +195,9 @@ function Portfolio() {
         </ToggleGroup>
       </div>
       
-      <div className="space-y-6">
+      <div className="space-y-8">
         <Tabs value={selectedTab} onValueChange={setSelectedTab} className="mb-6">
-          <TabsList className="mb-4">
+          <TabsList className="mb-6">
             <TabsTrigger value="balance">
               <ChartLine className="mr-2 h-4 w-4" />
               Balance History
@@ -212,7 +212,7 @@ function Portfolio() {
             </TabsTrigger>
           </TabsList>
           
-          <div className="h-[400px]">
+          <div className="h-[400px] mb-8">
             <TabsContent value="balance" className="h-full mt-0">
               <BalanceChart 
                 data={getFilteredChartData()} 
@@ -236,7 +236,7 @@ function Portfolio() {
           </div>
         </Tabs>
         
-        <Card className="bg-dark-card border-dark-border shadow-lg mt-8">
+        <Card className="bg-dark-card border-dark-border shadow-lg mt-12">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>UTXO Management</CardTitle>
