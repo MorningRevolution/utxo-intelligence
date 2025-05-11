@@ -17,6 +17,7 @@ import { useWallet } from "@/store/WalletContext";
 import { UTXOFilters } from "@/components/utxo/UTXOFilters";
 import { UTXOTableBody } from "@/components/utxo/UTXOTableBody";
 import { UTXOVisualizer } from "@/components/utxo/UTXOVisualizer";
+import { UTXOGraphView } from "@/components/utxo/UTXOGraphView";
 import { ViewToggle, ViewType } from "@/components/utxo/ViewToggle";
 import { AddUTXOModal } from "@/components/portfolio/AddUTXOModal";
 import { Bookmark } from "lucide-react";
@@ -524,12 +525,20 @@ const UTXOTable = () => {
             handleNotesEdit={handleNotesEdit}
             onRowClick={handleRowClick}
           />
-        ) : (
+        ) : currentView === "visual" ? (
           <div className="mt-6 p-2 md:p-4">
             <UTXOVisualizer 
               selectedUtxo={selectedVisualUtxo} 
               filteredUtxos={filteredUtxos}
               onUtxoSelect={handleVisualSelect}
+            />
+          </div>
+        ) : (
+          <div className="mt-6 p-2 md:p-4">
+            <UTXOGraphView
+              utxos={filteredUtxos}
+              onSelectUtxo={handleVisualSelect}
+              onViewChange={setCurrentView}
             />
           </div>
         )}

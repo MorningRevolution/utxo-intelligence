@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Table, ArrowLeft, Eye } from "lucide-react";
 
 // Define view as a literal union type
-export type ViewType = "table" | "visual";
+export type ViewType = "table" | "visual" | "graph";
 
 interface ViewToggleProps {
   view: ViewType;
@@ -13,7 +13,7 @@ interface ViewToggleProps {
 export const ViewToggle = ({ view, onViewChange }: ViewToggleProps) => {
   return (
     <div className="flex items-center space-x-2 bg-muted/50 rounded-md p-1">
-      {view === "visual" && (
+      {view !== "table" && (
         <Button
           variant="outline"
           size="sm"

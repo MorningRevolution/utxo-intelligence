@@ -1,4 +1,3 @@
-
 export interface UTXO {
   txid: string;
   vout: number;
@@ -20,6 +19,7 @@ export interface UTXO {
   senderAddress: string | null;
   receiverAddress: string | null;
   walletName?: string; // Which wallet this UTXO belongs to
+  fee?: number; // Fee in BTC
 }
 
 export interface WalletData {
