@@ -38,7 +38,9 @@ export const UTXOVisualizer = ({ selectedUtxo, filteredUtxos, onUtxoSelect }: UT
   });
   
   // Get unique wallet names
-  const walletNames = walletData ? [walletData.name, "Wallet 2"] : [];
+  const walletNames = walletData ? Array.from(
+    new Set(walletData.utxos.map(u => u.walletName || walletData.name))
+  ) : [];
   
   // Apply filters to utxos
   const filteredVisualUtxos = filteredUtxos.filter(utxo => {
@@ -367,7 +369,7 @@ export const UTXOVisualizer = ({ selectedUtxo, filteredUtxos, onUtxoSelect }: UT
                   <span className="font-medium">Transaction</span>
                   <ExternalLink className="h-3 w-3 text-primary" />
                 </div>
-                <div className="text-sm truncate max-w-[300px]">
+                <div className="text-sm break-all max-w-[300px]">
                   {selectedUtxo.txid}
                 </div>
                 <div className="mt-2 text-sm">
