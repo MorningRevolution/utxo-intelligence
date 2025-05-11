@@ -3,8 +3,12 @@ import { useState, useEffect } from "react";
 import { UTXO } from "@/types/utxo";
 import { useWallet } from "@/store/WalletContext";
 import { formatBTC } from "@/utils/utxo-utils";
-import { Wallet, ArrowRight, Database, ExternalLink, Filter, Calendar, Tag as TagIcon } from "lucide-react";
+import { 
+  Wallet, ArrowRight, Database, ExternalLink, Filter, Calendar, 
+  Tag as TagIcon, X, Edit, Check
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
@@ -15,16 +19,18 @@ import { format, isAfter, isBefore, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 interface UTXOVisualizerProps {
   selectedUtxo: UTXO | null;
   filteredUtxos: UTXO[];
-  onUtxoSelect: (utxo: UTXO) => void;
+  onUtxoSelect: (utxo: UTXO | null) => void;
 }
 
 export const UTXOVisualizer = ({ selectedUtxo, filteredUtxos, onUtxoSelect }: UTXOVisualizerProps) => {
   const [isVisible, setIsVisible] = useState(false);
-  const { tags, walletData } = useWallet();
+  const { tags, walletData, updateUtxoCostBasis } = useWallet();
   
   // Filter states
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -37,10 +43,22 @@ export const UTXOVisualizer = ({ selectedUtxo, filteredUtxos, onUtxoSelect }: UT
     to: undefined,
   });
   
+  // Note editing state
+  const [isEditingNote, setIsEditingNote] = useState(false);
+  const [noteValue, setNoteValue] = useState("");
+  
   // Get unique wallet names
   const walletNames = walletData ? Array.from(
     new Set(walletData.utxos.map(u => u.walletName || walletData.name))
   ) : [];
+  
+  useEffect(() => {
+    // Reset note editing state when UTXO changes
+    if (selectedUtxo) {
+      setNoteValue(selectedUtxo.notes || "");
+      setIsEditingNote(false);
+    }
+  }, [selectedUtxo]);
   
   // Apply filters to utxos
   const filteredVisualUtxos = filteredUtxos.filter(utxo => {
@@ -90,6 +108,25 @@ export const UTXOVisualizer = ({ selectedUtxo, filteredUtxos, onUtxoSelect }: UT
     setSelectedTags([]);
     setSelectedWallets([]);
     setDateRange({ from: undefined, to: undefined });
+  };
+  
+  const handleNoteEdit = () => {
+    if (!selectedUtxo) return;
+    
+    updateUtxoCostBasis(
+      selectedUtxo.txid,
+      selectedUtxo.acquisitionDate,
+      selectedUtxo.acquisitionFiatValue,
+      noteValue
+    );
+    
+    setIsEditingNote(false);
+    toast("Note updated successfully");
+  };
+
+  const clearSelection = () => {
+    onUtxoSelect(null);
+    setIsVisible(false);
   };
   
   // Calculate if filters are active
@@ -220,6 +257,14 @@ export const UTXOVisualizer = ({ selectedUtxo, filteredUtxos, onUtxoSelect }: UT
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               Clear Filters
+            </Button>
+          )}
+          
+          {/* Clear selection button */}
+          {selectedUtxo && (
+            <Button variant="ghost" size="sm" onClick={clearSelection}>
+              <X className="h-4 w-4 mr-1" />
+              Clear Selection
             </Button>
           )}
         </div>
@@ -482,6 +527,57 @@ export const UTXOVisualizer = ({ selectedUtxo, filteredUtxos, onUtxoSelect }: UT
                 </div>
               )}
             </div>
+          </div>
+          
+          {/* Note section */}
+          <div className="mt-4 p-4 bg-card border border-border rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-medium">Notes</h4>
+              {!isEditingNote ? (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setIsEditingNote(true)}
+                >
+                  <Edit className="h-4 w-4 mr-1" />
+                  Edit
+                </Button>
+              ) : (
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setNoteValue(selectedUtxo.notes || "");
+                      setIsEditingNote(false);
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleNoteEdit}
+                  >
+                    <Check className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+            
+            {isEditingNote ? (
+              <Textarea
+                value={noteValue}
+                onChange={(e) => setNoteValue(e.target.value)}
+                placeholder="Add notes about this UTXO..."
+                className="w-full"
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {selectedUtxo.notes || "No notes available for this UTXO."}
+              </p>
+            )}
           </div>
         </div>
       )}

@@ -17,7 +17,7 @@ import { useWallet } from "@/store/WalletContext";
 import { UTXOFilters } from "@/components/utxo/UTXOFilters";
 import { UTXOTableBody } from "@/components/utxo/UTXOTableBody";
 import { UTXOVisualizer } from "@/components/utxo/UTXOVisualizer";
-import { ViewToggle } from "@/components/utxo/ViewToggle";
+import { ViewToggle, ViewType } from "@/components/utxo/ViewToggle";
 import { AddUTXOModal } from "@/components/portfolio/AddUTXOModal";
 import { Bookmark } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -42,8 +42,8 @@ const UTXOTable = () => {
     selectedCurrency
   } = useWallet();
   
-  // Add view state
-  const [currentView, setCurrentView] = useState<"table" | "visual">("table");
+  // Add view state with the correct type
+  const [currentView, setCurrentView] = useState<ViewType>("table");
   const [selectedVisualUtxo, setSelectedVisualUtxo] = useState<UTXO | null>(null);
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -78,6 +78,7 @@ const UTXOTable = () => {
   }, [hasWallet, navigate]);
 
   const filteredUtxos = useMemo(() => {
+    // ... keep existing code (calculating filtered UTXOs)
     if (!walletData) return [];
 
     return walletData.utxos.filter(utxo => {
@@ -188,9 +189,12 @@ const UTXOTable = () => {
     toast("UTXO added to simulation");
   };
 
-  // Add handler for utxo selection in visual view
-  const handleVisualSelect = (utxo: UTXO) => {
+  // Update handler for visual UTXO selection to handle clear selection
+  const handleVisualSelect = (utxo: UTXO | null) => {
     setSelectedVisualUtxo(utxo);
+    if (utxo) {
+      setCurrentView("visual");
+    }
   };
 
   const clearFilters = () => {
@@ -404,6 +408,20 @@ const UTXOTable = () => {
     }
   };
 
+  // Modified row click handler to prevent visualization when editing
+  const handleRowClick = (utxo: UTXO) => {
+    // Only select for visualization if not currently editing
+    if (!editableUtxo) {
+      // If already selected, toggle off
+      if (selectedVisualUtxo && selectedVisualUtxo.txid === utxo.txid && selectedVisualUtxo.vout === utxo.vout) {
+        setSelectedVisualUtxo(null);
+      } else {
+        setSelectedVisualUtxo(utxo);
+        setCurrentView("visual");
+      }
+    }
+  };
+
   if (!walletData) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
@@ -504,11 +522,7 @@ const UTXOTable = () => {
             handleBtcPriceEdit={handleBtcPriceEdit}
             handleCostBasisEdit={handleCostBasisEdit}
             handleNotesEdit={handleNotesEdit}
-            onRowClick={(utxo) => {
-              // When in table view, clicking a row selects it for visual view
-              setSelectedVisualUtxo(utxo);
-              setCurrentView("visual");
-            }}
+            onRowClick={handleRowClick}
           />
         ) : (
           <div className="mt-6 p-2 md:p-4">

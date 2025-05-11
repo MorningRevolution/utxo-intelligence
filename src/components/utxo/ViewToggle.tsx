@@ -1,10 +1,13 @@
 
 import { Button } from "@/components/ui/button";
-import { Table, ArrowLeft } from "lucide-react";
+import { Table, ArrowLeft, Eye } from "lucide-react";
+
+// Define view as a literal union type
+export type ViewType = "table" | "visual";
 
 interface ViewToggleProps {
-  view: "table" | "visual";
-  onViewChange: (view: "table" | "visual") => void;
+  view: ViewType;
+  onViewChange: (view: ViewType) => void;
 }
 
 export const ViewToggle = ({ view, onViewChange }: ViewToggleProps) => {
@@ -38,6 +41,7 @@ export const ViewToggle = ({ view, onViewChange }: ViewToggleProps) => {
             onClick={() => onViewChange("visual")}
             className="flex items-center gap-1"
           >
+            <Eye className="h-4 w-4" />
             <span>Visual</span>
           </Button>
         </>
