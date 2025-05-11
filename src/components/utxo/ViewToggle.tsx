@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Table, ChevronRight, ArrowLeft } from "lucide-react";
+import { Table, ArrowLeft } from "lucide-react";
 
 interface ViewToggleProps {
   view: "table" | "visual";
@@ -38,7 +38,6 @@ export const ViewToggle = ({ view, onViewChange }: ViewToggleProps) => {
             onClick={() => onViewChange("visual")}
             className="flex items-center gap-1"
           >
-            <ChevronRight className="h-4 w-4" />
             <span>Visual</span>
           </Button>
         </>
