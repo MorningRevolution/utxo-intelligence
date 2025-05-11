@@ -1,7 +1,6 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,15 +14,13 @@ import {
 import { toast } from "sonner";
 import { useWallet } from "@/store/WalletContext";
 import { UTXOFilters } from "@/components/utxo/UTXOFilters";
-import { UTXOTableBody } from "@/components/utxo/UTXOTableBody";
-import { UTXOVisualizer } from "@/components/utxo/UTXOVisualizer";
-import { UTXOGraphView } from "@/components/utxo/UTXOGraphView";
 import { ViewToggle, ViewType } from "@/components/utxo/ViewToggle";
 import { AddUTXOModal } from "@/components/portfolio/AddUTXOModal";
-import { Bookmark } from "lucide-react";
+import { Bookmark, Network } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UTXO } from "@/types/utxo";
-import { formatBTC } from "@/utils/utxo-utils";
+import { UTXOViewManager } from "@/components/utxo/UTXOViewManager";
+import { useUTXOModifiers } from "@/hooks/useUTXOModifiers";
 
 const UTXOTable = () => {
   const navigate = useNavigate();
@@ -31,21 +28,28 @@ const UTXOTable = () => {
   const isMobile = useIsMobile();
   const { 
     walletData, 
-    tags, 
-    tagUTXO,
-    updateUtxoCostBasis,
-    updateUtxoAddresses,
-    autoPopulateUTXOCostBasis,
-    deleteUTXO,
     hasWallet,
     isUTXOSelected,
     toggleUTXOSelection,
-    selectedCurrency
   } = useWallet();
   
+  const {
+    handleTagSelection,
+    handleSenderAddressEdit,
+    handleReceiverAddressEdit,
+    handleDateEdit,
+    handleBtcPriceEdit,
+    handleCostBasisEdit,
+    handleNotesEdit,
+    deleteUtxoItem
+  } = useUTXOModifiers();
+  
+  // Check for state passed during navigation
+  const locationState = location.state as { view?: ViewType; selectedUtxo?: UTXO } | null;
+  
   // Add view state with the correct type
-  const [currentView, setCurrentView] = useState<ViewType>("table");
-  const [selectedVisualUtxo, setSelectedVisualUtxo] = useState<UTXO | null>(null);
+  const [currentView, setCurrentView] = useState<ViewType>(locationState?.view || "table");
+  const [selectedVisualUtxo, setSelectedVisualUtxo] = useState<UTXO | null>(locationState?.selectedUtxo || null);
   
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -164,24 +168,6 @@ const UTXOTable = () => {
     }));
   };
 
-  const handleTagSelection = (utxoId: string, tagId: string, remove?: boolean) => {
-    if (tagId && utxoId) {
-      if (remove) {
-        const utxo = walletData?.utxos.find(u => u.txid === utxoId);
-        const tag = tags.find(t => t.id === tagId);
-        if (utxo && tag) {
-          console.log(`UTXOTable: Removing tag ${tag.name} from UTXO ${utxoId.substring(0, 8)}`);
-          tagUTXO(utxoId, null, tag.name);
-          toast("Tag removed from UTXO");
-        }
-      } else {
-        console.log(`UTXOTable: Adding tag ${tagId} to UTXO ${utxoId.substring(0, 8)}`);
-        tagUTXO(utxoId, tagId);
-        toast("Tag applied to UTXO");
-      }
-    }
-  };
-
   const handleAddToSimulation = (utxo: UTXO) => {
     console.log('UTXOTable: Adding to simulation:', utxo.txid.substring(0, 6), 'vout:', utxo.vout);
     
@@ -205,171 +191,6 @@ const UTXOTable = () => {
     setSelectedWallet("");
   };
 
-  // Handle editing functions - Updated for better handling of TxID changes
-  const startEditing = (utxoId: string) => {
-    setEditableUtxo(utxoId);
-  };
-
-  const cancelEditing = () => {
-    setEditableUtxo(null);
-    setDatePickerOpen(null);
-  };
-  
-  const handleSenderAddressEdit = useCallback((utxoId: string, newValue: string) => {
-    if (!walletData) return;
-    
-    const utxo = walletData.utxos.find(u => u.txid === utxoId);
-    if (!utxo) return;
-    
-    // Only update if changed
-    if (utxo.senderAddress !== newValue) {
-      // Update the sender address
-      if (updateUtxoAddresses && typeof updateUtxoAddresses === 'function') {
-        updateUtxoAddresses(utxoId, newValue, utxo.receiverAddress || "");
-        toast("Sender address updated");
-      }
-    }
-    
-    setEditableUtxo(null);
-  }, [walletData, updateUtxoAddresses]);
-
-  const handleReceiverAddressEdit = useCallback((utxoId: string, newValue: string) => {
-    if (!walletData) return;
-    
-    const utxo = walletData.utxos.find(u => u.txid === utxoId);
-    if (!utxo) return;
-    
-    // Only update if changed
-    if (utxo.receiverAddress !== newValue) {
-      // Update the receiver address
-      if (updateUtxoAddresses && typeof updateUtxoAddresses === 'function') {
-        updateUtxoAddresses(utxoId, utxo.senderAddress || "", newValue);
-        toast("Receiver address updated");
-      }
-    }
-    
-    setEditableUtxo(null);
-  }, [walletData, updateUtxoAddresses]);
-
-  const handleDateEdit = useCallback((utxoId: string, date: Date | undefined) => {
-    if (!walletData || !date) return;
-    
-    const dateStr = format(date, 'yyyy-MM-dd');
-    const utxo = walletData.utxos.find(u => u.txid === utxoId);
-    if (!utxo) return;
-    
-    // Only update if changed
-    if (utxo.acquisitionDate !== dateStr) {
-      // Use the existing values for other fields
-      updateUtxoCostBasis(
-        utxoId,
-        dateStr,
-        utxo.acquisitionFiatValue,
-        utxo.notes
-      );
-      
-      toast("Acquisition date updated");
-      
-      // Auto-populate BTC price based on the new date
-      autoPopulateUTXOCostBasis(utxoId)
-        .then(success => {
-          if (!success) {
-            toast.error("Could not fetch historical Bitcoin price for the selected date");
-          }
-        })
-        .catch(err => {
-          console.error("Error auto-populating price:", err);
-        });
-    }
-    
-    setEditableUtxo(null);
-    setDatePickerOpen(null);
-  }, [walletData, updateUtxoCostBasis, autoPopulateUTXOCostBasis]);
-
-  const handleBtcPriceEdit = useCallback((utxoId: string, newValue: string) => {
-    if (!walletData) return;
-    
-    const utxo = walletData.utxos.find(u => u.txid === utxoId);
-    if (!utxo) return;
-    
-    const parsedValue = parseFloat(newValue);
-    if (isNaN(parsedValue) && newValue !== '') {
-      toast.error("Please enter a valid number");
-      return;
-    }
-
-    // Only update if changed
-    if ((utxo.acquisitionBtcPrice !== parsedValue) && 
-        !(utxo.acquisitionBtcPrice === null && newValue === '')) {
-      
-      // Calculate new acquisition fiat value based on BTC price and amount
-      const newAcquisitionFiatValue = newValue === '' ? null : parsedValue * utxo.amount;
-      
-      // Update the UTXO with the new BTC price and calculated fiat value
-      updateUtxoCostBasis(
-        utxoId,
-        utxo.acquisitionDate,
-        newAcquisitionFiatValue,
-        utxo.notes
-      );
-      
-      toast("BTC price and cost basis updated");
-    }
-    
-    setEditableUtxo(null);
-  }, [walletData, updateUtxoCostBasis]);
-
-  const handleCostBasisEdit = useCallback((utxoId: string, newValue: string) => {
-    if (!walletData) return;
-    
-    const utxo = walletData.utxos.find(u => u.txid === utxoId);
-    if (!utxo) return;
-    
-    const parsedValue = parseFloat(newValue);
-    if (isNaN(parsedValue) && newValue !== '') {
-      toast.error("Please enter a valid number");
-      return;
-    }
-    
-    // Only update if changed
-    const newCostBasis = newValue === '' ? null : parsedValue;
-    if (utxo.acquisitionFiatValue !== newCostBasis) {
-      // Use the existing values for other fields
-      updateUtxoCostBasis(
-        utxoId,
-        utxo.acquisitionDate,
-        newCostBasis,
-        utxo.notes
-      );
-      
-      toast("Cost basis updated");
-    }
-    
-    setEditableUtxo(null);
-  }, [walletData, updateUtxoCostBasis]);
-
-  const handleNotesEdit = useCallback((utxoId: string, newValue: string) => {
-    if (!walletData) return;
-    
-    const utxo = walletData.utxos.find(u => u.txid === utxoId);
-    if (!utxo) return;
-    
-    // Only update if changed
-    if (utxo.notes !== newValue) {
-      // Use the existing values for other fields
-      updateUtxoCostBasis(
-        utxoId,
-        utxo.acquisitionDate,
-        utxo.acquisitionFiatValue,
-        newValue
-      );
-      
-      toast("Notes updated");
-    }
-    
-    setEditableUtxo(null);
-  }, [walletData, updateUtxoCostBasis]);
-
   // Handle UTXO deletion
   const confirmDeleteUtxo = (utxoId: string) => {
     setDeleteUtxoId(utxoId);
@@ -379,13 +200,13 @@ const UTXOTable = () => {
   const handleDeleteUtxo = () => {
     if (!deleteUtxoId) return;
     
-    // Call the deleteUTXO function from WalletContext
-    if (deleteUTXO && typeof deleteUTXO === 'function') {
-      deleteUTXO(deleteUtxoId);
-      toast("UTXO deleted from wallet");
-    } else {
-      toast.error("Unable to delete UTXO at this time");
-      console.error("deleteUTXO function not available in WalletContext");
+    const success = deleteUtxoItem(deleteUtxoId);
+    if (success) {
+      // If the deleted UTXO was selected for visualization, clear the selection
+      if (selectedVisualUtxo && selectedVisualUtxo.txid === deleteUtxoId) {
+        setSelectedVisualUtxo(null);
+        setCurrentView("table");
+      }
     }
     
     // Reset state
@@ -409,17 +230,12 @@ const UTXOTable = () => {
     }
   };
 
-  // Modified row click handler to prevent visualization when editing
-  const handleRowClick = (utxo: UTXO) => {
-    // Only select for visualization if not currently editing
-    if (!editableUtxo) {
-      // If already selected, toggle off
-      if (selectedVisualUtxo && selectedVisualUtxo.txid === utxo.txid && selectedVisualUtxo.vout === utxo.vout) {
-        setSelectedVisualUtxo(null);
-      } else {
-        setSelectedVisualUtxo(utxo);
-        setCurrentView("visual");
-      }
+  const handleViewChange = (view: ViewType) => {
+    if (view === "graph") {
+      // Navigate to dedicated graph page instead
+      navigate("/utxo-map");
+    } else {
+      setCurrentView(view);
     }
   };
 
@@ -474,17 +290,32 @@ const UTXOTable = () => {
         <h1 className="text-2xl font-bold text-foreground">UTXO Management</h1>
         
         <div className="flex flex-wrap items-center gap-2">
-          <ViewToggle view={currentView} onViewChange={setCurrentView} />
+          <ViewToggle 
+            view={currentView} 
+            onViewChange={handleViewChange}
+            showGraphOption={true}
+          />
           
           {!isMobile && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate("/risk-simulator")}
-            >
-              <Bookmark className="mr-2 h-4 w-4" />
-              Risk Simulator
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/risk-simulator")}
+              >
+                <Bookmark className="mr-2 h-4 w-4" />
+                Risk Simulator
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/utxo-map")}
+              >
+                <Network className="mr-2 h-4 w-4" />
+                UTXO Map
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -503,45 +334,29 @@ const UTXOTable = () => {
           onAddUTXO={handleAddUTXO}
         />
 
-        {currentView === "table" ? (
-          <UTXOTableBody 
-            filteredUtxos={filteredUtxos}
-            walletData={walletData}
-            visibleColumns={visibleColumns}
-            sortConfig={sortConfig}
-            handleSort={handleSort}
-            editableUtxo={editableUtxo}
-            setEditableUtxo={setEditableUtxo}
-            datePickerOpen={datePickerOpen}
-            setDatePickerOpen={setDatePickerOpen}
-            confirmDeleteUtxo={confirmDeleteUtxo}
-            handleTagSelection={handleTagSelection}
-            handleAddToSimulation={handleAddToSimulation}
-            handleSenderAddressEdit={handleSenderAddressEdit}
-            handleReceiverAddressEdit={handleReceiverAddressEdit}
-            handleDateEdit={handleDateEdit}
-            handleBtcPriceEdit={handleBtcPriceEdit}
-            handleCostBasisEdit={handleCostBasisEdit}
-            handleNotesEdit={handleNotesEdit}
-            onRowClick={handleRowClick}
-          />
-        ) : currentView === "visual" ? (
-          <div className="mt-6 p-2 md:p-4">
-            <UTXOVisualizer 
-              selectedUtxo={selectedVisualUtxo} 
-              filteredUtxos={filteredUtxos}
-              onUtxoSelect={handleVisualSelect}
-            />
-          </div>
-        ) : (
-          <div className="mt-6 p-2 md:p-4">
-            <UTXOGraphView
-              utxos={filteredUtxos}
-              onSelectUtxo={handleVisualSelect}
-              onViewChange={setCurrentView}
-            />
-          </div>
-        )}
+        <UTXOViewManager
+          view={currentView}
+          filteredUtxos={filteredUtxos}
+          walletData={walletData}
+          visibleColumns={visibleColumns}
+          sortConfig={sortConfig}
+          handleSort={handleSort}
+          editableUtxo={editableUtxo}
+          setEditableUtxo={setEditableUtxo}
+          datePickerOpen={datePickerOpen}
+          setDatePickerOpen={setDatePickerOpen}
+          confirmDeleteUtxo={confirmDeleteUtxo}
+          handleTagSelection={handleTagSelection}
+          handleAddToSimulation={handleAddToSimulation}
+          handleSenderAddressEdit={handleSenderAddressEdit}
+          handleReceiverAddressEdit={handleReceiverAddressEdit}
+          handleDateEdit={handleDateEdit}
+          handleBtcPriceEdit={handleBtcPriceEdit}
+          handleCostBasisEdit={handleCostBasisEdit}
+          handleNotesEdit={handleNotesEdit}
+          selectedVisualUtxo={selectedVisualUtxo}
+          handleVisualSelect={handleVisualSelect}
+        />
       </div>
       
       {/* Delete confirmation dialog */}

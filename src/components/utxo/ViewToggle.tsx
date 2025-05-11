@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Table, ArrowLeft, Eye } from "lucide-react";
+import { Table, ArrowLeft, Eye, Network } from "lucide-react";
 
 // Define view as a literal union type
 export type ViewType = "table" | "visual" | "graph";
@@ -8,9 +8,14 @@ export type ViewType = "table" | "visual" | "graph";
 interface ViewToggleProps {
   view: ViewType;
   onViewChange: (view: ViewType) => void;
+  showGraphOption?: boolean;
 }
 
-export const ViewToggle = ({ view, onViewChange }: ViewToggleProps) => {
+export const ViewToggle: React.FC<ViewToggleProps> = ({ 
+  view, 
+  onViewChange,
+  showGraphOption = false 
+}) => {
   return (
     <div className="flex items-center space-x-2 bg-muted/50 rounded-md p-1">
       {view !== "table" && (
@@ -44,6 +49,17 @@ export const ViewToggle = ({ view, onViewChange }: ViewToggleProps) => {
             <Eye className="h-4 w-4" />
             <span>Visual</span>
           </Button>
+          {showGraphOption && (
+            <Button
+              variant={view === "graph" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => onViewChange("graph")}
+              className="flex items-center gap-1"
+            >
+              <Network className="h-4 w-4" />
+              <span>Graph</span>
+            </Button>
+          )}
         </>
       )}
     </div>

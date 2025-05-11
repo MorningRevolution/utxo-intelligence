@@ -1,52 +1,31 @@
 
 import React, { useEffect, useRef, useState, useMemo } from "react";
-import ForceGraph2D, { ForceGraphMethods } from "react-force-graph-2d";
+import ForceGraph2D from "react-force-graph-2d";
 import { UTXO } from "@/types/utxo";
-import { formatBTC, getRiskColor, getRiskBadgeStyle, getRiskTextColor } from "@/utils/utxo-utils";
+import { GraphNode, GraphLink, GraphData } from "@/types/utxo-graph";
+import { formatBTC, getRiskBadgeStyle, getRiskTextColor } from "@/utils/utxo-utils";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { Tooltip } from "@/components/ui/tooltip";
+import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Search, Filter, ArrowLeft, ArrowRight } from "lucide-react";
+import { Search, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DateRange } from "react-day-picker";
+import { createGraphData, nodeCanvasObject } from "@/lib/utxo-graph-utils";
 
 interface UTXOGraphViewProps {
   utxos: UTXO[];
   onSelectUtxo: (utxo: UTXO | null) => void;
-  onViewChange: (view: "visual") => void;
 }
 
-interface GraphNode {
-  id: string;
-  name: string;
-  val: number; // size
-  color: string;
-  type: "utxo" | "transaction" | "address";
-  data?: any; // Original data
-  group?: string;
-  riskLevel?: "low" | "medium" | "high";
-}
-
-interface GraphLink {
-  source: string;
-  target: string;
-  value: number;
-  color?: string;
-  isChangeOutput?: boolean;
-  riskLevel?: "low" | "medium" | "high";
-}
-
-interface GraphData {
-  nodes: GraphNode[];
-  links: GraphLink[];
-}
-
-export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({ utxos, onSelectUtxo, onViewChange }) => {
-  const graphRef = useRef<ForceGraphMethods>();
+export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({ 
+  utxos, 
+  onSelectUtxo 
+}) => {
+  // Using any for graphRef since ForceGraphMethods has TypeScript issues
+  const graphRef = useRef<any>();
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
@@ -56,7 +35,6 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({ utxos, onSelectUtx
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [highlightPrivacyIssues, setHighlightPrivacyIssues] = useState(false);
   
-  const { toast } = useToast();
   const isMobile = useIsMobile();
 
   // Extract all available tags and wallets for filters
@@ -122,189 +100,8 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({ utxos, onSelectUtx
     // Limit to a reasonable number for performance
     const limitedUtxos = filteredUtxos.slice(0, 100);
     
-    const nodes: GraphNode[] = [];
-    const links: GraphLink[] = [];
-    const nodeMap = new Map<string, GraphNode>();
-    const addedTxs = new Set<string>();
-    
-    // First pass - add UTXO nodes
-    limitedUtxos.forEach(utxo => {
-      const nodeId = `utxo-${utxo.txid}-${utxo.vout}`;
-      const walletName = utxo.walletName || "Default Wallet";
-      
-      // Assign color based on risk level
-      let color;
-      switch (utxo.privacyRisk) {
-        case "high": color = "#ea384c"; break;
-        case "medium": color = "#f97316"; break;
-        case "low": color = "#10b981"; break;
-        default: color = "#9b87f5"; // default purple
-      }
-      
-      const node: GraphNode = {
-        id: nodeId,
-        name: `UTXO ${utxo.txid.substring(0, 6)}...${utxo.vout}`,
-        val: 1 + (utxo.amount * 5), // Size based on amount
-        color: color,
-        type: "utxo",
-        data: utxo,
-        group: walletName,
-        riskLevel: utxo.privacyRisk
-      };
-      
-      nodes.push(node);
-      nodeMap.set(nodeId, node);
-      
-      // Add transaction node if not already added
-      if (!addedTxs.has(utxo.txid)) {
-        addedTxs.add(utxo.txid);
-        const txNodeId = `tx-${utxo.txid}`;
-        const txNode: GraphNode = {
-          id: txNodeId,
-          name: `TX ${utxo.txid.substring(0, 8)}...`,
-          val: 1.5, // slightly larger
-          color: "#8E9196", // neutral gray
-          type: "transaction",
-          data: { txid: utxo.txid }
-        };
-        nodes.push(txNode);
-        nodeMap.set(txNodeId, txNode);
-      }
-      
-      // Add addresses as nodes
-      if (utxo.receiverAddress) {
-        const addrNodeId = `addr-${utxo.receiverAddress}`;
-        if (!nodeMap.has(addrNodeId)) {
-          const addrNode: GraphNode = {
-            id: addrNodeId,
-            name: `${utxo.receiverAddress.substring(0, 8)}...`,
-            val: 0.8, // smaller
-            color: "#E5DEFF", // soft purple
-            type: "address",
-            data: { address: utxo.receiverAddress }
-          };
-          nodes.push(addrNode);
-          nodeMap.set(addrNodeId, addrNode);
-        }
-      }
-      
-      if (utxo.senderAddress) {
-        const addrNodeId = `addr-${utxo.senderAddress}`;
-        if (!nodeMap.has(addrNodeId)) {
-          const addrNode: GraphNode = {
-            id: addrNodeId,
-            name: `${utxo.senderAddress.substring(0, 8)}...`,
-            val: 0.8, // smaller
-            color: "#E5DEFF", // soft purple
-            type: "address",
-            data: { address: utxo.senderAddress }
-          };
-          nodes.push(addrNode);
-          nodeMap.set(addrNodeId, addrNode);
-        }
-      }
-      
-      // Connect UTXO to transaction
-      const txNodeId = `tx-${utxo.txid}`;
-      links.push({
-        source: txNodeId,
-        target: nodeId,
-        value: 1,
-        riskLevel: utxo.privacyRisk
-      });
-      
-      // Connect addresses to UTXO
-      if (utxo.receiverAddress) {
-        const addrNodeId = `addr-${utxo.receiverAddress}`;
-        links.push({
-          source: nodeId,
-          target: addrNodeId,
-          value: 1,
-          isChangeOutput: utxo.tags.includes("Change"),
-          riskLevel: utxo.privacyRisk
-        });
-      }
-      
-      if (utxo.senderAddress) {
-        const addrNodeId = `addr-${utxo.senderAddress}`;
-        links.push({
-          source: addrNodeId,
-          target: txNodeId,
-          value: 1,
-          riskLevel: utxo.privacyRisk
-        });
-      }
-    });
-    
-    // Create simulated links between related UTXOs to show traceable paths
-    const processedUtxos = new Set<string>();
-    
-    limitedUtxos.forEach(utxo1 => {
-      const utxo1Id = `${utxo1.txid}-${utxo1.vout}`;
-      processedUtxos.add(utxo1Id);
-      
-      limitedUtxos.forEach(utxo2 => {
-        const utxo2Id = `${utxo2.txid}-${utxo2.vout}`;
-        if (processedUtxos.has(utxo2Id)) return; // Skip already processed pairs
-        
-        // Create links based on shared addresses, shared tags, or other privacy connections
-        if (
-          utxo1.senderAddress === utxo2.receiverAddress || 
-          utxo1.receiverAddress === utxo2.senderAddress ||
-          utxo1.address === utxo2.address ||
-          (utxo1.senderAddress && utxo1.senderAddress === utxo2.senderAddress) ||
-          (utxo1.receiverAddress && utxo1.receiverAddress === utxo2.receiverAddress)
-        ) {
-          // Address reuse privacy issue
-          const highestRisk = utxo1.privacyRisk === "high" || utxo2.privacyRisk === "high" 
-            ? "high" 
-            : (utxo1.privacyRisk === "medium" || utxo2.privacyRisk === "medium" ? "medium" : "low");
-            
-          // Only add these links when highlighting privacy issues
-          if (highlightPrivacyIssues) {
-            links.push({
-              source: `tx-${utxo1.txid}`,
-              target: `tx-${utxo2.txid}`,
-              value: 0.5, // thinner line
-              color: "#ea384c", // privacy risk color
-              riskLevel: highestRisk
-            });
-          }
-        }
-        
-        // Check for shared tags
-        const sharedTags = utxo1.tags.filter(tag => utxo2.tags.includes(tag));
-        if (sharedTags.length > 0) {
-          // Tag correlation privacy issue
-          // Only add these links when highlighting privacy issues
-          if (highlightPrivacyIssues) {
-            links.push({
-              source: `utxo-${utxo1.txid}-${utxo1.vout}`,
-              target: `utxo-${utxo2.txid}-${utxo2.vout}`,
-              value: 0.3, // very thin line
-              color: "#f97316", // medium risk color
-              riskLevel: "medium"
-            });
-          }
-        }
-      });
-    });
-    
-    // Colorize links based on privacy risk level
-    links.forEach(link => {
-      if (link.isChangeOutput) {
-        link.color = "#9b87f5"; // purple for change outputs
-      } else if (link.riskLevel) {
-        switch (link.riskLevel) {
-          case "high": link.color = highlightPrivacyIssues ? "#ea384c" : "#ea384c80"; break;
-          case "medium": link.color = highlightPrivacyIssues ? "#f97316" : "#f9731680"; break;
-          case "low": link.color = "#10b981"; break;
-          default: link.color = "#8E9196"; // neutral gray
-        }
-      }
-    });
-    
-    setGraphData({ nodes, links });
+    // Use the utility function to create graph data
+    setGraphData(createGraphData(limitedUtxos, highlightPrivacyIssues));
   }, [utxos, searchTerm, selectedTags, selectedWallets, dateRange, highlightPrivacyIssues]);
 
   // Handle node click
@@ -314,7 +111,6 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({ utxos, onSelectUtx
     if (node.type === "utxo" && node.data) {
       // Select this UTXO for detailed visualization
       onSelectUtxo(node.data);
-      onViewChange("visual");
       
       toast({
         title: "UTXO Selected",
@@ -333,23 +129,31 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({ utxos, onSelectUtx
   const handleNodeHover = (node: GraphNode | null) => {
     setHoveredNode(node);
     
-    if (graphRef.current) {
-      // Highlight connected nodes/links
-      if (node) {
-        const linkedNodeIds = graphData.links
-          .filter(link => link.source === node.id || link.target === node.id)
-          .flatMap(link => [
-            typeof link.source === 'object' ? link.source.id : link.source,
-            typeof link.target === 'object' ? link.target.id : link.target
-          ]);
-          
+    if (graphRef.current && node) {
+      // Get connected nodes and links when a node is hovered
+      const linkedNodeIds = graphData.links
+        .filter(link => {
+          const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+          const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+          return sourceId === node.id || targetId === node.id;
+        })
+        .flatMap(link => {
+          const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+          const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+          return [sourceId, targetId];
+        });
+        
+      // Modify the graph rendering to highlight connected nodes and links
+      if (graphRef.current.nodeColor) {
         graphRef.current.nodeColor((n: GraphNode) => 
           n === node || linkedNodeIds.includes(n.id) 
             ? n.color 
             : `rgba(150, 150, 150, 0.2)`
         );
-        
-        graphRef.current.linkColor((link) => {
+      }
+      
+      if (graphRef.current.linkColor) {
+        graphRef.current.linkColor((link: GraphLink) => {
           const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
           const targetId = typeof link.target === 'object' ? link.target.id : link.target;
           
@@ -357,25 +161,32 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({ utxos, onSelectUtx
             ? (link.color || '#666')
             : 'rgba(150, 150, 150, 0.1)';
         });
-        
-        // Set link width based on connection to hovered node
-        graphRef.current.linkWidth((link) => {
+      }
+      
+      if (graphRef.current.linkWidth) {
+        graphRef.current.linkWidth((link: GraphLink) => {
           const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
           const targetId = typeof link.target === 'object' ? link.target.id : link.target;
           
           return (sourceId === node.id || targetId === node.id) ? 2 : 0.5;
         });
-      } else {
-        // Reset colors when not hovering
+      }
+    } else if (graphRef.current) {
+      // Reset colors when not hovering
+      if (graphRef.current.nodeColor) {
         graphRef.current.nodeColor((n: GraphNode) => n.color);
-        graphRef.current.linkColor((link) => link.color || '#666');
-        graphRef.current.linkWidth((link) => link.value || 1);
+      }
+      if (graphRef.current.linkColor) {
+        graphRef.current.linkColor((link: GraphLink) => link.color || '#666');
+      }
+      if (graphRef.current.linkWidth) {
+        graphRef.current.linkWidth((link: GraphLink) => link.value || 1);
       }
     }
   };
 
   // Node tooltip content
-  const nodeTooltip = (node: GraphNode) => {
+  const renderNodeTooltip = (node: GraphNode) => {
     if (node.type === "utxo" && node.data) {
       const utxo = node.data as UTXO;
       return (
@@ -416,72 +227,6 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({ utxos, onSelectUtx
     return null;
   };
 
-  // Link tooltip content
-  const linkTooltip = (link: GraphLink) => {
-    if (link.isChangeOutput) {
-      return (
-        <div className="bg-background/95 p-2 rounded-md shadow-md border border-border">
-          <div>Change Output</div>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // Custom node rendering
-  const nodeCanvasObject = (node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
-    const label = node.name;
-    const fontSize = 12/globalScale;
-    const nodeSize = node.val;
-    
-    // Draw node circle
-    ctx.beginPath();
-    ctx.fillStyle = node.color;
-    ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI, false);
-    ctx.fill();
-    
-    if (node === hoveredNode || node === selectedNode) {
-      ctx.beginPath();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2/globalScale;
-      ctx.arc(node.x!, node.y!, nodeSize + 1/globalScale, 0, 2 * Math.PI, false);
-      ctx.stroke();
-    }
-    
-    // Draw node label if close enough
-    if (globalScale > 0.4) {
-      ctx.font = `${fontSize}px Sans-Serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = 'white';
-      ctx.fillText(label, node.x!, node.y!);
-      
-      // Add badge for UTXO type
-      if (node.type === "utxo" && node.data?.tags?.includes("Change") && globalScale > 0.8) {
-        const badgeText = "Change";
-        const badgeWidth = ctx.measureText(badgeText).width + 4/globalScale;
-        
-        ctx.fillStyle = '#9b87f5';
-        ctx.beginPath();
-        ctx.roundRect(
-          node.x! - badgeWidth/2, 
-          node.y! + nodeSize + 2/globalScale, 
-          badgeWidth, 
-          fontSize, 
-          3/globalScale
-        );
-        ctx.fill();
-        
-        ctx.fillStyle = 'white';
-        ctx.fillText(
-          badgeText, 
-          node.x!, 
-          node.y! + nodeSize + 2/globalScale + fontSize/2
-        );
-      }
-    }
-  };
-
   return (
     <div className="w-full" style={{ height: '70vh' }}>
       {/* Toolbar */}
@@ -492,7 +237,7 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({ utxos, onSelectUtx
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full"
-            prefixIcon={<Search className="h-4 w-4" />}
+            startAdornment={<Search className="h-4 w-4" />}
           />
         </div>
         
@@ -636,36 +381,40 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({ utxos, onSelectUtx
           <ForceGraph2D
             ref={graphRef}
             graphData={graphData}
-            nodeLabel={(node: GraphNode) => ''}  // Using custom tooltips instead
-            linkLabel={(link: GraphLink) => ''}  // Using custom tooltips instead
+            nodeId="id"
+            nodeLabel={() => ''}  // Using custom tooltips instead
+            linkSource="source"
+            linkTarget="target"
             nodeAutoColorBy="group"
             linkDirectionalArrowLength={3}
             linkDirectionalArrowRelPos={1}
             linkCurvature={0.25}
-            nodeCanvasObject={(node, ctx, globalScale) => nodeCanvasObject(node, ctx, globalScale)}
+            nodeCanvasObject={(node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => 
+              nodeCanvasObject(node, ctx, globalScale)
+            }
             onNodeClick={handleNodeClick}
             onNodeHover={handleNodeHover}
             cooldownTicks={100}
             linkWidth={(link) => link.value}
             enableNodeDrag={true}
-            enableZoomPanInteraction={true}
+            enableZoomInteraction={true}
             nodeRelSize={6}
           />
         )}
         
         {/* Tooltip for hovered node */}
-        {hoveredNode && (
+        {hoveredNode && hoveredNode.x !== undefined && hoveredNode.y !== undefined && (
           <div 
             style={{
               position: 'absolute',
-              left: (hoveredNode.x || 0) + 'px',
-              top: (hoveredNode.y || 0) + 'px',
+              left: (hoveredNode.x) + 'px',
+              top: (hoveredNode.y) + 'px',
               transform: 'translate(-50%, -100%)',
               pointerEvents: 'none',
               zIndex: 10
             }}
           >
-            {nodeTooltip(hoveredNode)}
+            {renderNodeTooltip(hoveredNode)}
           </div>
         )}
         
