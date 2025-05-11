@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { useWallet } from "@/store/WalletContext";
 import { UTXOFilters } from "@/components/utxo/UTXOFilters";
 import { UTXOTableBody } from "@/components/utxo/UTXOTableBody";
+import { UTXOVisualizer } from "@/components/utxo/UTXOVisualizer";
+import { ViewToggle } from "@/components/utxo/ViewToggle";
 import { AddUTXOModal } from "@/components/portfolio/AddUTXOModal";
 import { Bookmark } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -38,6 +40,10 @@ const UTXOTable = () => {
     toggleUTXOSelection,
     selectedCurrency
   } = useWallet();
+  
+  // Add view state
+  const [currentView, setCurrentView] = useState<"table" | "visual">("table");
+  const [selectedVisualUtxo, setSelectedVisualUtxo] = useState<UTXO | null>(null);
   
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -179,6 +185,11 @@ const UTXOTable = () => {
     toggleUTXOSelection(utxo);
     
     toast("UTXO added to simulation");
+  };
+
+  // Add handler for utxo selection in visual view
+  const handleVisualSelect = (utxo: UTXO) => {
+    setSelectedVisualUtxo(utxo);
   };
 
   const clearFilters = () => {
@@ -438,12 +449,14 @@ const UTXOTable = () => {
   const visibleColumns = getVisibleColumns();
 
   return (
-    <div className="container px-4 md:px-8 py-6">
+    <div className="container px-4 md:px-8 py-6 overflow-x-hidden">
       <div className="flex flex-col md:flex-row justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-foreground">UTXO Management</h1>
         
-        {!isMobile && (
-          <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <ViewToggle view={currentView} onViewChange={setCurrentView} />
+          
+          {!isMobile && (
             <Button
               variant="outline"
               size="sm"
@@ -452,11 +465,11 @@ const UTXOTable = () => {
               <Bookmark className="mr-2 h-4 w-4" />
               Risk Simulator
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      <div className="bg-card rounded-lg shadow-lg p-2 md:p-4 mb-8">
+      <div className="bg-card rounded-lg shadow-lg p-2 md:p-4 mb-8 overflow-x-hidden">
         <UTXOFilters 
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
@@ -470,26 +483,93 @@ const UTXOTable = () => {
           onAddUTXO={handleAddUTXO}
         />
 
-        <UTXOTableBody 
-          filteredUtxos={filteredUtxos}
-          walletData={walletData}
-          visibleColumns={visibleColumns}
-          sortConfig={sortConfig}
-          handleSort={handleSort}
-          editableUtxo={editableUtxo}
-          setEditableUtxo={setEditableUtxo}
-          datePickerOpen={datePickerOpen}
-          setDatePickerOpen={setDatePickerOpen}
-          confirmDeleteUtxo={confirmDeleteUtxo}
-          handleTagSelection={handleTagSelection}
-          handleAddToSimulation={handleAddToSimulation}
-          handleSenderAddressEdit={handleSenderAddressEdit}
-          handleReceiverAddressEdit={handleReceiverAddressEdit}
-          handleDateEdit={handleDateEdit}
-          handleBtcPriceEdit={handleBtcPriceEdit}
-          handleCostBasisEdit={handleCostBasisEdit}
-          handleNotesEdit={handleNotesEdit}
-        />
+        {currentView === "table" ? (
+          <UTXOTableBody 
+            filteredUtxos={filteredUtxos}
+            walletData={walletData}
+            visibleColumns={visibleColumns}
+            sortConfig={sortConfig}
+            handleSort={handleSort}
+            editableUtxo={editableUtxo}
+            setEditableUtxo={setEditableUtxo}
+            datePickerOpen={datePickerOpen}
+            setDatePickerOpen={setDatePickerOpen}
+            confirmDeleteUtxo={confirmDeleteUtxo}
+            handleTagSelection={handleTagSelection}
+            handleAddToSimulation={handleAddToSimulation}
+            handleSenderAddressEdit={handleSenderAddressEdit}
+            handleReceiverAddressEdit={handleReceiverAddressEdit}
+            handleDateEdit={handleDateEdit}
+            handleBtcPriceEdit={handleBtcPriceEdit}
+            handleCostBasisEdit={handleCostBasisEdit}
+            handleNotesEdit={handleNotesEdit}
+            onRowClick={utxo => {
+              // When in table view, clicking a row selects it for visual view
+              setSelectedVisualUtxo(utxo);
+              setCurrentView("visual");
+            }}
+          />
+        ) : (
+          <div className="mt-6 p-2 md:p-4">
+            <UTXOVisualizer selectedUtxo={selectedVisualUtxo} />
+            
+            {filteredUtxos.length > 0 && !selectedVisualUtxo && (
+              <div className="mt-8">
+                <h3 className="text-lg font-medium mb-4">Select a UTXO to visualize</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {filteredUtxos.slice(0, 12).map(utxo => (
+                    <div 
+                      key={`${utxo.txid}-${utxo.vout}`}
+                      className="p-4 bg-muted/30 rounded-lg border border-border cursor-pointer hover:border-primary transition-colors"
+                      onClick={() => handleVisualSelect(utxo)}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-medium">{formatBTC(utxo.amount)} BTC</div>
+                        <div className={`text-xs px-2 py-1 rounded-full ${
+                          utxo.privacyRisk === 'high' 
+                            ? 'bg-red-500/10 text-red-500' 
+                            : utxo.privacyRisk === 'medium' 
+                              ? 'bg-amber-500/10 text-amber-500' 
+                              : 'bg-green-500/10 text-green-500'
+                        }`}>
+                          {utxo.privacyRisk}
+                        </div>
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate mb-2">
+                        {utxo.txid}
+                      </div>
+                      {utxo.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {utxo.tags.slice(0, 2).map((tag, i) => (
+                            <span 
+                              key={i} 
+                              className="text-xs px-2 py-0.5 bg-primary/10 rounded-full"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                          {utxo.tags.length > 2 && (
+                            <span className="text-xs px-2 py-0.5 bg-muted rounded-full">
+                              +{utxo.tags.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {filteredUtxos.length > 12 && (
+                    <div className="p-4 bg-muted/10 rounded-lg border border-dashed border-muted-foreground flex items-center justify-center">
+                      <span className="text-sm text-muted-foreground">
+                        +{filteredUtxos.length - 12} more UTXOs
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       
       {/* Delete confirmation dialog */}

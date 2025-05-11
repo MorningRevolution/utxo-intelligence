@@ -29,6 +29,7 @@ import { ArrowUpDown, MoreVertical, Tag, Bookmark, CalendarIcon, DollarSign, Pen
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UTXO } from "@/types/utxo";
 import { EditableCell } from "@/components/ui/table";
+import { useState } from "react";
 
 interface UTXOTableBodyProps {
   filteredUtxos: UTXO[];
