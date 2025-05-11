@@ -85,36 +85,156 @@ const getRealisticCostBasis = (marketPrice: number, amount: number) => {
   return Math.round(marketPrice * premiumFactor * amount);
 };
 
+// Create fixed addresses for address reuse scenarios
+const commonAddresses = [
+  'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', // Donation address
+  'bc1q9jd8qh84gkl5trg6mvz729fj8xp9mjr7hjyzke', // Exchange deposit address
+  'bc1qz2x3c4v5b6n7m8a9s0d1f2g3h4j5k6l7p8q9w', // Merchant payment address
+  'bc1q1w2e3r4t5y6u7i8o9p0a1s2d3f4g5h6j7k8l', // Personal wallet address
+];
+
+// Generate a batch of random addresses for other UTXOs
+const randomAddresses = Array.from({ length: 40 }, () => 
+  `bc1${Math.random().toString(36).substring(2, 38)}`
+);
+
+// Create address relationship groups to simulate realistic transaction graphs
+const addressGroups = {
+  exchange: [
+    commonAddresses[1], 
+    randomAddresses[0], 
+    randomAddresses[1], 
+    randomAddresses[2]
+  ],
+  personal: [
+    commonAddresses[3], 
+    randomAddresses[3], 
+    randomAddresses[4], 
+    randomAddresses[5]
+  ],
+  merchant: [
+    commonAddresses[2], 
+    randomAddresses[6], 
+    randomAddresses[7]
+  ],
+  donation: [
+    commonAddresses[0], 
+    randomAddresses[8]
+  ],
+};
+
+// Assign realistic wallet names
+const walletNames = ["Main Wallet", "Cold Storage", "Wallet 2", "Hardware Wallet"];
+
+// Create UTXOs with realistic transaction relationships
 export const mockUTXOs: UTXO[] = Array.from({ length: 25 }, (_, i) => {
   const acquisitionDate = getRealisticDate();
   const amount = getRealisticAmount();
   const btcPrice = getRealisticBTCPrice(acquisitionDate);
   const fiatValue = getRealisticCostBasis(btcPrice, amount);
   
-  // Select 1-2 tags randomly
-  const numTags = Math.random() > 0.7 ? 2 : 1;
+  // Select 1-3 tags randomly with weighted probabilities
+  const numTags = Math.random() > 0.7 ? (Math.random() > 0.5 ? 3 : 2) : 1;
   const selectedTags = [];
   
-  for (let t = 0; t < numTags; t++) {
+  // Assign tags based on index to create patterns
+  if (i % 5 === 0) {
+    selectedTags.push(mockTags[0].name); // Exchange
+  } else if (i % 5 === 1) {
+    selectedTags.push(mockTags[2].name); // Personal
+  } else if (i % 5 === 2) {
+    selectedTags.push(mockTags[3].name); // Merchant
+  } else if (i % 8 === 3) {
+    selectedTags.push(mockTags[5].name); // Coinjoin
+  } else {
+    // Random tag
+    const randomTag = mockTags[Math.floor(Math.random() * mockTags.length)].name;
+    selectedTags.push(randomTag);
+  }
+  
+  // Add additional tags if needed
+  while (selectedTags.length < numTags) {
     const randomTag = mockTags[Math.floor(Math.random() * mockTags.length)].name;
     if (!selectedTags.includes(randomTag)) {
       selectedTags.push(randomTag);
     }
   }
   
-  // Generate random addresses
-  const randomAddress = () => `bc1${Math.random().toString(36).substring(2, 38)}`;
+  // Assign sender and receiver addresses based on tag patterns
+  let senderAddress: string | null = null;
+  let receiverAddress: string | null = null;
+  let outputAddress: string | null = null;
+  
+  // Base privacy risk on patterns
+  let privacyRisk: 'low' | 'medium' | 'high' = 'low';
+  
+  if (selectedTags.includes('Exchange')) {
+    // Exchange UTXOs often have known sender addresses
+    senderAddress = addressGroups.exchange[Math.floor(Math.random() * addressGroups.exchange.length)];
+    
+    // 30% chance of address reuse (high privacy risk)
+    if (Math.random() < 0.3) {
+      outputAddress = senderAddress;
+      privacyRisk = 'high';
+    } else {
+      outputAddress = randomAddresses[Math.floor(Math.random() * randomAddresses.length)];
+      privacyRisk = 'medium';
+    }
+    
+  } else if (selectedTags.includes('Personal')) {
+    senderAddress = addressGroups.personal[Math.floor(Math.random() * addressGroups.personal.length)];
+    outputAddress = randomAddresses[Math.floor(Math.random() * randomAddresses.length)];
+    privacyRisk = Math.random() < 0.7 ? 'low' : 'medium';
+    
+  } else if (selectedTags.includes('Merchant')) {
+    // Merchant payments often go to known addresses
+    senderAddress = randomAddresses[Math.floor(Math.random() * randomAddresses.length)];
+    outputAddress = addressGroups.merchant[Math.floor(Math.random() * addressGroups.merchant.length)];
+    
+    // High risk for certain merchant patterns
+    privacyRisk = Math.random() < 0.4 ? 'high' : 'medium';
+    
+  } else if (selectedTags.includes('Coinjoin')) {
+    // Coinjoins have multiple inputs, simulated with receiverAddress
+    senderAddress = randomAddresses[Math.floor(Math.random() * randomAddresses.length)];
+    receiverAddress = randomAddresses[Math.floor(Math.random() * randomAddresses.length)];
+    outputAddress = randomAddresses[Math.floor(Math.random() * randomAddresses.length)];
+    privacyRisk = 'low'; // Generally low privacy risk with coinjoins
+    
+  } else if (selectedTags.includes('Donation')) {
+    // Donations often go to well-known addresses
+    senderAddress = randomAddresses[Math.floor(Math.random() * randomAddresses.length)];
+    outputAddress = addressGroups.donation[Math.floor(Math.random() * addressGroups.donation.length)];
+    privacyRisk = 'medium';
+    
+  } else {
+    // Default case for other tags
+    senderAddress = Math.random() > 0.3 ? randomAddresses[Math.floor(Math.random() * randomAddresses.length)] : null;
+    outputAddress = randomAddresses[Math.floor(Math.random() * randomAddresses.length)];
+    
+    // Randomize privacy risk with weighted distribution
+    const riskRoll = Math.random();
+    if (riskRoll < 0.6) privacyRisk = 'low';
+    else if (riskRoll < 0.85) privacyRisk = 'medium';
+    else privacyRisk = 'high';
+  }
+  
+  // Assign walletName with pattern - primarily for demo of wallet filter
+  const walletName = i % 7 === 0 ? walletNames[1] : 
+                    i % 5 === 0 ? walletNames[2] : 
+                    i % 3 === 0 ? walletNames[3] : 
+                    walletNames[0];
   
   return {
     txid: `tx${i + 1}_${Math.random().toString(36).substring(2, 15)}`,
     vout: Math.floor(Math.random() * 4),
-    address: randomAddress(),
+    address: outputAddress || randomAddresses[Math.floor(Math.random() * randomAddresses.length)],
     amount,
     confirmations: Math.floor(Math.random() * 1000) + 1,
     scriptPubKey: `0014${Math.random().toString(36).substring(2, 38)}`,
     tags: selectedTags,
     createdAt: acquisitionDate + 'T' + new Date().toISOString().split('T')[1],
-    privacyRisk: Math.random() < 0.2 ? 'high' : Math.random() < 0.5 ? 'medium' : 'low',
+    privacyRisk,
     acquisitionDate,
     acquisitionFiatValue: fiatValue,
     acquisitionBtcPrice: btcPrice,
@@ -123,8 +243,9 @@ export const mockUTXOs: UTXO[] = Array.from({ length: 25 }, (_, i) => {
     realizedGainFiat: null,
     costAutoPopulated: Math.random() > 0.7, // 30% are auto-populated
     notes: Math.random() > 0.6 ? `Demo UTXO #${i + 1} - ${selectedTags.join(', ')}` : null,
-    senderAddress: Math.random() > 0.3 ? randomAddress() : null,
-    receiverAddress: Math.random() > 0.3 ? randomAddress() : null
+    senderAddress,
+    receiverAddress,
+    walletName: Math.random() > 0.3 ? walletName : undefined
   };
 });
 
@@ -134,6 +255,7 @@ export const mockWalletData: WalletData = {
   utxos: mockUTXOs
 };
 
+// Create more realistic transactions with multiple inputs/outputs
 export const mockTransactions: Transaction[] = [
   {
     id: 'tx1',
