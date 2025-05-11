@@ -31,6 +31,7 @@ const UTXOTable = () => {
     hasWallet,
     isUTXOSelected,
     toggleUTXOSelection,
+    tags
   } = useWallet();
   
   const {

@@ -232,13 +232,15 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
       {/* Toolbar */}
       <div className="bg-card p-2 rounded-lg shadow-sm mb-4 flex flex-wrap gap-2 items-center">
         <div className="flex-1 min-w-[200px]">
-          <Input
-            placeholder="Search by txid, address, tag..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full"
-            startAdornment={<Search className="h-4 w-4" />}
-          />
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by txid, address, tag..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9"
+            />
+          </div>
         </div>
         
         <div className="flex gap-2">
