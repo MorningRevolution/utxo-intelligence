@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield, Upload, FileJson, Watch, ArrowRight } from "lucide-react";
@@ -26,7 +25,7 @@ const WalletImport = () => {
         title: "Wallet imported successfully",
         description: "Your wallet has been imported from JSON data",
       });
-      navigate("/utxo-table");
+      navigate("/utxo-map"); // Redirect to map view instead of table
     } catch (error) {
       console.error(error);
       toast({
@@ -60,7 +59,7 @@ const WalletImport = () => {
         title: "Demo wallet loaded",
         description: "A demo wallet has been loaded with all sample data",
       });
-      navigate("/utxo-table");
+      navigate("/utxo-map"); // Redirect to map view instead of table
     } catch (error) {
       console.error(error);
       toast({

@@ -3,15 +3,42 @@ import { GraphNode, GraphLink } from "@/types/utxo-graph";
 import { UTXO } from "@/types/utxo";
 import { getRiskColor } from "@/utils/utxo-utils";
 
+interface GraphOptions {
+  highlightPrivacyIssues?: boolean;
+  hideAddressNodes?: boolean;
+  equalNodeSize?: boolean;
+  chronologicalFlow?: boolean;
+}
+
+// Calculate logarithmic node size based on amount
+const calculateNodeSize = (amount: number, equalSize: boolean): number => {
+  if (equalSize) return 1;
+  
+  // Logarithmic scaling to prevent extremely large nodes
+  // with a minimum size of 0.5 and a practical max around 3-4
+  const baseSize = 0.5;
+  const scaleFactor = 0.8;
+  
+  return baseSize + Math.log10(1 + amount) * scaleFactor;
+};
+
 // Create graph data from UTXOs
 export const createGraphData = (
   utxos: UTXO[],
-  highlightPrivacyIssues: boolean = false
+  options: GraphOptions = {}
 ) => {
+  const {
+    highlightPrivacyIssues = false,
+    hideAddressNodes = false,
+    equalNodeSize = false,
+    chronologicalFlow = false
+  } = options;
+  
   const nodes: GraphNode[] = [];
   const links: GraphLink[] = [];
   const nodeMap = new Map<string, GraphNode>();
   const addedTxs = new Set<string>();
+  const addedAddresses = new Set<string>();
   
   // First pass - add UTXO nodes
   utxos.forEach(utxo => {
@@ -21,16 +48,26 @@ export const createGraphData = (
     // Assign color based on risk level
     const color = getRiskColor(utxo.privacyRisk);
     
+    // Use logarithmic scaling for node size based on amount
+    const nodeSize = calculateNodeSize(utxo.amount, equalNodeSize);
+    
     const node: GraphNode = {
       id: nodeId,
       name: `UTXO ${utxo.txid.substring(0, 6)}...${utxo.vout}`,
-      val: 1 + (utxo.amount * 5), // Size based on amount
+      val: nodeSize,
       color: color,
       type: "utxo",
       data: utxo,
       group: walletName,
       riskLevel: utxo.privacyRisk
     };
+    
+    // Set x position for chronological flow if date is available
+    if (chronologicalFlow && utxo.acquisitionDate) {
+      const date = new Date(utxo.acquisitionDate).getTime();
+      // Use date as x-position, will be normalized later
+      node.fx = date;
+    }
     
     nodes.push(node);
     nodeMap.set(nodeId, node);
@@ -51,36 +88,40 @@ export const createGraphData = (
       nodeMap.set(txNodeId, txNode);
     }
     
-    // Add addresses as nodes
-    if (utxo.receiverAddress) {
-      const addrNodeId = `addr-${utxo.receiverAddress}`;
-      if (!nodeMap.has(addrNodeId)) {
-        const addrNode: GraphNode = {
-          id: addrNodeId,
-          name: `${utxo.receiverAddress.substring(0, 8)}...`,
-          val: 0.8, // smaller
-          color: "#E5DEFF", // soft purple
-          type: "address",
-          data: { address: utxo.receiverAddress }
-        };
-        nodes.push(addrNode);
-        nodeMap.set(addrNodeId, addrNode);
+    // Add addresses as nodes (if not hiding address nodes)
+    if (!hideAddressNodes) {
+      if (utxo.receiverAddress) {
+        const addrNodeId = `addr-${utxo.receiverAddress}`;
+        if (!addedAddresses.has(addrNodeId)) {
+          addedAddresses.add(addrNodeId);
+          const addrNode: GraphNode = {
+            id: addrNodeId,
+            name: `${utxo.receiverAddress.substring(0, 8)}...`,
+            val: 0.8, // smaller
+            color: "#E5DEFF", // soft purple
+            type: "address",
+            data: { address: utxo.receiverAddress }
+          };
+          nodes.push(addrNode);
+          nodeMap.set(addrNodeId, addrNode);
+        }
       }
-    }
-    
-    if (utxo.senderAddress) {
-      const addrNodeId = `addr-${utxo.senderAddress}`;
-      if (!nodeMap.has(addrNodeId)) {
-        const addrNode: GraphNode = {
-          id: addrNodeId,
-          name: `${utxo.senderAddress.substring(0, 8)}...`,
-          val: 0.8, // smaller
-          color: "#E5DEFF", // soft purple
-          type: "address",
-          data: { address: utxo.senderAddress }
-        };
-        nodes.push(addrNode);
-        nodeMap.set(addrNodeId, addrNode);
+      
+      if (utxo.senderAddress) {
+        const addrNodeId = `addr-${utxo.senderAddress}`;
+        if (!addedAddresses.has(addrNodeId)) {
+          addedAddresses.add(addrNodeId);
+          const addrNode: GraphNode = {
+            id: addrNodeId,
+            name: `${utxo.senderAddress.substring(0, 8)}...`,
+            val: 0.8, // smaller
+            color: "#E5DEFF", // soft purple
+            type: "address",
+            data: { address: utxo.senderAddress }
+          };
+          nodes.push(addrNode);
+          nodeMap.set(addrNodeId, addrNode);
+        }
       }
     }
     
@@ -93,26 +134,28 @@ export const createGraphData = (
       riskLevel: utxo.privacyRisk
     });
     
-    // Connect addresses to UTXO
-    if (utxo.receiverAddress) {
-      const addrNodeId = `addr-${utxo.receiverAddress}`;
-      links.push({
-        source: nodeId,
-        target: addrNodeId,
-        value: 1,
-        isChangeOutput: utxo.tags.includes("Change"),
-        riskLevel: utxo.privacyRisk
-      });
-    }
-    
-    if (utxo.senderAddress) {
-      const addrNodeId = `addr-${utxo.senderAddress}`;
-      links.push({
-        source: addrNodeId,
-        target: txNodeId,
-        value: 1,
-        riskLevel: utxo.privacyRisk
-      });
+    // Connect addresses to UTXO or transaction if not hiding address nodes
+    if (!hideAddressNodes) {
+      if (utxo.receiverAddress) {
+        const addrNodeId = `addr-${utxo.receiverAddress}`;
+        links.push({
+          source: nodeId,
+          target: addrNodeId,
+          value: 1,
+          isChangeOutput: utxo.tags.includes("Change"),
+          riskLevel: utxo.privacyRisk
+        });
+      }
+      
+      if (utxo.senderAddress) {
+        const addrNodeId = `addr-${utxo.senderAddress}`;
+        links.push({
+          source: addrNodeId,
+          target: txNodeId,
+          value: 1,
+          riskLevel: utxo.privacyRisk
+        });
+      }
     }
   });
   
@@ -184,6 +227,31 @@ export const createGraphData = (
     }
   });
   
+  // For chronological flow, normalize the fx values to be between 0 and 1000
+  if (chronologicalFlow) {
+    // Find min and max dates
+    let minDate = Infinity;
+    let maxDate = -Infinity;
+    
+    nodes.forEach(node => {
+      if (node.fx !== undefined) {
+        minDate = Math.min(minDate, node.fx);
+        maxDate = Math.max(maxDate, node.fx);
+      }
+    });
+    
+    // Normalize positions
+    if (minDate !== Infinity && maxDate !== -Infinity && maxDate > minDate) {
+      const dateRange = maxDate - minDate;
+      nodes.forEach(node => {
+        if (node.fx !== undefined) {
+          // Scale to 0-1000 range and add some padding
+          node.fx = 100 + ((node.fx - minDate) / dateRange) * 800;
+        }
+      });
+    }
+  }
+  
   return { nodes, links };
 };
 
@@ -205,7 +273,7 @@ export const renderNodeTooltip = (node: GraphNode) => {
       title: "Transaction",
       content: [
         { label: "TXID", value: node.data.txid },
-        { label: "Click to open in mempool.space", value: "" }
+        { label: "Click to view details", value: "" }
       ]
     };
   } else if (node.type === "address") {
@@ -213,7 +281,7 @@ export const renderNodeTooltip = (node: GraphNode) => {
       title: "Address",
       content: [
         { label: "Address", value: node.data.address },
-        { label: "Click to open in mempool.space", value: "" }
+        { label: "Click to view details", value: "" }
       ]
     };
   }
@@ -263,6 +331,33 @@ export const nodeCanvasObject = (node: GraphNode, ctx: CanvasRenderingContext2D,
         badgeText, 
         node.x, 
         node.y + nodeSize + 2/globalScale + fontSize/2
+      );
+    }
+    
+    // For UTXOs, draw Bitcoin amount if zoomed in enough
+    if (node.type === "utxo" && node.data && globalScale > 1.2) {
+      const amount = node.data.amount.toFixed(8);
+      ctx.font = `${fontSize * 0.8}px Sans-Serif`;
+      
+      // Draw background for better readability
+      const amountWidth = ctx.measureText(amount).width + 4/globalScale;
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.beginPath();
+      ctx.roundRect(
+        node.x - amountWidth/2, 
+        node.y + nodeSize + (node.data.tags?.includes("Change") ? 15/globalScale : 2/globalScale), 
+        amountWidth, 
+        fontSize * 0.8, 
+        2/globalScale
+      );
+      ctx.fill();
+      
+      // Draw amount text
+      ctx.fillStyle = 'white';
+      ctx.fillText(
+        amount, 
+        node.x, 
+        node.y + nodeSize + (node.data.tags?.includes("Change") ? 15/globalScale : 2/globalScale) + (fontSize * 0.4)
       );
     }
   }

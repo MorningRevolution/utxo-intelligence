@@ -33,3 +33,18 @@ export interface GraphData {
   nodes: GraphNode[];
   links: GraphLink[];
 }
+
+// Define a type for the tooltip content
+export interface NodeTooltip {
+  title: string;
+  content: {
+    label: string;
+    value: string;
+  }[];
+}
+
+// Define a type for node selection callbacks
+export type NodeSelectionCallback = (nodeId: string, nodeType: "utxo" | "transaction" | "address", data: any) => void;
+
+// Define view types for navigation
+export type UTXOViewType = "table" | "visual" | "map";

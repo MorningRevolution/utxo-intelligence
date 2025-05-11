@@ -1,9 +1,9 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/store/WalletContext";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Table } from "lucide-react";
 import { UTXOGraphView } from "@/components/utxo/UTXOGraphView";
 import { UTXO } from "@/types/utxo";
 import { toast } from "sonner";
@@ -13,7 +13,7 @@ const UTXOMap: React.FC = () => {
   const { walletData, hasWallet } = useWallet();
   const [selectedUtxo, setSelectedUtxo] = useState<UTXO | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!hasWallet) {
       navigate("/wallet-import");
       toast("No wallet loaded. Please import a wallet first.");
@@ -31,6 +31,22 @@ const UTXOMap: React.FC = () => {
         }
       });
     }
+  };
+
+  const handleTransactionSelect = (txid: string) => {
+    toast.info(`Transaction ${txid.substring(0, 8)}... selected.`, {
+      description: "Transaction details panel coming soon."
+    });
+    // Ideally we would open a side drawer or panel here to show transaction details
+    // For now just show a toast
+  };
+
+  const handleAddressSelect = (address: string) => {
+    toast.info(`Address ${address.substring(0, 8)}... selected.`, {
+      description: "Address details panel coming soon."
+    });
+    // Ideally we would open a side drawer or panel here to show address details
+    // For now just show a toast
   };
 
   const handleBackToTable = () => {
@@ -59,8 +75,8 @@ const UTXOMap: React.FC = () => {
           onClick={handleBackToTable}
           className="flex items-center gap-1"
         >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Back to UTXO Table</span>
+          <Table className="h-4 w-4" />
+          <span>View UTXO Table</span>
         </Button>
       </div>
 
@@ -74,6 +90,10 @@ const UTXOMap: React.FC = () => {
           <UTXOGraphView
             utxos={walletData.utxos}
             onSelectUtxo={handleUtxoSelect}
+            onSelectTransaction={handleTransactionSelect}
+            onSelectAddress={handleAddressSelect}
+            maxNodes={500}
+            initialHighlightPrivacyIssues={true}
           />
         </div>
       </div>

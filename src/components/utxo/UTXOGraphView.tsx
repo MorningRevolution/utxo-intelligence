@@ -2,27 +2,37 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import { UTXO } from "@/types/utxo";
-import { GraphNode, GraphLink, GraphData } from "@/types/utxo-graph";
+import { GraphNode, GraphLink, GraphData, NodeSelectionCallback } from "@/types/utxo-graph";
 import { formatBTC, getRiskBadgeStyle, getRiskTextColor } from "@/utils/utxo-utils";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, Network, Maximize2, Minimize2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DateRange } from "react-day-picker";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { createGraphData, nodeCanvasObject } from "@/lib/utxo-graph-utils";
 
 interface UTXOGraphViewProps {
   utxos: UTXO[];
-  onSelectUtxo: (utxo: UTXO | null) => void;
+  onSelectUtxo?: (utxo: UTXO | null) => void;
+  onSelectTransaction?: (txid: string) => void;
+  onSelectAddress?: (address: string) => void;
+  maxNodes?: number;
+  initialHighlightPrivacyIssues?: boolean;
 }
 
 export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({ 
   utxos, 
-  onSelectUtxo 
+  onSelectUtxo,
+  onSelectTransaction,
+  onSelectAddress,
+  maxNodes = 500,
+  initialHighlightPrivacyIssues = false
 }) => {
   // Using any for graphRef since ForceGraphMethods has TypeScript issues
   const graphRef = useRef<any>();
@@ -33,7 +43,11 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedWallets, setSelectedWallets] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [highlightPrivacyIssues, setHighlightPrivacyIssues] = useState(false);
+  const [highlightPrivacyIssues, setHighlightPrivacyIssues] = useState(initialHighlightPrivacyIssues);
+  const [hideAddressNodes, setHideAddressNodes] = useState(false);
+  const [equalNodeSize, setEqualNodeSize] = useState(false);
+  const [chronologicalFlow, setChronologicalFlow] = useState(false);
+  const [showingTruncatedWarning, setShowingTruncatedWarning] = useState(false);
   
   const isMobile = useIsMobile();
 
@@ -97,18 +111,51 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
       }
     }
     
-    // Limit to a reasonable number for performance
-    const limitedUtxos = filteredUtxos.slice(0, 100);
+    // Show warning if there are too many UTXOs
+    if (filteredUtxos.length > maxNodes) {
+      if (!showingTruncatedWarning) {
+        toast.warning(
+          `Displaying ${maxNodes} out of ${filteredUtxos.length} UTXOs. Use filters to narrow results.`,
+          { duration: 5000 }
+        );
+        setShowingTruncatedWarning(true);
+      }
+      filteredUtxos = filteredUtxos.slice(0, maxNodes);
+    } else {
+      setShowingTruncatedWarning(false);
+    }
     
     // Use the utility function to create graph data
-    setGraphData(createGraphData(limitedUtxos, highlightPrivacyIssues));
-  }, [utxos, searchTerm, selectedTags, selectedWallets, dateRange, highlightPrivacyIssues]);
+    setGraphData(createGraphData(
+      filteredUtxos, 
+      {
+        highlightPrivacyIssues,
+        hideAddressNodes,
+        equalNodeSize,
+        chronologicalFlow
+      }
+    ));
+  }, [
+    utxos, 
+    searchTerm, 
+    selectedTags, 
+    selectedWallets, 
+    dateRange, 
+    highlightPrivacyIssues,
+    hideAddressNodes,
+    equalNodeSize,
+    chronologicalFlow,
+    maxNodes,
+    showingTruncatedWarning
+  ]);
 
   // Handle node click
   const handleNodeClick = (node: GraphNode) => {
     setSelectedNode(node);
     
-    if (node.type === "utxo" && node.data) {
+    if (!node || !node.type) return;
+    
+    if (node.type === "utxo" && node.data && onSelectUtxo) {
       // Select this UTXO for detailed visualization
       onSelectUtxo(node.data);
       
@@ -116,12 +163,12 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
         title: "UTXO Selected",
         description: `Showing details for UTXO ${node.data.txid.substring(0, 8)}...`,
       });
-    } else if (node.type === "transaction") {
-      // Open transaction in mempool.space
-      window.open(`https://mempool.space/tx/${node.data.txid}`, '_blank');
-    } else if (node.type === "address") {
-      // Open address in mempool.space
-      window.open(`https://mempool.space/address/${node.data.address}`, '_blank');
+    } else if (node.type === "transaction" && onSelectTransaction) {
+      // Call the transaction selection callback
+      onSelectTransaction(node.data.txid);
+    } else if (node.type === "address" && onSelectAddress) {
+      // Call the address selection callback
+      onSelectAddress(node.data.address);
     }
   };
 
@@ -210,17 +257,17 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
     } else if (node.type === "transaction") {
       return (
         <div className="bg-background/95 p-2 rounded-md shadow-md border border-border">
-          <div>Transaction</div>
+          <div className="font-semibold">Transaction</div>
           <div className="text-xs">{node.data.txid}</div>
-          <div className="text-[0.65rem] mt-1">Click to open in mempool.space</div>
+          <div className="text-[0.65rem] mt-1">Click to view details</div>
         </div>
       );
     } else if (node.type === "address") {
       return (
         <div className="bg-background/95 p-2 rounded-md shadow-md border border-border">
-          <div>Address</div>
+          <div className="font-semibold">Address</div>
           <div className="text-xs">{node.data.address}</div>
-          <div className="text-[0.65rem] mt-1">Click to open in mempool.space</div>
+          <div className="text-[0.65rem] mt-1">Click to view details</div>
         </div>
       );
     }
@@ -333,19 +380,76 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
             </PopoverContent>
           </Popover>
           
-          {/* Privacy Highlight Toggle */}
-          <Button
-            variant={highlightPrivacyIssues ? "default" : "outline"}
-            size="sm"
-            onClick={() => setHighlightPrivacyIssues(!highlightPrivacyIssues)}
-            className="flex items-center gap-1"
-          >
-            <span>Highlight Privacy Issues</span>
-          </Button>
+          {/* Graph options */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="flex items-center gap-1">
+                <Network className="h-4 w-4" />
+                <span>Options</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="space-y-4">
+                <h4 className="font-medium">Graph Display Options</h4>
+                
+                {/* Privacy issues toggle */}
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="privacy-toggle" className="flex flex-col">
+                    <span>Highlight Privacy Issues</span>
+                    <span className="text-xs text-muted-foreground">Emphasize risky connections</span>
+                  </Label>
+                  <Switch
+                    id="privacy-toggle"
+                    checked={highlightPrivacyIssues}
+                    onCheckedChange={setHighlightPrivacyIssues}
+                  />
+                </div>
+                
+                {/* Hide address nodes toggle */}
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="address-toggle" className="flex flex-col">
+                    <span>Simplify Graph</span>
+                    <span className="text-xs text-muted-foreground">Hide address nodes</span>
+                  </Label>
+                  <Switch
+                    id="address-toggle"
+                    checked={hideAddressNodes}
+                    onCheckedChange={setHideAddressNodes}
+                  />
+                </div>
+                
+                {/* Equalize node sizes toggle */}
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="size-toggle" className="flex flex-col">
+                    <span>Equal Node Size</span>
+                    <span className="text-xs text-muted-foreground">Ignore UTXO amounts for sizing</span>
+                  </Label>
+                  <Switch
+                    id="size-toggle"
+                    checked={equalNodeSize}
+                    onCheckedChange={setEqualNodeSize}
+                  />
+                </div>
+                
+                {/* Chronological flow toggle */}
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="chrono-toggle" className="flex flex-col">
+                    <span>Chronological Flow</span>
+                    <span className="text-xs text-muted-foreground">Arrange by timeline (left to right)</span>
+                  </Label>
+                  <Switch
+                    id="chrono-toggle"
+                    checked={chronologicalFlow}
+                    onCheckedChange={setChronologicalFlow}
+                  />
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
       
-      {/* Legend */}
+      {/* Legend - Pinned at the top */}
       <div className="bg-card p-2 rounded-lg shadow-sm mb-4 flex flex-wrap gap-3 text-xs">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#10b981' }}></div>
@@ -374,7 +478,7 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
       </div>
       
       {/* Graph */}
-      <div className="bg-card rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-card rounded-lg shadow-sm overflow-hidden relative">
         {graphData.nodes.length === 0 ? (
           <div className="h-[500px] flex items-center justify-center text-muted-foreground">
             No UTXOs to display. Try adjusting your filters.
@@ -399,8 +503,9 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
             cooldownTicks={100}
             linkWidth={(link) => link.value}
             enableNodeDrag={true}
-            enableZoomInteraction={true}
             nodeRelSize={6}
+            // Use web worker for better performance with large graphs
+            enableWebGL={true}
           />
         )}
         
@@ -424,6 +529,13 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
         <div className="absolute bottom-4 right-4 bg-background/80 p-2 rounded text-xs">
           Drag to pan. Scroll to zoom. Click nodes to explore.
         </div>
+        
+        {/* Node count warning */}
+        {showingTruncatedWarning && (
+          <div className="absolute top-4 right-4 bg-yellow-500/90 text-white p-2 rounded text-xs max-w-[300px]">
+            Only showing {maxNodes} of {utxos.length} possible nodes. Use filters to narrow results.
+          </div>
+        )}
       </div>
     </div>
   );

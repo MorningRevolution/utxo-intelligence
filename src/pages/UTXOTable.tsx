@@ -1,3 +1,4 @@
+
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { Button } from "@/components/ui/button";
@@ -14,13 +15,13 @@ import {
 import { toast } from "sonner";
 import { useWallet } from "@/store/WalletContext";
 import { UTXOFilters } from "@/components/utxo/UTXOFilters";
-import { ViewToggle, ViewType } from "@/components/utxo/ViewToggle";
 import { AddUTXOModal } from "@/components/portfolio/AddUTXOModal";
 import { Bookmark, Network } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UTXO } from "@/types/utxo";
 import { UTXOViewManager } from "@/components/utxo/UTXOViewManager";
 import { useUTXOModifiers } from "@/hooks/useUTXOModifiers";
+import { UTXOViewType } from "@/types/utxo-graph";
 
 const UTXOTable = () => {
   const navigate = useNavigate();
@@ -46,10 +47,10 @@ const UTXOTable = () => {
   } = useUTXOModifiers();
   
   // Check for state passed during navigation
-  const locationState = location.state as { view?: ViewType; selectedUtxo?: UTXO } | null;
+  const locationState = location.state as { view?: "table" | "visual"; selectedUtxo?: UTXO } | null;
   
   // Add view state with the correct type
-  const [currentView, setCurrentView] = useState<ViewType>(locationState?.view || "table");
+  const [currentView, setCurrentView] = useState<"table" | "visual">(locationState?.view || "table");
   const [selectedVisualUtxo, setSelectedVisualUtxo] = useState<UTXO | null>(locationState?.selectedUtxo || null);
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -231,13 +232,12 @@ const UTXOTable = () => {
     }
   };
 
-  const handleViewChange = (view: ViewType) => {
-    if (view === "graph") {
-      // Navigate to dedicated graph page instead
-      navigate("/utxo-map");
-    } else {
-      setCurrentView(view);
-    }
+  const handleViewChange = (view: "table" | "visual") => {
+    setCurrentView(view);
+  };
+
+  const navigateToMap = () => {
+    navigate("/utxo-map");
   };
 
   if (!walletData) {
@@ -291,11 +291,21 @@ const UTXOTable = () => {
         <h1 className="text-2xl font-bold text-foreground">UTXO Management</h1>
         
         <div className="flex flex-wrap items-center gap-2">
-          <ViewToggle 
-            view={currentView} 
-            onViewChange={handleViewChange}
-            showGraphOption={true}
-          />
+          <Button
+            variant={currentView === "table" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleViewChange("table")}
+          >
+            Table View
+          </Button>
+          
+          <Button
+            variant={currentView === "visual" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleViewChange("visual")}
+          >
+            Visual View
+          </Button>
           
           {!isMobile && (
             <>
@@ -311,7 +321,7 @@ const UTXOTable = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate("/utxo-map")}
+                onClick={navigateToMap}
               >
                 <Network className="mr-2 h-4 w-4" />
                 UTXO Map
