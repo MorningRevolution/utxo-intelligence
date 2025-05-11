@@ -1,3 +1,4 @@
+
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import { AddUTXOModal } from "@/components/portfolio/AddUTXOModal";
 import { Bookmark } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UTXO } from "@/types/utxo";
+import { formatBTC } from "@/utils/utxo-utils";
 
 const UTXOTable = () => {
   const navigate = useNavigate();
@@ -503,7 +505,7 @@ const UTXOTable = () => {
             handleBtcPriceEdit={handleBtcPriceEdit}
             handleCostBasisEdit={handleCostBasisEdit}
             handleNotesEdit={handleNotesEdit}
-            onRowClick={utxo => {
+            onRowClick={(utxo) => {
               // When in table view, clicking a row selects it for visual view
               setSelectedVisualUtxo(utxo);
               setCurrentView("visual");

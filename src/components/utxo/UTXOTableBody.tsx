@@ -53,6 +53,7 @@ interface UTXOTableBodyProps {
   handleTxidEdit?: (utxoId: string, newValue: string) => void;
   handleAmountEdit?: (utxoId: string, newValue: string) => void;
   handleWalletNameEdit?: (utxoId: string, newValue: string) => void;
+  onRowClick?: (utxo: UTXO) => void;
 }
 
 export const UTXOTableBody = ({
@@ -77,6 +78,7 @@ export const UTXOTableBody = ({
   handleTxidEdit,
   handleAmountEdit,
   handleWalletNameEdit,
+  onRowClick,
 }: UTXOTableBodyProps) => {
   const isMobile = useIsMobile();
   const { 
@@ -290,7 +292,11 @@ export const UTXOTableBody = ({
                 const walletName = utxo.walletName || walletData.name;
                 
                 return (
-                  <TableRow key={utxo.txid + "-" + utxo.vout}>
+                  <TableRow 
+                    key={utxo.txid + "-" + utxo.vout}
+                    className={onRowClick ? "cursor-pointer hover:bg-muted/50" : ""}
+                    onClick={() => onRowClick && !isEditing && onRowClick(utxo)}
+                  >
                     {/* TxID Cell - Fully editable */}
                     {visibleColumns.txid && (
                       <EditableCell
