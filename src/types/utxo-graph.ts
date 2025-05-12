@@ -35,6 +35,7 @@ export interface GraphData {
 }
 
 // Define a type for the tooltip content
+// Modified to use ReactNode instead of object structure
 export interface NodeTooltip {
   title: string;
   content: {

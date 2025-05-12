@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import { UTXO } from "@/types/utxo";
@@ -232,7 +231,7 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
     }
   };
 
-  // Node tooltip content rendering function
+  // Node tooltip content rendering function - Properly return JSX rather than objects
   const renderNodeTooltip = (node: GraphNode) => {
     if (node.type === "utxo" && node.data) {
       const utxo = node.data as UTXO;

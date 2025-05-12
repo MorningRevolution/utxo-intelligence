@@ -1,11 +1,13 @@
 
 import React, { useState } from "react";
 import { UTXO } from "@/types/utxo";
-import { ViewType } from "./ViewToggle";
 import { UTXOTableBody } from "./UTXOTableBody";
 import { UTXOVisualizer } from "./UTXOVisualizer";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+
+// Define ViewType directly here since ViewToggle was removed
+type ViewType = "table" | "visual" | "map";
 
 interface UTXOViewManagerProps {
   view: ViewType;

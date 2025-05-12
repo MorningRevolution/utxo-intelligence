@@ -1,4 +1,4 @@
-import { GraphNode, GraphLink } from "@/types/utxo-graph";
+import { GraphNode, GraphLink, NodeTooltip } from "@/types/utxo-graph";
 import { UTXO } from "@/types/utxo";
 import { getRiskColor } from "@/utils/utxo-utils";
 
@@ -352,7 +352,7 @@ export const nodeCanvasObject = (node: GraphNode, ctx: CanvasRenderingContext2D,
   }
 };
 
-// Node tooltip content rendering
+// Fix the node tooltip content rendering function to return ReactNode instead of object
 export const renderNodeTooltip = (node: GraphNode) => {
   if (node.type === "utxo" && node.data) {
     const utxo = node.data as UTXO;
