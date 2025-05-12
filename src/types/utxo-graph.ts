@@ -34,16 +34,6 @@ export interface GraphData {
   links: GraphLink[];
 }
 
-// Define a type for the tooltip content
-// Modified to use ReactNode instead of object structure
-export interface NodeTooltip {
-  title: string;
-  content: {
-    label: string;
-    value: string;
-  }[];
-}
-
 // Define a type for node selection callbacks
 export type NodeSelectionCallback = (nodeId: string, nodeType: "utxo" | "transaction" | "address", data: any) => void;
 

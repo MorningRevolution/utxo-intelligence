@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import { UTXO } from "@/types/utxo";
@@ -255,19 +254,19 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
       const utxo = node.data as UTXO;
       return (
         <div className="bg-background/95 p-2 rounded-md shadow-md border border-border max-w-[250px]">
-          <div className="font-semibold">{utxo.txid.substring(0, 8)}...:{utxo.vout}</div>
+          <div className="font-semibold">{utxo.txid?.substring(0, 8) || "Unknown"}...{utxo.vout !== undefined ? utxo.vout : ""}</div>
           <div className="text-sm">{formatBTC(utxo.amount)}</div>
           <div className="text-xs">Wallet: {utxo.walletName || "Default"}</div>
           {utxo.acquisitionDate && (
             <div className="text-xs">Date: {new Date(utxo.acquisitionDate).toLocaleDateString()}</div>
           )}
           <div className="flex flex-wrap gap-1 mt-1">
-            {utxo.tags.map((tag, i) => (
+            {utxo.tags?.map((tag, i) => (
               <Badge key={i} variant="outline" className="text-[0.65rem]">{tag}</Badge>
-            ))}
+            )) || null}
           </div>
           <div className={`mt-1 text-xs font-medium ${getRiskTextColor(utxo.privacyRisk)}`}>
-            {utxo.privacyRisk.toUpperCase()} risk
+            {utxo.privacyRisk?.toUpperCase() || "UNKNOWN"} risk
           </div>
         </div>
       );
@@ -291,7 +290,7 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
       return (
         <div className="bg-background/95 p-2 rounded-md shadow-md border border-border">
           <div className="font-semibold">Transaction</div>
-          <div className="text-xs">{node.data.txid}</div>
+          <div className="text-xs">{node.data?.txid || "Unknown"}</div>
           <div className="text-xs mt-1">Connected to {connectedUtxos.size} UTXO(s)</div>
           <div className="text-[0.65rem] mt-1">Click to view details</div>
         </div>
@@ -300,7 +299,7 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
       return (
         <div className="bg-background/95 p-2 rounded-md shadow-md border border-border">
           <div className="font-semibold">Address</div>
-          <div className="text-xs">{node.data.address}</div>
+          <div className="text-xs">{node.data?.address || "Unknown"}</div>
           <div className="text-[0.65rem] mt-1">Click to view details</div>
         </div>
       );
@@ -616,13 +615,13 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
                           <Badge variant={direction === 'Input' ? "default" : "outline"} className="mb-1">
                             {direction}
                           </Badge>
-                          <p className="text-xs">{utxo.txid.substring(0, 10)}...:{utxo.vout}</p>
+                          <p className="text-xs">{utxo.txid?.substring(0, 10) || "Unknown"}...:{utxo.vout}</p>
                           <p className="text-xs text-muted-foreground">{formatBTC(utxo.amount)} BTC</p>
                         </div>
                         <div>
                           <Badge 
                             variant={utxo.privacyRisk === "high" ? "destructive" : 
-                                   utxo.privacyRisk === "medium" ? "warning" : "success"} 
+                                   utxo.privacyRisk === "medium" ? "outline" : "default"} 
                             className="text-[0.65rem]">
                               {utxo.privacyRisk}
                           </Badge>

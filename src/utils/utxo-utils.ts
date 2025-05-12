@@ -1,3 +1,4 @@
+
 import { UTXO, Transaction, SimulationResult } from "../types/utxo";
 
 // Calculate the privacy risk for a transaction
@@ -128,7 +129,10 @@ export const calculateTransactionPrivacyRisk = (
 };
 
 // Format BTC amount with appropriate precision
-export const formatBTC = (amount: number): string => {
+export const formatBTC = (amount: number | undefined | null): string => {
+  if (amount === undefined || amount === null) {
+    return "₿0.00000000";
+  }
   return `₿${amount.toFixed(8)}`;
 };
 

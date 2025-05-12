@@ -1,4 +1,4 @@
-import { GraphNode, GraphLink, NodeTooltip } from "@/types/utxo-graph";
+import { GraphNode, GraphLink } from "@/types/utxo-graph";
 import { UTXO } from "@/types/utxo";
 import { getRiskColor } from "@/utils/utxo-utils";
 
@@ -315,7 +315,9 @@ export const nodeCanvasObject = (node: GraphNode, ctx: CanvasRenderingContext2D,
     
     // For UTXOs, draw Bitcoin amount if zoomed in enough
     if (node.type === "utxo" && node.data && globalScale > 1.2) {
-      const amount = node.data.amount.toFixed(8);
+      // Safely handle amount display
+      const utxo = node.data as UTXO;
+      const amount = utxo.amount !== undefined ? utxo.amount.toFixed(8) : "0.00000000";
       ctx.font = `${fontSize * 0.8}px Sans-Serif`;
       
       // Draw background for better readability
@@ -324,7 +326,7 @@ export const nodeCanvasObject = (node: GraphNode, ctx: CanvasRenderingContext2D,
       ctx.beginPath();
       ctx.roundRect(
         node.x - amountWidth/2, 
-        node.y + nodeSize + (node.data.tags?.includes("Change") ? 15/globalScale : 2/globalScale), 
+        node.y + nodeSize + (utxo.tags?.includes("Change") ? 15/globalScale : 2/globalScale), 
         amountWidth, 
         fontSize * 0.8, 
         2/globalScale
@@ -336,7 +338,7 @@ export const nodeCanvasObject = (node: GraphNode, ctx: CanvasRenderingContext2D,
       ctx.fillText(
         amount, 
         node.x, 
-        node.y + nodeSize + (node.data.tags?.includes("Change") ? 15/globalScale : 2/globalScale) + (fontSize * 0.4)
+        node.y + nodeSize + (utxo.tags?.includes("Change") ? 15/globalScale : 2/globalScale) + (fontSize * 0.4)
       );
     }
     
@@ -352,36 +354,41 @@ export const nodeCanvasObject = (node: GraphNode, ctx: CanvasRenderingContext2D,
   }
 };
 
+// Remove this function as we're now using direct JSX rendering in the component
+// Just adding a comment to indicate the intentional removal
+// The renderNodeTooltip function has been moved to the UTXOGraphView component
+// and now returns React elements instead of data objects
+
 // This function should no longer be used - we've moved the JSX rendering to the component
 // Keeping it for backwards compatibility but it should not be used directly
-export const renderNodeTooltip = (node: GraphNode): NodeTooltip | null => {
-  if (node.type === "utxo" && node.data) {
-    const utxo = node.data as UTXO;
-    return {
-      title: `UTXO ${utxo.txid.substring(0, 8)}...${utxo.vout}`,
-      content: [
-        { label: "Amount", value: utxo.amount.toString() },
-        { label: "Wallet", value: utxo.walletName || "Default" },
-        { label: "Risk", value: utxo.privacyRisk },
-        { label: "Tags", value: utxo.tags.join(", ") || "None" }
-      ]
-    };
-  } else if (node.type === "transaction") {
-    return {
-      title: "Transaction",
-      content: [
-        { label: "TXID", value: node.data.txid },
-        { label: "Click to view details", value: "" }
-      ]
-    };
-  } else if (node.type === "address") {
-    return {
-      title: "Address",
-      content: [
-        { label: "Address", value: node.data.address },
-        { label: "Click to view details", value: "" }
-      ]
-    };
-  }
-  return null;
-};
+// export const renderNodeTooltip = (node: GraphNode): NodeTooltip | null => {
+//   if (node.type === "utxo" && node.data) {
+//     const utxo = node.data as UTXO;
+//     return {
+//       title: `UTXO ${utxo.txid.substring(0, 8)}...${utxo.vout}`,
+//       content: [
+//         { label: "Amount", value: utxo.amount.toString() },
+//         { label: "Wallet", value: utxo.walletName || "Default" },
+//         { label: "Risk", value: utxo.privacyRisk },
+//         { label: "Tags", value: utxo.tags.join(", ") || "None" }
+//       ]
+//     };
+//   } else if (node.type === "transaction") {
+//     return {
+//       title: "Transaction",
+//       content: [
+//         { label: "TXID", value: node.data.txid },
+//         { label: "Click to view details", value: "" }
+//       ]
+//     };
+//   } else if (node.type === "address") {
+//     return {
+//       title: "Address",
+//       content: [
+//         { label: "Address", value: node.data.address },
+//         { label: "Click to view details", value: "" }
+//       ]
+//     };
+//   }
+//   return null;
+// };
