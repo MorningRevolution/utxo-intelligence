@@ -352,8 +352,9 @@ export const nodeCanvasObject = (node: GraphNode, ctx: CanvasRenderingContext2D,
   }
 };
 
-// Fix the node tooltip content rendering function to return ReactNode instead of object
-export const renderNodeTooltip = (node: GraphNode) => {
+// This function should no longer be used - we've moved the JSX rendering to the component
+// Keeping it for backwards compatibility but it should not be used directly
+export const renderNodeTooltip = (node: GraphNode): NodeTooltip | null => {
   if (node.type === "utxo" && node.data) {
     const utxo = node.data as UTXO;
     return {

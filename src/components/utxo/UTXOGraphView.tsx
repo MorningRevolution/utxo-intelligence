@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import { UTXO } from "@/types/utxo";
@@ -6,7 +7,7 @@ import { formatBTC, getRiskBadgeStyle, getRiskTextColor } from "@/utils/utxo-uti
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Search, Filter, Network, Maximize2, Minimize2, Clock } from "lucide-react";
+import { Search, Filter, Network, Maximize2, Minimize2, Clock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -15,6 +16,15 @@ import { DateRange } from "react-day-picker";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { createGraphData, nodeCanvasObject, TRANSACTION_NODE_COLOR } from "@/lib/utxo-graph-utils";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 
 interface UTXOGraphViewProps {
   utxos: UTXO[];
@@ -47,6 +57,8 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
   const [equalNodeSize, setEqualNodeSize] = useState(false);
   const [chronologicalFlow, setChronologicalFlow] = useState(false);
   const [showingTruncatedWarning, setShowingTruncatedWarning] = useState(false);
+  const [showTransactionDrawer, setShowTransactionDrawer] = useState(false);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   
   const isMobile = useIsMobile();
 
@@ -162,9 +174,15 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
         title: "UTXO Selected",
         description: `Showing details for UTXO ${node.data.txid.substring(0, 8)}...`,
       });
-    } else if (node.type === "transaction" && onSelectTransaction) {
-      // Call the transaction selection callback
-      onSelectTransaction(node.data.txid);
+    } else if (node.type === "transaction" && node.data) {
+      // Open transaction drawer
+      setSelectedTransactionId(node.data.txid);
+      setShowTransactionDrawer(true);
+      
+      // Also call the callback if provided
+      if (onSelectTransaction) {
+        onSelectTransaction(node.data.txid);
+      }
     } else if (node.type === "address" && onSelectAddress) {
       // Call the address selection callback
       onSelectAddress(node.data.address);
@@ -520,7 +538,6 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
             linkWidth={(link) => link.value}
             enableNodeDrag={true}
             nodeRelSize={6}
-            // Note: enableWebGL removed as it's not a valid prop for ForceGraph2D
           />
         )}
         
@@ -552,6 +569,88 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Transaction Details Drawer */}
+      <Drawer open={showTransactionDrawer} onOpenChange={setShowTransactionDrawer}>
+        <DrawerContent className="max-h-[85vh]">
+          <DrawerHeader>
+            <DrawerTitle>Transaction Details</DrawerTitle>
+            <DrawerDescription>
+              {selectedTransactionId ? 
+                `Transaction ID: ${selectedTransactionId}` : 
+                "No transaction selected"}
+            </DrawerDescription>
+          </DrawerHeader>
+          
+          <div className="px-4 py-2">
+            {selectedTransactionId ? (
+              <div className="space-y-4">
+                <div className="bg-muted p-4 rounded-lg">
+                  <h3 className="text-sm font-medium mb-1">Transaction ID</h3>
+                  <p className="text-xs break-all font-mono">{selectedTransactionId}</p>
+                </div>
+                
+                {/* Connected UTXOs */}
+                <div>
+                  <h3 className="text-sm font-medium mb-2">Connected UTXOs</h3>
+                  {graphData.links.filter(link => {
+                    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+                    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+                    const txNodeId = `tx-${selectedTransactionId}`;
+                    return sourceId === txNodeId || targetId === txNodeId;
+                  }).map((link, i) => {
+                    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+                    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+                    const utxoId = sourceId.startsWith('utxo-') ? sourceId : targetId;
+                    const direction = sourceId.startsWith('utxo-') ? 'Input' : 'Output';
+                    
+                    // Find the UTXO data
+                    const utxoNode = graphData.nodes.find(n => n.id === utxoId);
+                    const utxo = utxoNode?.data as UTXO | undefined;
+                    
+                    if (!utxo) return null;
+                    
+                    return (
+                      <div key={i} className="border rounded-md p-2 mb-2 flex justify-between">
+                        <div>
+                          <Badge variant={direction === 'Input' ? "default" : "outline"} className="mb-1">
+                            {direction}
+                          </Badge>
+                          <p className="text-xs">{utxo.txid.substring(0, 10)}...:{utxo.vout}</p>
+                          <p className="text-xs text-muted-foreground">{formatBTC(utxo.amount)} BTC</p>
+                        </div>
+                        <div>
+                          <Badge 
+                            variant={utxo.privacyRisk === "high" ? "destructive" : 
+                                   utxo.privacyRisk === "medium" ? "warning" : "success"} 
+                            className="text-[0.65rem]">
+                              {utxo.privacyRisk}
+                          </Badge>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {/* Transaction risk summary */}
+                <div className="bg-muted p-3 rounded-md">
+                  <p className="text-sm">Transaction analysis coming in future updates.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground p-8">
+                Select a transaction node to view details
+              </div>
+            )}
+          </div>
+          
+          <DrawerFooter>
+            <Button variant="outline" onClick={() => setShowTransactionDrawer(false)}>
+              Close
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 };
