@@ -1,4 +1,3 @@
-
 import { GraphNode, GraphLink } from "@/types/utxo-graph";
 import { UTXO } from "@/types/utxo";
 import { getRiskColor } from "@/utils/utxo-utils";
@@ -258,40 +257,7 @@ export const createGraphData = (
   return { nodes, links };
 };
 
-// Node tooltip content rendering
-export const renderNodeTooltip = (node: GraphNode) => {
-  if (node.type === "utxo" && node.data) {
-    const utxo = node.data as UTXO;
-    return {
-      title: `UTXO ${utxo.txid.substring(0, 8)}...${utxo.vout}`,
-      content: [
-        { label: "Amount", value: utxo.amount.toString() },
-        { label: "Wallet", value: utxo.walletName || "Default" },
-        { label: "Risk", value: utxo.privacyRisk },
-        { label: "Tags", value: utxo.tags.join(", ") || "None" }
-      ]
-    };
-  } else if (node.type === "transaction") {
-    return {
-      title: "Transaction",
-      content: [
-        { label: "TXID", value: node.data.txid },
-        { label: "Click to view details", value: "" }
-      ]
-    };
-  } else if (node.type === "address") {
-    return {
-      title: "Address",
-      content: [
-        { label: "Address", value: node.data.address },
-        { label: "Click to view details", value: "" }
-      ]
-    };
-  }
-  return null;
-};
-
-// Custom node rendering function
+// Update the nodeCanvasObject function to enhance transaction node rendering
 export const nodeCanvasObject = (node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
   if (!node.x || !node.y) return; // Skip if position is not defined
   
@@ -384,4 +350,37 @@ export const nodeCanvasObject = (node: GraphNode, ctx: CanvasRenderingContext2D,
       ctx.fillText(txIndicator, node.x, node.y - nodeSize - 1/globalScale);
     }
   }
+};
+
+// Node tooltip content rendering
+export const renderNodeTooltip = (node: GraphNode) => {
+  if (node.type === "utxo" && node.data) {
+    const utxo = node.data as UTXO;
+    return {
+      title: `UTXO ${utxo.txid.substring(0, 8)}...${utxo.vout}`,
+      content: [
+        { label: "Amount", value: utxo.amount.toString() },
+        { label: "Wallet", value: utxo.walletName || "Default" },
+        { label: "Risk", value: utxo.privacyRisk },
+        { label: "Tags", value: utxo.tags.join(", ") || "None" }
+      ]
+    };
+  } else if (node.type === "transaction") {
+    return {
+      title: "Transaction",
+      content: [
+        { label: "TXID", value: node.data.txid },
+        { label: "Click to view details", value: "" }
+      ]
+    };
+  } else if (node.type === "address") {
+    return {
+      title: "Address",
+      content: [
+        { label: "Address", value: node.data.address },
+        { label: "Click to view details", value: "" }
+      ]
+    };
+  }
+  return null;
 };
