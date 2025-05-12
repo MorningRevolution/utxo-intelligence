@@ -10,6 +10,9 @@ interface GraphOptions {
   chronologicalFlow?: boolean;
 }
 
+// Transaction node color constant
+export const TRANSACTION_NODE_COLOR = "#6366F1"; // Indigo color for transaction nodes
+
 // Calculate logarithmic node size based on amount
 const calculateNodeSize = (amount: number, equalSize: boolean): number => {
   if (equalSize) return 1;
@@ -79,8 +82,8 @@ export const createGraphData = (
       const txNode: GraphNode = {
         id: txNodeId,
         name: `TX ${utxo.txid.substring(0, 8)}...`,
-        val: 1.5, // slightly larger
-        color: "#8E9196", // neutral gray
+        val: 1.8, // Slightly larger than before for visual prominence
+        color: TRANSACTION_NODE_COLOR, // Use the new transaction color constant
         type: "transaction",
         data: { txid: utxo.txid }
       };
@@ -302,6 +305,16 @@ export const nodeCanvasObject = (node: GraphNode, ctx: CanvasRenderingContext2D,
   ctx.arc(node.x, node.y, nodeSize, 0, 2 * Math.PI, false);
   ctx.fill();
   
+  // Add subtle shadow effect for transaction nodes
+  if (node.type === "transaction") {
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 3;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 0.5/globalScale;
+    ctx.stroke();
+    ctx.shadowBlur = 0; // Reset shadow for other elements
+  }
+  
   // Draw node label if close enough
   if (globalScale > 0.4) {
     ctx.font = `${fontSize}px Sans-Serif`;
@@ -359,6 +372,16 @@ export const nodeCanvasObject = (node: GraphNode, ctx: CanvasRenderingContext2D,
         node.x, 
         node.y + nodeSize + (node.data.tags?.includes("Change") ? 15/globalScale : 2/globalScale) + (fontSize * 0.4)
       );
+    }
+    
+    // For transaction nodes, add a transaction indicator
+    if (node.type === "transaction" && globalScale > 0.8) {
+      const txIndicator = "TX";
+      ctx.font = `bold ${fontSize * 0.8}px Sans-Serif`;
+      
+      // Draw text directly on the node for better visibility
+      ctx.fillStyle = 'white';
+      ctx.fillText(txIndicator, node.x, node.y - nodeSize - 1/globalScale);
     }
   }
 };

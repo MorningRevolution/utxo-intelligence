@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/store/WalletContext";
-import { ArrowLeft, Table } from "lucide-react";
+import { Table } from "lucide-react";
 import { UTXOGraphView } from "@/components/utxo/UTXOGraphView";
 import { UTXO } from "@/types/utxo";
 import { toast } from "sonner";

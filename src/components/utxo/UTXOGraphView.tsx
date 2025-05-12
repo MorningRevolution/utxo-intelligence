@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DateRange } from "react-day-picker";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { createGraphData, nodeCanvasObject } from "@/lib/utxo-graph-utils";
+import { createGraphData, nodeCanvasObject, TRANSACTION_NODE_COLOR } from "@/lib/utxo-graph-utils";
 
 interface UTXOGraphViewProps {
   utxos: UTXO[];
@@ -232,7 +232,7 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
     }
   };
 
-  // Node tooltip content
+  // Node tooltip content rendering function
   const renderNodeTooltip = (node: GraphNode) => {
     if (node.type === "utxo" && node.data) {
       const utxo = node.data as UTXO;
@@ -255,10 +255,27 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
         </div>
       );
     } else if (node.type === "transaction") {
+      // Enhanced transaction tooltip
+      const linkedNodes = graphData.links.filter(link => {
+        const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+        const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+        return sourceId === node.id || targetId === node.id;
+      });
+      
+      // Count connected UTXOs
+      const connectedUtxos = new Set();
+      linkedNodes.forEach(link => {
+        const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+        const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+        if (sourceId !== node.id && sourceId.startsWith('utxo-')) connectedUtxos.add(sourceId);
+        if (targetId !== node.id && targetId.startsWith('utxo-')) connectedUtxos.add(targetId);
+      });
+      
       return (
         <div className="bg-background/95 p-2 rounded-md shadow-md border border-border">
           <div className="font-semibold">Transaction</div>
           <div className="text-xs">{node.data.txid}</div>
+          <div className="text-xs mt-1">Connected to {connectedUtxos.size} UTXO(s)</div>
           <div className="text-[0.65rem] mt-1">Click to view details</div>
         </div>
       );
@@ -449,7 +466,7 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
         </div>
       </div>
       
-      {/* Legend - Pinned at the top */}
+      {/* Legend - Pinned at the top with updated transaction color */}
       <div className="bg-card p-2 rounded-lg shadow-sm mb-4 flex flex-wrap gap-3 text-xs">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#10b981' }}></div>
@@ -468,7 +485,7 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
           <span>Change Output</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#8E9196' }}></div>
+          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: TRANSACTION_NODE_COLOR }}></div>
           <span>Transaction</span>
         </div>
         <div className="flex items-center gap-1">
@@ -504,8 +521,7 @@ export const UTXOGraphView: React.FC<UTXOGraphViewProps> = ({
             linkWidth={(link) => link.value}
             enableNodeDrag={true}
             nodeRelSize={6}
-            // Use web worker for better performance with large graphs
-            enableWebGL={true}
+            // Note: enableWebGL removed as it's not a valid prop for ForceGraph2D
           />
         )}
         
