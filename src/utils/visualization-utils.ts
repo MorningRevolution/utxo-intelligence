@@ -1,5 +1,5 @@
 
-import { GraphData, GraphNode, GraphLink } from "@/types/utxo-graph";
+import { GraphData, GraphNode, GraphLink, TreemapGroupingOption } from "@/types/utxo-graph";
 import { UTXO } from "@/types/utxo";
 import { getRiskColor } from "@/utils/utxo-utils";
 
@@ -125,64 +125,179 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
 };
 
 /**
- * Creates treemap data from UTXOs
+ * Creates treemap data based on grouping option
  */
-export const createTreemapData = (utxos: UTXO[]) => {
-  // Group UTXOs by privacy risk
-  const riskGroups = {
-    low: { 
-      name: 'Low Risk', 
-      amount: 0, 
-      count: 0,
-      utxos: [] as UTXO[]
-    },
-    medium: { 
-      name: 'Medium Risk', 
-      amount: 0, 
-      count: 0,
-      utxos: [] as UTXO[]
-    },
-    high: { 
-      name: 'High Risk', 
-      amount: 0, 
-      count: 0,
-      utxos: [] as UTXO[]
-    }
-  };
-  
-  // Calculate totals for each risk group
-  utxos.forEach(utxo => {
-    if (!utxo.privacyRisk) return;
+export const createTreemapData = (utxos: UTXO[], groupingOption: TreemapGroupingOption = "risk") => {
+  if (groupingOption === "none") {
+    // Individual UTXO tiles with no grouping
+    return utxos.map(utxo => ({
+      id: `${utxo.txid}-${utxo.vout}`,
+      name: `${utxo.txid.substring(0, 8)}...${utxo.vout}`,
+      value: utxo.amount || 0,
+      color: utxo.privacyRisk === 'high' ? '#ea384c' : 
+             utxo.privacyRisk === 'medium' ? '#f97316' : '#10b981',
+      data: utxo
+    }));
+  } 
+  else if (groupingOption === "risk") {
+    // Group UTXOs by privacy risk
+    const riskGroups = {
+      low: { 
+        name: 'Low Risk', 
+        amount: 0, 
+        count: 0,
+        utxos: [] as UTXO[]
+      },
+      medium: { 
+        name: 'Medium Risk', 
+        amount: 0, 
+        count: 0,
+        utxos: [] as UTXO[]
+      },
+      high: { 
+        name: 'High Risk', 
+        amount: 0, 
+        count: 0,
+        utxos: [] as UTXO[]
+      }
+    };
     
-    riskGroups[utxo.privacyRisk].amount += (utxo.amount || 0);
-    riskGroups[utxo.privacyRisk].count += 1;
-    riskGroups[utxo.privacyRisk].utxos.push(utxo);
-  });
+    // Calculate totals for each risk group
+    utxos.forEach(utxo => {
+      if (!utxo.privacyRisk) return;
+      
+      riskGroups[utxo.privacyRisk].amount += (utxo.amount || 0);
+      riskGroups[utxo.privacyRisk].count += 1;
+      riskGroups[utxo.privacyRisk].utxos.push(utxo);
+    });
+    
+    // Convert to array format for treemap
+    return [
+      {
+        name: 'Low Risk',
+        value: riskGroups.low.amount,
+        count: riskGroups.low.count,
+        color: '#10b981', // green
+        utxos: riskGroups.low.utxos
+      },
+      {
+        name: 'Medium Risk',
+        value: riskGroups.medium.amount,
+        count: riskGroups.medium.count,
+        color: '#f97316', // orange
+        utxos: riskGroups.medium.utxos
+      },
+      {
+        name: 'High Risk',
+        value: riskGroups.high.amount,
+        count: riskGroups.high.count,
+        color: '#ea384c', // red
+        utxos: riskGroups.high.utxos
+      }
+    ];
+  }
+  else if (groupingOption === "wallet") {
+    // Group UTXOs by wallet
+    const walletGroups = new Map<string, {
+      name: string;
+      amount: number;
+      count: number;
+      utxos: UTXO[];
+      color: string;
+    }>();
+    
+    // Calculate totals for each wallet
+    utxos.forEach(utxo => {
+      const walletName = utxo.walletName || 'Unknown';
+      
+      if (!walletGroups.has(walletName)) {
+        walletGroups.set(walletName, {
+          name: walletName,
+          amount: 0,
+          count: 0,
+          utxos: [],
+          // Generate a color based on wallet name hash
+          color: `hsl(${Math.abs(walletName.split('').reduce((a, b) => {
+            a = (a << 5) - a + b.charCodeAt(0);
+            return a & a;
+          }, 0)) % 360}, 70%, 50%)`
+        });
+      }
+      
+      const group = walletGroups.get(walletName)!;
+      group.amount += (utxo.amount || 0);
+      group.count += 1;
+      group.utxos.push(utxo);
+    });
+    
+    // Convert to array format for treemap
+    return Array.from(walletGroups.values());
+  }
+  else if (groupingOption === "tag") {
+    // Group UTXOs by tags (a UTXO can appear in multiple groups if it has multiple tags)
+    const tagGroups = new Map<string, {
+      name: string;
+      amount: number;
+      count: number;
+      utxos: UTXO[];
+      color: string;
+    }>();
+    
+    // Add "Untagged" group
+    tagGroups.set("Untagged", {
+      name: "Untagged",
+      amount: 0,
+      count: 0,
+      utxos: [],
+      color: "#8E9196" // gray
+    });
+    
+    // Calculate totals for each tag
+    utxos.forEach(utxo => {
+      if (utxo.tags.length === 0) {
+        // Add to untagged group
+        const group = tagGroups.get("Untagged")!;
+        group.amount += (utxo.amount || 0);
+        group.count += 1;
+        group.utxos.push(utxo);
+      } else {
+        // Add to each tag group
+        utxo.tags.forEach(tag => {
+          if (!tagGroups.has(tag)) {
+            tagGroups.set(tag, {
+              name: tag,
+              amount: 0,
+              count: 0,
+              utxos: [],
+              // Generate a color based on tag hash
+              color: `hsl(${Math.abs(tag.split('').reduce((a, b) => {
+                a = (a << 5) - a + b.charCodeAt(0);
+                return a & a;
+              }, 0)) % 360}, 70%, 50%)`
+            });
+          }
+          
+          const group = tagGroups.get(tag)!;
+          group.amount += (utxo.amount || 0);
+          group.count += 1;
+          group.utxos.push(utxo);
+        });
+      }
+    });
+    
+    // Convert to array format for treemap
+    return Array.from(tagGroups.values());
+  }
   
-  // Convert to array format for treemap
-  return [
-    {
-      name: 'Low Risk',
-      value: riskGroups.low.amount,
-      count: riskGroups.low.count,
-      color: '#10b981', // green
-      utxos: riskGroups.low.utxos
-    },
-    {
-      name: 'Medium Risk',
-      value: riskGroups.medium.amount,
-      count: riskGroups.medium.count,
-      color: '#f97316', // orange
-      utxos: riskGroups.medium.utxos
-    },
-    {
-      name: 'High Risk',
-      value: riskGroups.high.amount,
-      count: riskGroups.high.count,
-      color: '#ea384c', // red
-      utxos: riskGroups.high.utxos
-    }
-  ];
+  // Default case - return individual UTXOs
+  return utxos.map(utxo => ({
+    id: `${utxo.txid}-${utxo.vout}`,
+    name: `${utxo.txid.substring(0, 8)}...${utxo.vout}`,
+    value: utxo.amount || 0,
+    color: utxo.privacyRisk === 'high' ? '#ea384c' : 
+           utxo.privacyRisk === 'medium' ? '#f97316' : '#10b981',
+    data: utxo
+  }));
 };
 
 /**
@@ -193,4 +308,55 @@ export const safeFormatBTC = (amount: number | undefined | null): string => {
     return "₿0.00000000";
   }
   return `₿${amount.toFixed(8)}`;
+};
+
+/**
+ * Filter UTXOs based on filter criteria
+ */
+export const filterUTXOs = (utxos: UTXO[], filters: Partial<UTXOFiltersState>): UTXO[] => {
+  return utxos.filter(utxo => {
+    // Search term filter
+    if (filters.searchTerm && filters.searchTerm.length > 0) {
+      const searchTerm = filters.searchTerm.toLowerCase();
+      const matchesSearch = 
+        utxo.txid.toLowerCase().includes(searchTerm) ||
+        utxo.address.toLowerCase().includes(searchTerm) ||
+        (utxo.notes && utxo.notes.toLowerCase().includes(searchTerm)) ||
+        utxo.tags.some(tag => tag.toLowerCase().includes(searchTerm));
+        
+      if (!matchesSearch) return false;
+    }
+    
+    // Tag filter
+    if (filters.selectedTags && filters.selectedTags.length > 0) {
+      if (!filters.selectedTags.some(tag => utxo.tags.includes(tag))) {
+        return false;
+      }
+    }
+    
+    // Wallet filter
+    if (filters.selectedWallets && filters.selectedWallets.length > 0) {
+      if (!filters.selectedWallets.includes(utxo.walletName || 'Unknown')) {
+        return false;
+      }
+    }
+    
+    // Risk level filter
+    if (filters.selectedRiskLevels && filters.selectedRiskLevels.length > 0) {
+      if (!filters.selectedRiskLevels.includes(utxo.privacyRisk)) {
+        return false;
+      }
+    }
+    
+    // Amount range filter
+    if (filters.minAmount !== undefined && utxo.amount < filters.minAmount) {
+      return false;
+    }
+    
+    if (filters.maxAmount !== undefined && utxo.amount > filters.maxAmount) {
+      return false;
+    }
+    
+    return true;
+  });
 };

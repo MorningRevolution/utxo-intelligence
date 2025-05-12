@@ -8,6 +8,8 @@ export interface GraphNode {
   type: "utxo" | "transaction" | "address";
   data?: any; // Original data
   riskLevel?: "low" | "medium" | "high";
+  x?: number; // Position for force-directed layout
+  y?: number;
 }
 
 export interface GraphLink {
@@ -28,3 +30,16 @@ export type UTXOViewType = "table" | "visual" | "map" | "traceability" | "treema
 
 // Define a type for node selection callbacks
 export type NodeSelectionCallback = (nodeId: string, nodeType: "utxo" | "transaction" | "address", data: any) => void;
+
+// Define grouping options for treemap
+export type TreemapGroupingOption = "risk" | "wallet" | "tag" | "none";
+
+// Define filtering options
+export interface UTXOFiltersState {
+  searchTerm: string;
+  selectedTags: string[];
+  selectedWallets: string[];
+  selectedRiskLevels: ("low" | "medium" | "high")[];
+  minAmount?: number;
+  maxAmount?: number;
+}

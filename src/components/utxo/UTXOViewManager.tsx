@@ -106,8 +106,8 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
     );
   } else if (view === "traceability" || view === "treemap") {
     // Navigate to the UTXO Map page with the appropriate tab selected
-    navigate("/utxo-map");
-    toast.info("Redirecting to UTXO Visualization");
+    navigate(`/utxo-map?view=${view}`);
+    toast.info(`Redirecting to ${view === "traceability" ? "Traceability Graph" : "Privacy Treemap"} visualization`);
     
     // Return table view as fallback while redirecting
     return (
