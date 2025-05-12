@@ -4,27 +4,16 @@ import { UTXO } from "./utxo";
 export interface GraphNode {
   id: string;
   name: string;
-  val: number; // size
-  color: string;
+  amount: number;
   type: "utxo" | "transaction" | "address";
   data?: any; // Original data
-  group?: string;
   riskLevel?: "low" | "medium" | "high";
-  // Required by ForceGraph2D
-  x?: number;
-  y?: number;
-  vx?: number;
-  vy?: number;
-  fx?: number;
-  fy?: number;
-  index?: number;
 }
 
 export interface GraphLink {
-  source: string | GraphNode;
-  target: string | GraphNode;
+  source: string;
+  target: string;
   value: number;
-  color?: string;
   isChangeOutput?: boolean;
   riskLevel?: "low" | "medium" | "high";
 }
@@ -34,8 +23,8 @@ export interface GraphData {
   links: GraphLink[];
 }
 
+// Define view types for navigation
+export type UTXOViewType = "table" | "visual" | "map" | "traceability" | "treemap";
+
 // Define a type for node selection callbacks
 export type NodeSelectionCallback = (nodeId: string, nodeType: "utxo" | "transaction" | "address", data: any) => void;
-
-// Define view types for navigation
-export type UTXOViewType = "table" | "visual" | "map";

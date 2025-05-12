@@ -1,16 +1,14 @@
 
-import React, { useState } from "react";
+import React from "react";
 import { UTXO } from "@/types/utxo";
 import { UTXOTableBody } from "./UTXOTableBody";
 import { UTXOVisualizer } from "./UTXOVisualizer";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-
-// Define ViewType directly here since ViewToggle was removed
-type ViewType = "table" | "visual" | "map";
+import { UTXOViewType } from "@/types/utxo-graph";
 
 interface UTXOViewManagerProps {
-  view: ViewType;
+  view: UTXOViewType;
   filteredUtxos: UTXO[];
   walletData: any;
   visibleColumns: Record<string, boolean>;
@@ -106,8 +104,37 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
         />
       </div>
     );
+  } else if (view === "traceability" || view === "treemap") {
+    // Navigate to the UTXO Map page with the appropriate tab selected
+    navigate("/utxo-map");
+    toast.info("Redirecting to UTXO Visualization");
+    
+    // Return table view as fallback while redirecting
+    return (
+      <UTXOTableBody 
+        filteredUtxos={filteredUtxos}
+        walletData={walletData}
+        visibleColumns={visibleColumns}
+        sortConfig={sortConfig}
+        handleSort={handleSort}
+        editableUtxo={editableUtxo}
+        setEditableUtxo={setEditableUtxo}
+        datePickerOpen={datePickerOpen}
+        setDatePickerOpen={setDatePickerOpen}
+        confirmDeleteUtxo={confirmDeleteUtxo}
+        handleTagSelection={handleTagSelection}
+        handleAddToSimulation={handleAddToSimulation}
+        handleSenderAddressEdit={handleSenderAddressEdit}
+        handleReceiverAddressEdit={handleReceiverAddressEdit}
+        handleDateEdit={handleDateEdit}
+        handleBtcPriceEdit={handleBtcPriceEdit}
+        handleCostBasisEdit={handleCostBasisEdit}
+        handleNotesEdit={handleNotesEdit}
+        onRowClick={handleRowClick}
+      />
+    );
   } else {
-    // Graph view should be on a separate page
+    // Map view should be on a separate page
     navigate("/utxo-map");
     toast("Redirecting to UTXO Map");
     
