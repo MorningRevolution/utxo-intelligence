@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/store/WalletContext";
 import { Table, BarChart, Grid } from "lucide-react";
@@ -12,9 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const UTXOMap: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { walletData, hasWallet } = useWallet();
   const [selectedUtxo, setSelectedUtxo] = useState<UTXO | null>(null);
-  const [activeView, setActiveView] = useState<"traceability" | "treemap">("traceability");
+  const [activeView, setActiveView] = useState<"traceability" | "treemap">(
+    (searchParams.get("view") === "treemap" ? "treemap" : "traceability") as "traceability" | "treemap"
+  );
 
   useEffect(() => {
     if (!hasWallet) {

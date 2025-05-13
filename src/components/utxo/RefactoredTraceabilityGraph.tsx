@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { UTXO } from "@/types/utxo";
 import { GraphNode, GraphLink, UTXOFiltersState } from "@/types/utxo-graph";
@@ -394,12 +395,15 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
       {/* Toolbar */}
       <div className="bg-card p-2 rounded-lg shadow-sm mb-4 flex flex-wrap gap-2 items-center">
         <div className="flex-1 min-w-[200px] relative">
-          <Input
-            placeholder="Search by txid, address, tag..."
-            value={filters.searchTerm}
-            onChange={(e) => handleFilterChange("searchTerm", e.target.value)}
-            className="w-full"
-          />
+          <div className="relative flex items-center">
+            <Search className="absolute left-2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by txid, address, tag..."
+              value={filters.searchTerm}
+              onChange={(e) => handleFilterChange("searchTerm", e.target.value)}
+              className="w-full pl-8"
+            />
+          </div>
         </div>
         
         <div className="flex gap-2">
@@ -704,11 +708,12 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
                     }
                   }
                   
-                  // Draw curved paths for better visibility when there are multiple links between nodes
-                  const pathType = "straight"; // Or "curved"
+                  // Path type can be straight or curved
+                  // Fix the type comparison issue by using a boolean flag
+                  const useCurvedPath = false; // Set to true to use curved paths
                   let path = "";
                   
-                  if (pathType === "curved") {
+                  if (useCurvedPath) {
                     // Create a curved path
                     const midX = (sx + tx) / 2;
                     const midY = (sy + ty) / 2;

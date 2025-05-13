@@ -178,13 +178,15 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
       {/* Toolbar */}
       <div className="bg-card p-2 rounded-lg shadow-sm mb-4 flex flex-wrap gap-2 items-center">
         <div className="flex-1 min-w-[200px] relative">
-          <Input
-            placeholder="Search by txid, address, tag..."
-            value={filters.searchTerm}
-            onChange={(e) => handleFilterChange("searchTerm", e.target.value)}
-            className="w-full"
-            startIcon={<Search className="h-4 w-4" />}
-          />
+          <div className="relative flex items-center">
+            <Search className="absolute left-2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by txid, address, tag..."
+              value={filters.searchTerm}
+              onChange={(e) => handleFilterChange("searchTerm", e.target.value)}
+              className="w-full pl-8"
+            />
+          </div>
         </div>
         
         <div className="flex gap-2 items-center">
