@@ -2,44 +2,44 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { UTXO } from "@/types/utxo";
 import { GraphNode, GraphLink, UTXOFiltersState } from "@/types/utxo-graph";
-import { createTraceabilityGraph, safeFormatBTC, filterUTXOs } from "@/utils/visualization-utils";
+import ForceGraph2D from "react-force-graph-2d";
 import { Badge } from "@/components/ui/badge";
-import { getRiskBadgeStyle } from "@/utils/utxo-utils";
-import { ZoomIn, ZoomOut, Filter, Search, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Search, Filter } from "lucide-react";
 import {
   Drawer,
-  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { createTraceabilityGraph, filterUTXOs, safeFormatBTC } from "@/utils/visualization-utils";
+import { getRiskBadgeStyle } from "@/utils/utxo-utils";
 
 interface RefactoredTraceabilityGraphProps {
   utxos: UTXO[];
   onSelectUtxo?: (utxo: UTXO | null) => void;
 }
 
+type PathType = "straight" | "curved";
+
 export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphProps> = ({ 
   utxos, 
   onSelectUtxo 
 }) => {
-  // State for graph data
-  const [graphData, setGraphData] = useState<{ nodes: GraphNode[], links: GraphLink[] }>({ nodes: [], links: [] });
-  
-  // State for interaction
-  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
-  const [showDrawer, setShowDrawer] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState(1);
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  
-  // State for filters
+  // Set up state for graph and interaction
   const [filters, setFilters] = useState<UTXOFiltersState>({
     searchTerm: "",
     selectedTags: [],
@@ -47,9 +47,15 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
     selectedRiskLevels: []
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [pathType, setPathType] = useState<PathType>("straight");
+  const [showNodeLabels, setShowNodeLabels] = useState(true);
+  const [showAmounts, setShowAmounts] = useState(true);
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   
-  // Refs for the graph container
-  const graphContainerRef = useRef<HTMLDivElement>(null);
+  // Refs for the graph instance and container
+  const graphRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   // Extract all available tags for filters
   const availableTags = useMemo(() => {
@@ -68,225 +74,24 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
     });
     return Array.from(wallets);
   }, [utxos]);
-
-  // Generate graph data from filtered UTXOs
-  useEffect(() => {
-    const filteredUtxos = filterUTXOs(utxos, filters);
-    const newGraphData = createTraceabilityGraph(filteredUtxos);
-    
-    // Assign initial positions to nodes using a force-directed algorithm
-    if (newGraphData.nodes.length > 0) {
-      // Simple grid layout as starting point
-      const cols = Math.ceil(Math.sqrt(newGraphData.nodes.length));
-      const spacingX = 250;
-      const spacingY = 200;
-      
-      newGraphData.nodes.forEach((node, i) => {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        
-        // Assign initial positions
-        node.x = col * spacingX + 100;
-        node.y = row * spacingY + 100;
-      });
-    }
-    
-    setGraphData(newGraphData);
+  
+  // Filter UTXOs based on current filters
+  const filteredUtxos = useMemo(() => {
+    return filterUTXOs(utxos, filters);
   }, [utxos, filters]);
-
-  // Apply force-directed layout simulation
-  useEffect(() => {
-    let animFrameId: number;
-    let iteration = 0;
-    const maxIterations = 50; // Limit iterations
-    
-    const simulate = () => {
-      if (iteration >= maxIterations) return;
-      
-      // Copy nodes for manipulation
-      const nodes = [...graphData.nodes];
-      
-      // Apply repulsive forces between nodes
-      for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i];
-        
-        for (let j = 0; j < nodes.length; j++) {
-          if (i !== j) {
-            const otherNode = nodes[j];
-            const dx = (node.x || 0) - (otherNode.x || 0);
-            const dy = (node.y || 0) - (otherNode.y || 0);
-            const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-            
-            // Stronger repulsion for larger nodes
-            const repulsionForce = Math.min(5000 / (distance * distance), 50);
-            const nodeSizeFactor = Math.sqrt(node.amount || 1) / 2;
-            
-            if (node.x !== undefined && node.y !== undefined) {
-              node.x += dx * repulsionForce / distance * 0.1 * nodeSizeFactor;
-              node.y += dy * repulsionForce / distance * 0.1 * nodeSizeFactor;
-            }
-          }
-        }
-      }
-      
-      // Apply attractive forces along links
-      graphData.links.forEach(link => {
-        const sourceNode = nodes.find(n => n.id === link.source);
-        const targetNode = nodes.find(n => n.id === link.target);
-        
-        if (sourceNode && targetNode && 
-            sourceNode.x !== undefined && sourceNode.y !== undefined &&
-            targetNode.x !== undefined && targetNode.y !== undefined) {
-          const dx = sourceNode.x - targetNode.x;
-          const dy = sourceNode.y - targetNode.y;
-          const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-          
-          // Define ideal distance based on node sizes
-          const idealDistance = 200 + 
-            Math.sqrt((sourceNode.amount || 1) * 30) + 
-            Math.sqrt((targetNode.amount || 1) * 30);
-          
-          // Apply forces
-          const strength = (distance - idealDistance) * 0.03;
-          
-          sourceNode.x -= dx * strength / distance;
-          sourceNode.y -= dy * strength / distance;
-          targetNode.x += dx * strength / distance;
-          targetNode.y += dy * strength / distance;
-        }
-      });
-      
-      // Center gravity force
-      nodes.forEach(node => {
-        if (node.x !== undefined && node.y !== undefined) {
-          const width = graphContainerRef.current?.clientWidth || 1000;
-          const height = graphContainerRef.current?.clientHeight || 800;
-          const dx = node.x - width / 2;
-          const dy = node.y - height / 2;
-          
-          node.x -= dx * 0.001;
-          node.y -= dy * 0.001;
-        }
-      });
-      
-      // Update graph data with new positions
-      setGraphData(prevData => ({
-        ...prevData,
-        nodes
-      }));
-      
-      iteration++;
-      animFrameId = requestAnimationFrame(simulate);
-    };
-    
-    if (graphData.nodes.length > 0) {
-      animFrameId = requestAnimationFrame(simulate);
-    }
-    
-    return () => {
-      cancelAnimationFrame(animFrameId);
-    };
-  }, [graphData.nodes.length, graphData.links]);
   
-  // Handle mouse interactions for dragging and zooming
-  const handleMouseDown = (e: React.MouseEvent, node?: GraphNode) => {
-    if (node) {
-      // If clicking on a node, select it without starting drag
-      setSelectedNode(node);
-      setShowDrawer(true);
-      
-      if (node.type === "utxo" && node.data && onSelectUtxo) {
-        onSelectUtxo(node.data);
-      }
-    } else {
-      // Otherwise start pan drag
-      setIsDragging(true);
-      setDragStart({ x: e.clientX, y: e.clientY });
-    }
-    
-    e.stopPropagation(); // Prevent event bubbling
-  };
+  // Generate graph data
+  const graphData = useMemo(() => {
+    return createTraceabilityGraph(filteredUtxos);
+  }, [filteredUtxos]);
   
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    
-    const dx = e.clientX - dragStart.x;
-    const dy = e.clientY - dragStart.y;
-    
-    setPanOffset(prev => ({
-      x: prev.x + dx,
-      y: prev.y + dy
-    }));
-    
-    setDragStart({ x: e.clientX, y: e.clientY });
-  };
-  
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-  
-  // Handle node dragging
-  const handleNodeMouseDown = (e: React.MouseEvent, node: GraphNode) => {
-    e.stopPropagation(); // Prevent propagation to container
-    
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const nodeStartX = node.x || 0;
-    const nodeStartY = node.y || 0;
-    
-    const handleNodeMouseMove = (moveEvent: MouseEvent) => {
-      const dx = moveEvent.clientX - startX;
-      const dy = moveEvent.clientY - startY;
-      
-      // Update node position
-      setGraphData(prev => {
-        const updatedNodes = prev.nodes.map(n => {
-          if (n.id === node.id) {
-            return {
-              ...n,
-              x: nodeStartX + dx / zoomLevel,
-              y: nodeStartY + dy / zoomLevel
-            };
-          }
-          return n;
-        });
-        
-        return {
-          ...prev,
-          nodes: updatedNodes
-        };
-      });
-    };
-    
-    const handleNodeMouseUp = () => {
-      document.removeEventListener('mousemove', handleNodeMouseMove);
-      document.removeEventListener('mouseup', handleNodeMouseUp);
-    };
-    
-    document.addEventListener('mousemove', handleNodeMouseMove);
-    document.addEventListener('mouseup', handleNodeMouseUp);
-    
-    // Also select the node when dragging starts
+  // Handle node click
+  const handleNodeClick = (node: GraphNode) => {
     setSelectedNode(node);
-  };
-  
-  // Handle zoom in/out
-  const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 0.2, 3));
-  };
-  
-  const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 0.2, 0.3));
-  };
-  
-  // Handle wheel event for zooming
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
+    setShowDrawer(true);
     
-    if (e.deltaY < 0) {
-      setZoomLevel(prev => Math.min(prev + 0.1, 3));
-    } else {
-      setZoomLevel(prev => Math.max(prev - 0.1, 0.3));
+    if (node.type === "utxo" && onSelectUtxo && node.data?.utxo) {
+      onSelectUtxo(node.data.utxo);
     }
   };
   
@@ -343,55 +148,235 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
     });
   };
   
-  // Calculate node size based on amount and type
-  const getNodeSize = (node: GraphNode) => {
-    const baseSize = node.type === "transaction" ? 100 : 60;
-    const sizeMultiplier = node.type === "transaction" ? 30 : 15;
-    
-    // Logarithmic scale for better visualization
-    return baseSize + Math.log10(1 + (node.amount || 0)) * sizeMultiplier;
+  // Center and fit graph
+  const centerAndFitGraph = () => {
+    if (graphRef.current) {
+      graphRef.current.zoomToFit(500, 50);
+      toast.info("Graph view reset");
+    }
   };
   
-  // Determine node color based on type and risk level
-  const getNodeColor = (node: GraphNode) => {
+  // Update graph dimensions on mount and resize
+  useEffect(() => {
+    const updateGraphDimensions = () => {
+      if (containerRef.current && graphRef.current) {
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        graphRef.current.width(width);
+        graphRef.current.height(height);
+      }
+    };
+    
+    window.addEventListener('resize', updateGraphDimensions);
+    updateGraphDimensions();
+    
+    // Center and fit on initial load, with a slight delay to ensure rendering
+    const timer = setTimeout(() => {
+      centerAndFitGraph();
+    }, 500);
+    
+    return () => {
+      window.removeEventListener('resize', updateGraphDimensions);
+      clearTimeout(timer);
+    };
+  }, []);
+  
+  // Re-center when graph data changes significantly
+  useEffect(() => {
+    if (graphRef.current && graphData.nodes.length > 0) {
+      const timer = setTimeout(() => {
+        centerAndFitGraph();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [graphData.nodes.length]);
+
+  // Custom node render function
+  const nodeCanvasObject = (node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
+    const { x, y } = node as any; // Position from force simulation
+    
+    if (!x || !y) return; // Skip if no position
+    
+    const fontSize = 4;
+    const nodeSize = Math.max(5, Math.sqrt(node.amount || 1) * 3); // Scale based on amount
+    
+    // Draw node
+    ctx.beginPath();
+    
+    // Different styles based on node type
     if (node.type === "transaction") {
-      return "#6366F1"; // Indigo for transactions
-    } else if (node.type === "address") {
-      return "#E5DEFF"; // Light purple for addresses
-    } else if (node.riskLevel) {
-      // Color by risk for UTXOs
-      switch (node.riskLevel) {
-        case "high": return "#ea384c";
-        case "medium": return "#f97316";
-        case "low": return "#10b981";
-        default: return "#8E9196";
+      // Transaction nodes as indigo rectangles
+      const width = nodeSize * 1.5;
+      const height = nodeSize;
+      
+      // Draw rounded rectangle
+      const radius = 2;
+      ctx.fillStyle = "#6366F1"; // Indigo
+      ctx.beginPath();
+      ctx.moveTo(x - width/2 + radius, y - height/2);
+      ctx.lineTo(x + width/2 - radius, y - height/2);
+      ctx.quadraticCurveTo(x + width/2, y - height/2, x + width/2, y - height/2 + radius);
+      ctx.lineTo(x + width/2, y + height/2 - radius);
+      ctx.quadraticCurveTo(x + width/2, y + height/2, x + width/2 - radius, y + height/2);
+      ctx.lineTo(x - width/2 + radius, y + height/2);
+      ctx.quadraticCurveTo(x - width/2, y + height/2, x - width/2, y + height/2 - radius);
+      ctx.lineTo(x - width/2, y - height/2 + radius);
+      ctx.quadraticCurveTo(x - width/2, y - height/2, x - width/2 + radius, y - height/2);
+      ctx.fill();
+      
+      // Add label if enabled and close enough to see details
+      if (showNodeLabels && globalScale > 0.7) {
+        ctx.font = `${fontSize}px Sans-Serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "white";
+        
+        // Shortened TXID
+        const label = node.name || "TX";
+        ctx.fillText(label, x, y - 2);
+        
+        // Amount (if enabled)
+        if (showAmounts) {
+          const amountText = safeFormatBTC(node.amount || 0).slice(0, 8); // Shortened BTC display
+          ctx.fillText(amountText, x, y + 4);
+        }
+      }
+      
+      // Draw indicator for having tags
+      if (node.data?.tags && node.data.tags.length > 0) {
+        ctx.beginPath();
+        ctx.arc(x + width/2 - 2, y - height/2 + 2, 2, 0, 2 * Math.PI);
+        ctx.fillStyle = "#22c55e"; // Green dot for tags
+        ctx.fill();
+      }
+    } 
+    else if (node.type === "address") {
+      // Address nodes as blue circles
+      ctx.fillStyle = "#3b82f6"; // Blue
+      ctx.beginPath();
+      ctx.arc(x, y, nodeSize * 0.8, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      // Add label
+      if (showNodeLabels && globalScale > 0.7) {
+        ctx.font = `${fontSize}px Sans-Serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "white";
+        const label = node.name || "Addr";
+        ctx.fillText(label, x, y);
       }
     }
-    return "#8E9196"; // Default gray
   };
   
-  // Determine node shape and style
-  const getNodeShape = (node: GraphNode) => {
-    if (node.type === "transaction") {
-      return "rounded-md"; // Square with rounded corners
-    } else if (node.type === "address") {
-      return "rounded-full"; // Circle
+  // Custom link render function
+  const linkCanvasObject = (link: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+    if (!link.source || !link.target) return;
+    
+    // Get source & target coordinates
+    const sx = link.source.x;
+    const sy = link.source.y;
+    const tx = link.target.x;
+    const ty = link.target.y;
+    
+    if (sx === undefined || sy === undefined || tx === undefined || ty === undefined) {
+      return;
     }
-    return "rounded-lg"; // Rounded rectangle
-  };
-  
-  // Determine node border style
-  const getNodeBorder = (node: GraphNode) => {
-    if (node.type === "transaction") {
-      return "border-2 border-indigo-600";
-    } else if (node.type === "address") {
-      return "border border-purple-200";
+    
+    // Set line style based on risk level and whether it's a change output
+    let strokeColor = "#a1a1a1"; // Default gray
+    let lineWidth = 1;
+    
+    if (link.isChangeOutput) {
+      strokeColor = "#7c3aed"; // Purple for change outputs
+      lineWidth = 1.5;
+    } else if (link.riskLevel) {
+      // Color based on risk level
+      switch(link.riskLevel) {
+        case "high":
+          strokeColor = "#ef4444"; // Red
+          lineWidth = 2;
+          break;
+        case "medium":
+          strokeColor = "#f97316"; // Orange
+          lineWidth = 1.5;
+          break;
+        case "low":
+          strokeColor = "#10b981"; // Green
+          lineWidth = 1;
+          break;
+      }
     }
-    return "border border-gray-300";
+    
+    // Path type can be straight or curved
+    let path = "";
+    
+    if (pathType === "curved") {
+      // Create a curved path
+      const midX = (sx + tx) / 2;
+      const midY = (sy + ty) / 2;
+      
+      // Calculate curve offset based on distance
+      const dx = tx - sx;
+      const dy = ty - sy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      
+      // Perpendicular offset for curve control point
+      const offsetX = -dy * 0.2;
+      const offsetY = dx * 0.2;
+      
+      // Control point for the curve
+      const cpX = midX + offsetX;
+      const cpY = midY + offsetY;
+      
+      // Draw curved path
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.quadraticCurveTo(cpX, cpY, tx, ty);
+    } else {
+      // Draw straight path
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(tx, ty);
+    }
+    
+    // Set line styles
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+    
+    // Add arrow head if close enough to see details
+    if (globalScale > 0.5) {
+      // Calculate angle of the line
+      const angle = Math.atan2(ty - sy, tx - sx);
+      
+      // Arrow head size
+      const headSize = 5;
+      
+      // Calculate position for arrow head (slightly before target)
+      const targetNodeSize = Math.max(5, Math.sqrt(link.target.amount || 1) * 3);
+      const offsetDist = targetNodeSize + 2;
+      const arrowX = tx - Math.cos(angle) * offsetDist;
+      const arrowY = ty - Math.sin(angle) * offsetDist;
+      
+      // Draw arrow head
+      ctx.beginPath();
+      ctx.moveTo(arrowX, arrowY);
+      ctx.lineTo(
+        arrowX - headSize * Math.cos(angle - Math.PI/6),
+        arrowY - headSize * Math.sin(angle - Math.PI/6)
+      );
+      ctx.lineTo(
+        arrowX - headSize * Math.cos(angle + Math.PI/6),
+        arrowY - headSize * Math.sin(angle + Math.PI/6)
+      );
+      ctx.closePath();
+      ctx.fillStyle = strokeColor;
+      ctx.fill();
+    }
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full">
       {/* Toolbar */}
       <div className="bg-card p-2 rounded-lg shadow-sm mb-4 flex flex-wrap gap-2 items-center">
         <div className="flex-1 min-w-[200px] relative">
@@ -407,6 +392,20 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
         </div>
         
         <div className="flex gap-2">
+          {/* Path type selector */}
+          <Select
+            value={pathType}
+            onValueChange={(value: PathType) => setPathType(value)}
+          >
+            <SelectTrigger className="w-[130px]">
+              <SelectValue placeholder="Path Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="straight">Straight Lines</SelectItem>
+              <SelectItem value="curved">Curved Lines</SelectItem>
+            </SelectContent>
+          </Select>
+          
           {/* Filter toggle */}
           <Button 
             variant={showFilters ? "default" : "outline"} 
@@ -427,65 +426,44 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
             )}
           </Button>
           
-          {/* Tag Filter Preview */}
-          <div className="flex flex-wrap gap-1 items-center">
-            {filters.selectedTags.slice(0, 2).map(tag => (
-              <Badge 
-                key={tag}
-                variant="default"
-                className="cursor-pointer"
-                onClick={() => handleTagFilterToggle(tag)}
-              >
-                {tag}
-              </Badge>
-            ))}
-            {filters.selectedTags.length > 2 && (
-              <Badge variant="outline">+{filters.selectedTags.length - 2} more</Badge>
-            )}
-          </div>
-          
-          {/* Zoom controls */}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={handleZoomOut}>
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-            <span className="text-xs">{Math.round(zoomLevel * 100)}%</span>
-            <Button variant="outline" size="icon" onClick={handleZoomIn}>
-              <ZoomIn className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          {/* Reset pan/zoom */}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => {
-              setZoomLevel(1);
-              setPanOffset({ x: 0, y: 0 });
-            }}
+          {/* Zoom to fit button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={centerAndFitGraph}
           >
-            Reset View
+            Center Graph
           </Button>
+        </div>
+      </div>
+      
+      {/* Display options */}
+      <div className="flex gap-4 mb-4">
+        <div className="flex items-center space-x-2">
+          <Checkbox 
+            id="show-labels" 
+            checked={showNodeLabels}
+            onCheckedChange={() => setShowNodeLabels(!showNodeLabels)}
+          />
+          <Label htmlFor="show-labels">Show Labels</Label>
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <Checkbox 
+            id="show-amounts" 
+            checked={showAmounts}
+            onCheckedChange={() => setShowAmounts(!showAmounts)}
+          />
+          <Label htmlFor="show-amounts">Show Amounts</Label>
         </div>
       </div>
       
       {/* Expanded filters panel */}
       {showFilters && (
         <div className="bg-card p-4 rounded-lg shadow-sm mb-4 grid gap-4 md:grid-cols-3">
-          {/* Tags filter */}
+          {/* Tag filters */}
           <div>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-sm font-medium">Filter by Tags</h3>
-              {filters.selectedTags.length > 0 && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => handleFilterChange("selectedTags", [])}
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
+            <h3 className="text-sm font-medium mb-2">Filter by Tags</h3>
             <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2">
               {availableTags.map(tag => (
                 <div key={tag} className="flex items-center gap-2">
@@ -501,23 +479,15 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
                   </label>
                 </div>
               ))}
+              {availableTags.length === 0 && (
+                <p className="text-sm text-muted-foreground">No tags available</p>
+              )}
             </div>
           </div>
           
-          {/* Wallets filter */}
+          {/* Wallet filters */}
           <div>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-sm font-medium">Filter by Wallets</h3>
-              {filters.selectedWallets.length > 0 && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => handleFilterChange("selectedWallets", [])}
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
+            <h3 className="text-sm font-medium mb-2">Filter by Wallets</h3>
             <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2">
               {availableWallets.map(wallet => (
                 <div key={wallet} className="flex items-center gap-2">
@@ -533,23 +503,15 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
                   </label>
                 </div>
               ))}
+              {availableWallets.length === 0 && (
+                <p className="text-sm text-muted-foreground">No wallets available</p>
+              )}
             </div>
           </div>
           
-          {/* Risk levels filter */}
+          {/* Risk level filters */}
           <div>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-sm font-medium">Filter by Risk Level</h3>
-              {filters.selectedRiskLevels.length > 0 && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => handleFilterChange("selectedRiskLevels", [])}
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
+            <h3 className="text-sm font-medium mb-2">Filter by Risk Level</h3>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <input
@@ -605,367 +567,151 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
         </div>
       )}
       
-      {/* Legend */}
-      <div className="bg-card p-2 rounded-lg shadow-sm mb-4 flex flex-wrap gap-3 text-xs">
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-md bg-[#6366F1]"></div>
-          <span>Transaction</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-[#E5DEFF]"></div>
-          <span>Address</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-[#10b981]"></div>
-          <span>Low Risk</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-[#f97316]"></div>
-          <span>Medium Risk</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-[#ea384c]"></div>
-          <span>High Risk</span>
+      {/* Graph legend */}
+      <div className="bg-card p-2 rounded-lg shadow-sm mb-4">
+        <div className="flex flex-wrap gap-4 text-xs">
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-3 rounded bg-[#6366F1]"></div>
+            <span>Transaction</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full bg-[#3b82f6]"></div>
+            <span>Address</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-8 h-2 bg-[#10b981]"></div>
+            <span>Low Risk Flow</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-8 h-2 bg-[#f97316]"></div>
+            <span>Medium Risk Flow</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-8 h-2 bg-[#ef4444]"></div>
+            <span>High Risk Flow</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-8 h-2 bg-[#7c3aed]"></div>
+            <span>Change Output</span>
+          </div>
         </div>
       </div>
       
-      {/* Graph container */}
+      {/* Force graph */}
       <div 
-        ref={graphContainerRef}
-        className="bg-card rounded-lg shadow-sm p-4 overflow-hidden cursor-move relative min-h-[60vh]" 
-        onMouseDown={(e) => handleMouseDown(e)}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
+        ref={containerRef}
+        className="bg-card rounded-lg shadow-sm overflow-hidden"
+        style={{ height: "calc(100vh - 300px)", minHeight: "500px" }}
       >
         {graphData.nodes.length === 0 ? (
-          <div className="h-[500px] flex items-center justify-center text-muted-foreground">
-            No transactions to display. Try adjusting your filters.
+          <div className="h-full flex items-center justify-center text-muted-foreground">
+            No data to display. Try adjusting your filters.
           </div>
         ) : (
-          <div 
-            className="relative"
-            style={{ 
-              transform: `scale(${zoomLevel}) translate(${panOffset.x}px, ${panOffset.y}px)`, 
-              transformOrigin: 'center center',
-              minHeight: '800px',
-              minWidth: '1200px'
-            }}
-          >
-            {/* Render links as SVG paths */}
-            <svg className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{zIndex: 0}}>
-              <defs>
-                <marker
-                  id="arrowhead"
-                  markerWidth="10"
-                  markerHeight="7"
-                  refX="10"
-                  refY="3.5"
-                  orient="auto"
-                >
-                  <polygon points="0 0, 10 3.5, 0 7" fill="#8E9196" />
-                </marker>
-              </defs>
-              <g>
-                {graphData.links.map((link, i) => {
-                  // Find source and target nodes
-                  const sourceNode = graphData.nodes.find(n => n.id === link.source);
-                  const targetNode = graphData.nodes.find(n => n.id === link.target);
-                  
-                  if (!sourceNode || !targetNode || 
-                      sourceNode.x === undefined || sourceNode.y === undefined ||
-                      targetNode.x === undefined || targetNode.y === undefined) {
-                    return null;
-                  }
-                  
-                  // Calculate source and target positions
-                  const sourceSize = getNodeSize(sourceNode);
-                  const targetSize = getNodeSize(targetNode);
-                  const sourceX = sourceNode.x;
-                  const sourceY = sourceNode.y;
-                  const targetX = targetNode.x;
-                  const targetY = targetNode.y;
-                  
-                  // Calculate direction vector
-                  const dx = targetX - sourceX;
-                  const dy = targetY - sourceY;
-                  const length = Math.sqrt(dx * dx + dy * dy);
-                  
-                  // Adjust start and end points to be on the edge of the nodes
-                  const sx = sourceX + (dx / length) * (sourceSize / 2);
-                  const sy = sourceY + (dy / length) * (sourceSize / 2);
-                  const tx = targetX - (dx / length) * (targetSize / 2);
-                  const ty = targetY - (dy / length) * (targetSize / 2);
-                  
-                  // Determine link color based on risk level
-                  let linkColor = "#8E9196"; // Default gray
-                  if (link.riskLevel) {
-                    switch (link.riskLevel) {
-                      case "high": linkColor = "#ea384c"; break;
-                      case "medium": linkColor = "#f97316"; break;
-                      case "low": linkColor = "#10b981"; break;
-                    }
-                  }
-                  
-                  // Path type can be straight or curved
-                  // Fix the type comparison issue by using a boolean flag
-                  const useCurvedPath = false; // Set to true to use curved paths
-                  let path = "";
-                  
-                  if (useCurvedPath) {
-                    // Create a curved path
-                    const midX = (sx + tx) / 2;
-                    const midY = (sy + ty) / 2;
-                    const controlX = midX - (sy - ty) * 0.2;
-                    const controlY = midY - (tx - sx) * 0.2;
-                    
-                    path = `M ${sx} ${sy} Q ${controlX} ${controlY}, ${tx} ${ty}`;
-                  } else {
-                    // Simple straight path
-                    path = `M ${sx} ${sy} L ${tx} ${ty}`;
-                  }
-                  
-                  return (
-                    <path
-                      key={`link-${i}`}
-                      d={path}
-                      stroke={linkColor}
-                      strokeWidth={Math.max(2, link.value * 0.5)}
-                      opacity={0.7}
-                      markerEnd="url(#arrowhead)"
-                    />
-                  );
-                })}
-              </g>
-            </svg>
-            
-            {/* Render nodes */}
-            {graphData.nodes.map((node) => {
-              if (node.x === undefined || node.y === undefined) return null;
-              
-              const nodeSize = getNodeSize(node);
-              const nodeColor = getNodeColor(node);
-              
-              return (
-                <div
-                  key={node.id}
-                  className={`absolute flex flex-col items-center justify-center cursor-pointer transition-shadow hover:shadow-lg ${getNodeShape(node)} ${getNodeBorder(node)}`}
-                  style={{
-                    width: `${nodeSize}px`,
-                    height: node.type === "transaction" ? `${nodeSize * 0.75}px` : `${nodeSize}px`,
-                    backgroundColor: node.type === "transaction" ? nodeColor : `${nodeColor}20`,
-                    color: node.type === "transaction" ? "white" : "black",
-                    left: `${node.x - nodeSize / 2}px`,
-                    top: `${node.y - nodeSize / 2}px`,
-                    zIndex: node.type === "transaction" ? 2 : 1
-                  }}
-                  onClick={(e) => handleMouseDown(e, node)}
-                  onMouseDown={(e) => handleNodeMouseDown(e, node)}
-                >
-                  {/* Node content varies by type */}
-                  {node.type === "transaction" && (
-                    <>
-                      <div className="text-xs font-medium text-white mb-1">
-                        {node.name}
-                      </div>
-                      <div className="text-xs text-white font-bold">
-                        {safeFormatBTC(node.amount)}
-                      </div>
-                      {node.data?.tags && node.data.tags.length > 0 && (
-                        <div className="mt-1 flex gap-1 flex-wrap justify-center">
-                          {node.data.tags.slice(0, 2).map((tag, i) => (
-                            <Badge 
-                              key={i}
-                              variant="outline" 
-                              className="text-[0.6rem] border-white text-white"
-                            >
-                              {tag}
-                            </Badge>
-                          ))}
-                          {node.data.tags.length > 2 && (
-                            <Badge 
-                              variant="outline" 
-                              className="text-[0.6rem] border-white text-white"
-                            >
-                              +{node.data.tags.length - 2}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  )}
-                  
-                  {node.type === "address" && (
-                    <>
-                      <div className="text-xs font-medium truncate max-w-[90%] text-center">
-                        {node.name}
-                      </div>
-                      <div className="text-xs mt-1">
-                        {safeFormatBTC(node.amount)}
-                      </div>
-                    </>
-                  )}
-                  
-                  {node.type === "utxo" && (
-                    <>
-                      <div className="text-xs font-medium truncate max-w-[90%] text-center">
-                        {node.name}
-                      </div>
-                      <div className="text-xs mt-1">
-                        {safeFormatBTC(node.amount)}
-                      </div>
-                      {node.riskLevel && (
-                        <Badge 
-                          className="mt-1 text-[0.6rem]"
-                          variant={node.riskLevel === "high" ? "destructive" : "outline"}
-                        >
-                          {node.riskLevel}
-                        </Badge>
-                      )}
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <ForceGraph2D
+            ref={graphRef}
+            graphData={graphData}
+            nodeCanvasObject={nodeCanvasObject}
+            linkCanvasObject={linkCanvasObject}
+            nodeLabel={null} // Custom tooltip handled in nodeCanvasObject
+            linkLabel={null} // Custom tooltip handled in linkCanvasObject
+            cooldownTicks={100}
+            onNodeClick={handleNodeClick}
+            onBackgroundClick={() => setShowDrawer(false)}
+            d3AlphaDecay={0.02}
+            d3VelocityDecay={0.3}
+            linkDirectionalParticles={3}
+            linkDirectionalParticleWidth={2}
+            nodeRelSize={4}
+            autoPauseRedraw={false}
+            enableNodeDrag={true}
+            enableZoomPanInteraction={true}
+          />
         )}
       </div>
       
-      {/* Details Drawer */}
+      {/* Node/Link Details Drawer */}
       <Drawer open={showDrawer} onOpenChange={setShowDrawer}>
         <DrawerContent className="max-h-[85vh]">
           <DrawerHeader>
             <DrawerTitle>
               {selectedNode?.type === "transaction" ? "Transaction Details" : 
                selectedNode?.type === "address" ? "Address Details" : 
-               "UTXO Details"}
+               "Details"}
             </DrawerTitle>
             <DrawerDescription>
-              {selectedNode?.name || "No node selected"}
+              {selectedNode?.name || ""}
             </DrawerDescription>
           </DrawerHeader>
           
-          <div className="px-4 py-2">
-            {selectedNode ? (
-              <div className="space-y-4">
-                {/* Basic node info */}
-                <div className="bg-muted p-3 rounded-lg">
-                  <h3 className="text-sm font-medium mb-1">
-                    {selectedNode.type === "transaction" ? "Transaction ID" : 
-                     selectedNode.type === "address" ? "Address" : 
-                     "UTXO ID"}
-                  </h3>
-                  <p className="text-xs break-all font-mono">
-                    {selectedNode.type === "transaction" ? selectedNode.data?.txid : 
-                     selectedNode.type === "address" ? selectedNode.data?.address : 
-                     selectedNode.data?.txid + ":" + selectedNode.data?.vout}
-                  </p>
-                  <div className="mt-2">
-                    <span className="text-sm font-medium">Amount: </span>
-                    <span className="font-mono">{safeFormatBTC(selectedNode.amount)}</span>
+          {selectedNode && (
+            <div className="px-4 py-2 space-y-4">
+              {selectedNode.type === "transaction" && (
+                <>
+                  {/* Basic transaction info */}
+                  <div className="bg-muted p-3 rounded-lg">
+                    <div className="flex justify-between">
+                      <span className="text-sm font-medium">TXID:</span>
+                      <span className="text-sm font-mono">{selectedNode.data?.txid || ""}</span>
+                    </div>
+                    <div className="flex justify-between mt-1">
+                      <span className="text-sm font-medium">Total Amount:</span>
+                      <span className="text-sm font-mono">{safeFormatBTC(selectedNode.amount || 0)}</span>
+                    </div>
+                    <div className="flex justify-between mt-1">
+                      <span className="text-sm font-medium">UTXOs:</span>
+                      <span className="text-sm">{selectedNode.data?.utxos?.length || 0}</span>
+                    </div>
                   </div>
-                </div>
-                
-                {/* Transaction-specific details */}
-                {selectedNode.type === "transaction" && selectedNode.data?.utxos && (
+                  
+                  {/* UTXOs in this transaction */}
                   <div>
                     <h3 className="text-sm font-medium mb-2">UTXOs in this Transaction</h3>
                     <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-                      {selectedNode.data.utxos.map((utxo: UTXO, i: number) => (
-                        <div 
-                          key={`${utxo.txid}-${utxo.vout}`}
-                          className="border rounded-md p-2 flex justify-between"
-                        >
-                          <div>
-                            <p className="text-xs font-medium">{utxo.txid.substring(0, 8)}...:{utxo.vout}</p>
-                            <p className="text-xs font-mono">{safeFormatBTC(utxo.amount)}</p>
-                            <p className="text-xs text-muted-foreground truncate max-w-[200px]">{utxo.address}</p>
+                      {selectedNode.data?.utxos?.map((utxo: UTXO) => (
+                        <div key={`${utxo.txid}-${utxo.vout}`} className="bg-background p-2 rounded-md border">
+                          <div className="flex justify-between">
+                            <span className="text-xs font-medium">Outpoint:</span>
+                            <span className="text-xs font-mono">{utxo.txid.substring(0, 8)}...:{utxo.vout}</span>
                           </div>
-                          <Badge className={getRiskBadgeStyle(utxo.privacyRisk)}>
-                            {utxo.privacyRisk}
-                          </Badge>
+                          <div className="flex justify-between mt-1">
+                            <span className="text-xs font-medium">Amount:</span>
+                            <span className="text-xs font-mono">{safeFormatBTC(utxo.amount || 0)}</span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            <Badge className={getRiskBadgeStyle(utxo.privacyRisk)}>
+                              {utxo.privacyRisk}
+                            </Badge>
+                            {utxo.tags.map((tag, i) => (
+                              <Badge key={i} variant="outline" className="text-[0.65rem]">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
-                )}
-                
-                {/* Address-specific details */}
-                {selectedNode.type === "address" && (
-                  <div>
-                    <h3 className="text-sm font-medium mb-2">Transaction History</h3>
-                    {/* List transactions related to this address */}
-                    <div className="text-sm text-muted-foreground">
-                      Showing transactions linked to this address.
+                </>
+              )}
+              
+              {selectedNode.type === "address" && (
+                <>
+                  {/* Basic address info */}
+                  <div className="bg-muted p-3 rounded-lg">
+                    <div className="flex justify-between">
+                      <span className="text-sm font-medium">Address:</span>
+                      <span className="text-sm font-mono">{selectedNode.data?.address || ""}</span>
                     </div>
-                    <div className="mt-2 space-y-2">
-                      {graphData.links
-                        .filter(link => {
-                          return link.source === selectedNode.id || link.target === selectedNode.id;
-                        })
-                        .map((link, i) => {
-                          const connectedId = link.source === selectedNode.id ? link.target : link.source;
-                          const connectedNode = graphData.nodes.find(n => n.id === connectedId);
-                          
-                          if (!connectedNode || connectedNode.type !== "transaction") return null;
-                          
-                          const direction = link.source === selectedNode.id ? "Outgoing" : "Incoming";
-                          
-                          return (
-                            <div key={i} className="border rounded-md p-2">
-                              <Badge variant={direction === "Incoming" ? "default" : "outline"} className="mb-1">
-                                {direction}
-                              </Badge>
-                              <p className="text-xs">{connectedNode.name}</p>
-                              <p className="text-xs text-muted-foreground">{safeFormatBTC(link.value)}</p>
-                            </div>
-                          );
-                        })}
+                    <div className="flex justify-between mt-1">
+                      <span className="text-sm font-medium">Total Balance:</span>
+                      <span className="text-sm font-mono">{safeFormatBTC(selectedNode.amount || 0)}</span>
                     </div>
                   </div>
-                )}
-                
-                {/* UTXO-specific details */}
-                {selectedNode.type === "utxo" && selectedNode.data && (
-                  <>
-                    {/* Tags */}
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Tags</h3>
-                      <div className="flex flex-wrap gap-1">
-                        {selectedNode.data.tags.map((tag: string, i: number) => (
-                          <Badge key={i} variant="outline">
-                            {tag}
-                          </Badge>
-                        ))}
-                        {selectedNode.data.tags.length === 0 && (
-                          <span className="text-xs text-muted-foreground">No tags</span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Risk assessment */}
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Privacy Risk</h3>
-                      <div className={`p-3 rounded-lg text-sm ${
-                        selectedNode.data.privacyRisk === 'high' ? 'bg-red-100 dark:bg-red-950/20' :
-                        selectedNode.data.privacyRisk === 'medium' ? 'bg-orange-100 dark:bg-orange-950/20' :
-                        'bg-green-100 dark:bg-green-950/20'
-                      }`}>
-                        <Badge className={getRiskBadgeStyle(selectedNode.data.privacyRisk)}>
-                          {selectedNode.data.privacyRisk.toUpperCase()} RISK
-                        </Badge>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="text-center text-muted-foreground p-8">
-                Select a node to view details
-              </div>
-            )}
-          </div>
+                </>
+              )}
+            </div>
+          )}
           
           <DrawerFooter>
             <Button variant="outline" onClick={() => setShowDrawer(false)}>
