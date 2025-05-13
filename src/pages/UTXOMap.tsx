@@ -3,11 +3,11 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/store/WalletContext";
-import { Table, BarChart } from "lucide-react";
+import { Table, BarChart, Grid } from "lucide-react";
 import { UTXO } from "@/types/utxo";
 import { toast } from "sonner";
-import { TraceabilityGraph } from "@/components/utxo/TraceabilityGraph";
-import { TreemapVisualization } from "@/components/utxo/TreemapVisualization";
+import { RefactoredTraceabilityGraph } from "@/components/utxo/RefactoredTraceabilityGraph";
+import { PrivacyTreemap } from "@/components/utxo/PrivacyTreemap";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const UTXOMap: React.FC = () => {
@@ -26,7 +26,6 @@ const UTXOMap: React.FC = () => {
   const handleUtxoSelect = (utxo: UTXO | null) => {
     setSelectedUtxo(utxo);
     if (utxo) {
-      // If a UTXO is selected, show a toast notification
       toast.info(`UTXO ${utxo.txid.substring(0, 8)}... selected.`);
     }
   };
@@ -76,12 +75,7 @@ const UTXOMap: React.FC = () => {
             <span>Traceability Graph</span>
           </TabsTrigger>
           <TabsTrigger value="treemap" className="flex items-center gap-2">
-            <div className="h-4 w-4 grid grid-cols-2 gap-[2px]">
-              <div className="bg-current rounded-sm"></div>
-              <div className="bg-current rounded-sm"></div>
-              <div className="bg-current rounded-sm"></div>
-              <div className="bg-current rounded-sm"></div>
-            </div>
+            <Grid className="h-4 w-4" />
             <span>Privacy Treemap</span>
           </TabsTrigger>
         </TabsList>
@@ -91,11 +85,11 @@ const UTXOMap: React.FC = () => {
             {activeView === "traceability" && (
               <>
                 <p className="text-sm text-muted-foreground mb-4">
-                  This visualization shows connections between your UTXOs, transactions, and addresses.
-                  Explore how your coins are linked and identify potential privacy issues.
+                  This visualization shows connections between your transactions and addresses.
+                  Explore how your coins are linked across the blockchain and identify potential privacy issues.
                 </p>
                 
-                <TraceabilityGraph
+                <RefactoredTraceabilityGraph
                   utxos={walletData.utxos}
                   onSelectUtxo={handleUtxoSelect}
                 />
@@ -105,11 +99,11 @@ const UTXOMap: React.FC = () => {
             {activeView === "treemap" && (
               <>
                 <p className="text-sm text-muted-foreground mb-4">
-                  This visualization categorizes your UTXOs by privacy risk level.
-                  Click on any category to see the UTXOs within it and examine their details.
+                  This visualization displays your UTXOs as tiles sized by their BTC amount and colored by privacy risk.
+                  Click any UTXO to inspect its details and edit metadata.
                 </p>
                 
-                <TreemapVisualization
+                <PrivacyTreemap
                   utxos={walletData.utxos}
                   onSelectUtxo={handleUtxoSelect}
                 />

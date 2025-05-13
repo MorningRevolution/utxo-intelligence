@@ -1,4 +1,3 @@
-
 import { GraphData, GraphNode, GraphLink, TreemapGroupingOption, UTXOFiltersState } from "@/types/utxo-graph";
 import { UTXO } from "@/types/utxo";
 import { getRiskColor } from "@/utils/utxo-utils";
@@ -13,115 +12,168 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
   const addedTxs = new Set<string>();
   const addedAddresses = new Set<string>();
   
-  // Process UTXOs to build graph structure
+  // Group UTXOs by transaction first
+  const txGroups = new Map<string, UTXO[]>();
+  
   utxos.forEach(utxo => {
-    // Add UTXO node if not already added
-    const utxoNodeId = `utxo-${utxo.txid}-${utxo.vout}`;
-    if (!nodeMap.has(utxoNodeId)) {
-      const utxoNode: GraphNode = {
-        id: utxoNodeId,
-        name: `UTXO ${utxo.txid.substring(0, 6)}...${utxo.vout}`,
-        amount: utxo.amount || 0,
-        type: "utxo",
-        data: utxo,
-        riskLevel: utxo.privacyRisk
-      };
-      nodes.push(utxoNode);
-      nodeMap.set(utxoNodeId, utxoNode);
+    if (!txGroups.has(utxo.txid)) {
+      txGroups.set(utxo.txid, []);
     }
+    txGroups.get(utxo.txid)!.push(utxo);
+  });
+  
+  // Process transactions to build unified TX nodes
+  txGroups.forEach((utxosInTx, txid) => {
+    // Calculate total amount for this transaction
+    const totalAmount = utxosInTx.reduce((sum, u) => sum + (u.amount || 0), 0);
     
-    // Add transaction node if not already added
-    const txNodeId = `tx-${utxo.txid}`;
-    if (!addedTxs.has(utxo.txid)) {
-      addedTxs.add(utxo.txid);
-      // Calculate the transaction amount (sum of all UTXOs with this txid)
-      const txAmount = utxos
-        .filter(u => u.txid === utxo.txid)
-        .reduce((sum, u) => sum + (u.amount || 0), 0);
+    // Create unified transaction node
+    const txNodeId = `tx-${txid}`;
+    const txNode: GraphNode = {
+      id: txNodeId,
+      name: `TX ${txid.substring(0, 8)}...`,
+      amount: totalAmount,
+      type: "transaction",
+      data: { 
+        txid: txid,
+        utxos: utxosInTx,
+        tags: Array.from(new Set(utxosInTx.flatMap(u => u.tags)))
+      }
+    };
+    nodes.push(txNode);
+    nodeMap.set(txNodeId, txNode);
+    
+    // Create address nodes and connect them
+    utxosInTx.forEach(utxo => {
+      // Handle receiver address
+      if (utxo.address) {
+        const addrNodeId = `addr-${utxo.address}`;
+        if (!addedAddresses.has(addrNodeId)) {
+          addedAddresses.add(addrNodeId);
+          const addrNode: GraphNode = {
+            id: addrNodeId,
+            name: `${utxo.address.substring(0, 8)}...`,
+            amount: 0, // Will be accumulated
+            type: "address",
+            data: { address: utxo.address }
+          };
+          nodes.push(addrNode);
+          nodeMap.set(addrNodeId, addrNode);
+        }
         
-      const txNode: GraphNode = {
-        id: txNodeId,
-        name: `TX ${utxo.txid.substring(0, 8)}...`,
-        amount: txAmount,
-        type: "transaction",
-        data: { txid: utxo.txid }
-      };
-      nodes.push(txNode);
-      nodeMap.set(txNodeId, txNode);
-    }
-    
-    // Add address nodes
-    if (utxo.address) {
-      const addrNodeId = `addr-${utxo.address}`;
-      if (!addedAddresses.has(addrNodeId)) {
-        addedAddresses.add(addrNodeId);
-        const addrNode: GraphNode = {
-          id: addrNodeId,
-          name: `${utxo.address.substring(0, 8)}...`,
-          amount: 0, // Will be accumulated
-          type: "address",
-          data: { address: utxo.address }
-        };
-        nodes.push(addrNode);
-        nodeMap.set(addrNodeId, addrNode);
+        // Add to the address node's amount
+        const addrNode = nodeMap.get(`addr-${utxo.address}`);
+        if (addrNode) {
+          addrNode.amount += (utxo.amount || 0);
+        }
+        
+        // Create link from transaction to address
+        links.push({
+          source: txNodeId,
+          target: addrNodeId,
+          value: utxo.amount || 0,
+          isChangeOutput: utxo.tags.includes("Change"),
+          riskLevel: utxo.privacyRisk
+        });
       }
       
-      // Add to the address node's amount
-      const addrNode = nodeMap.get(`addr-${utxo.address}`);
-      if (addrNode) {
-        addrNode.amount += (utxo.amount || 0);
+      // Handle sender address
+      if (utxo.senderAddress) {
+        const senderAddrNodeId = `addr-${utxo.senderAddress}`;
+        
+        if (!addedAddresses.has(senderAddrNodeId)) {
+          addedAddresses.add(senderAddrNodeId);
+          const senderAddrNode: GraphNode = {
+            id: senderAddrNodeId,
+            name: `${utxo.senderAddress.substring(0, 8)}...`,
+            amount: 0,
+            type: "address",
+            data: { address: utxo.senderAddress }
+          };
+          nodes.push(senderAddrNode);
+          nodeMap.set(senderAddrNodeId, senderAddrNode);
+        }
+        
+        // Create link from sender address to transaction
+        links.push({
+          source: senderAddrNodeId,
+          target: txNodeId,
+          value: utxo.amount || 0,
+          riskLevel: utxo.privacyRisk
+        });
       }
-    }
-    
-    // Create links
-    // UTXO from transaction
-    links.push({
-      source: txNodeId,
-      target: utxoNodeId,
-      value: utxo.amount || 0,
-      riskLevel: utxo.privacyRisk
     });
-    
-    // Address to UTXO (address owns the UTXO)
-    if (utxo.address) {
-      links.push({
-        source: utxoNodeId,
-        target: `addr-${utxo.address}`,
-        value: utxo.amount || 0,
-        isChangeOutput: utxo.tags.includes("Change"),
-        riskLevel: utxo.privacyRisk
-      });
-    }
-    
-    // Sender address to transaction
-    if (utxo.senderAddress) {
-      const senderAddrNodeId = `addr-${utxo.senderAddress}`;
+  });
+  
+  // Create transaction-to-transaction links based on change outputs or shared addresses
+  const processedLinks = new Set<string>();
+  
+  txGroups.forEach((sourceUtxos, sourceTxid) => {
+    txGroups.forEach((targetUtxos, targetTxid) => {
+      if (sourceTxid === targetTxid) return;
       
-      // Add sender address node if not already added
-      if (!addedAddresses.has(senderAddrNodeId)) {
-        addedAddresses.add(senderAddrNodeId);
-        const senderAddrNode: GraphNode = {
-          id: senderAddrNodeId,
-          name: `${utxo.senderAddress.substring(0, 8)}...`,
-          amount: 0,
-          type: "address",
-          data: { address: utxo.senderAddress }
-        };
-        nodes.push(senderAddrNode);
-        nodeMap.set(senderAddrNodeId, senderAddrNode);
+      const linkKey = `${sourceTxid}-${targetTxid}`;
+      const reverseLinkKey = `${targetTxid}-${sourceTxid}`;
+      
+      // Skip if we've already processed this link
+      if (processedLinks.has(linkKey) || processedLinks.has(reverseLinkKey)) return;
+      
+      // Check for shared addresses
+      const sourceAddresses = sourceUtxos.map(u => u.address).filter(Boolean) as string[];
+      const targetAddresses = targetUtxos.map(u => u.address).filter(Boolean) as string[];
+      const sharedAddresses = sourceAddresses.filter(addr => targetAddresses.includes(addr));
+      
+      // Check for change output connections
+      const changeConnection = sourceUtxos.some(u => 
+        u.tags.includes("Change") && targetUtxos.some(t => 
+          t.senderAddress === u.address || t.receiverAddress === u.address
+        )
+      );
+      
+      if (sharedAddresses.length > 0 || changeConnection) {
+        // Find highest risk level among involved UTXOs
+        const allUtxos = [...sourceUtxos, ...targetUtxos];
+        let highestRisk: "low" | "medium" | "high" = "low";
+        
+        if (allUtxos.some(u => u.privacyRisk === "high")) {
+          highestRisk = "high";
+        } else if (allUtxos.some(u => u.privacyRisk === "medium")) {
+          highestRisk = "medium";
+        }
+        
+        // Create link between transactions
+        links.push({
+          source: `tx-${sourceTxid}`,
+          target: `tx-${targetTxid}`,
+          value: Math.min(
+            sourceUtxos.reduce((sum, u) => sum + u.amount, 0),
+            targetUtxos.reduce((sum, u) => sum + u.amount, 0)
+          ),
+          isChangeOutput: changeConnection,
+          riskLevel: highestRisk
+        });
+        
+        processedLinks.add(linkKey);
       }
-      
-      // Create link from sender address to transaction
-      links.push({
-        source: senderAddrNodeId,
-        target: txNodeId,
-        value: utxo.amount || 0,
-        riskLevel: utxo.privacyRisk
-      });
-    }
+    });
   });
   
   return { nodes, links };
+};
+
+/**
+ * Creates treemap data for individual UTXOs (not grouped)
+ */
+export const createPrivacyTreemap = (utxos: UTXO[]) => {
+  // Create individual UTXO tiles with no grouping
+  return utxos.map(utxo => ({
+    id: `${utxo.txid}-${utxo.vout}`,
+    name: `${utxo.txid.substring(0, 8)}...${utxo.vout}`,
+    value: utxo.amount || 0,
+    color: utxo.privacyRisk === 'high' ? '#ea384c' : 
+           utxo.privacyRisk === 'medium' ? '#f97316' : '#10b981',
+    data: utxo
+  }));
 };
 
 /**
