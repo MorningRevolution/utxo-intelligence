@@ -1,5 +1,5 @@
 
-import { GraphData, GraphNode, GraphLink, TreemapGroupingOption } from "@/types/utxo-graph";
+import { GraphData, GraphNode, GraphLink, TreemapGroupingOption, UTXOFiltersState } from "@/types/utxo-graph";
 import { UTXO } from "@/types/utxo";
 import { getRiskColor } from "@/utils/utxo-utils";
 

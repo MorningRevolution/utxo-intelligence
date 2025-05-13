@@ -34,7 +34,7 @@ export type NodeSelectionCallback = (nodeId: string, nodeType: "utxo" | "transac
 // Define grouping options for treemap
 export type TreemapGroupingOption = "risk" | "wallet" | "tag" | "none";
 
-// Define filtering options
+// Define filtering options - modified to match what the error suggests we need
 export interface UTXOFiltersState {
   searchTerm: string;
   selectedTags: string[];
