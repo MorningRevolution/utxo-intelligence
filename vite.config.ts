@@ -18,9 +18,10 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "react-force-graph-2d": path.resolve(__dirname, "./src/lib/react-force-graph-2d.js")
     },
   },
   optimizeDeps: {
-    include: ['react-force-graph-2d']
+    include: ['react-force-graph', 'react-force-graph-2d']
   }
 }));
