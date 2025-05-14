@@ -1,6 +1,8 @@
 
-// Import A-Frame first to ensure it's initialized before anything that needs it
-import 'aframe';
+// Import A-Frame first and ensure it's globally available
+import * as AFRAME from 'aframe';
+// Make AFRAME globally available for components that expect it
+window.AFRAME = AFRAME;
 // Import any A-Frame extensions next
 import 'aframe-extras';
 

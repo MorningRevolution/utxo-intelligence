@@ -6,6 +6,10 @@ declare namespace AFRAME {
   const registerShader: (name: string, shader: any) => void;
   const registerPrimitive: (name: string, primitive: any) => void;
   const registerElement: (name: string, element: any) => void;
+  
+  // Add more A-Frame types as needed
+  const version: string;
+  const scenes: any[];
 }
 
 declare module 'aframe' {
