@@ -1,4 +1,3 @@
-
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -18,10 +17,6 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "react-force-graph-2d": path.resolve(__dirname, "./src/lib/react-force-graph-2d.js")
     },
   },
-  optimizeDeps: {
-    include: ['react-force-graph', 'react-force-graph-2d']
-  }
 }));

@@ -1,11 +1,12 @@
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { UTXO } from "@/types/utxo";
 import { UTXOFiltersState } from "@/types/utxo-graph";
-import { TreemapItem, createPrivacyTreemap, filterUTXOs, safeFormatBTC } from "@/utils/visualization-utils";
+import { createPrivacyTreemap, filterUTXOs, safeFormatBTC } from "@/utils/visualization-utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { getRiskBadgeStyle } from "@/utils/utxo-utils";
 import { Search, Tag, Filter } from "lucide-react";
 import { toast } from "sonner";
@@ -18,8 +19,6 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 
 interface PrivacyTreemapProps {
   utxos: UTXO[];
@@ -30,8 +29,7 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
   utxos, 
   onSelectUtxo 
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [containerSize, setContainerSize] = useState({ width: 800, height: 600 });
+  // State for filters and selection
   const [filters, setFilters] = useState<UTXOFiltersState>({
     searchTerm: "",
     selectedTags: [],
@@ -43,28 +41,6 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
   const [selectedUtxo, setSelectedUtxo] = useState<UTXO | null>(null);
   const [showUtxoDrawer, setShowUtxoDrawer] = useState(false);
   const [editableNote, setEditableNote] = useState("");
-  
-  // Update container dimensions on mount and resize
-  useEffect(() => {
-    const updateContainerSize = () => {
-      if (containerRef.current) {
-        const { width, height } = containerRef.current.getBoundingClientRect();
-        setContainerSize({ 
-          width: width || 800, 
-          height: Math.max(height, 600) // Ensure minimum height
-        });
-      }
-    };
-    
-    // Initial sizing
-    updateContainerSize();
-    
-    // Add resize handler
-    window.addEventListener('resize', updateContainerSize);
-    
-    // Cleanup
-    return () => window.removeEventListener('resize', updateContainerSize);
-  }, []);
   
   // Extract all available tags for filters
   const availableTags = useMemo(() => {
@@ -89,31 +65,14 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
     return filterUTXOs(utxos, filters);
   }, [utxos, filters]);
   
-  // Generate treemap data using the new squarified algorithm
+  // Generate treemap data
   const treemapData = useMemo(() => {
-    return createPrivacyTreemap(
-      filteredUtxos, 
-      containerSize.width - 40, // Account for padding
-      containerSize.height - 40
-    );
-  }, [filteredUtxos, containerSize.width, containerSize.height]);
+    return createPrivacyTreemap(filteredUtxos);
+  }, [filteredUtxos]);
   
   // Calculate total BTC amount
   const totalAmount = useMemo(() => {
     return filteredUtxos.reduce((sum, utxo) => sum + (utxo.amount || 0), 0);
-  }, [filteredUtxos]);
-  
-  // Calculate risk category counts
-  const riskCounts = useMemo(() => {
-    const counts = { low: 0, medium: 0, high: 0 };
-    const amounts = { low: 0, medium: 0, high: 0 };
-    
-    filteredUtxos.forEach(utxo => {
-      counts[utxo.privacyRisk]++;
-      amounts[utxo.privacyRisk] += (utxo.amount || 0);
-    });
-    
-    return { counts, amounts };
   }, [filteredUtxos]);
   
   // Handle UTXO selection
@@ -195,6 +154,23 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
         notes: editableNote
       };
     });
+  };
+  
+  // Calculate size for UTXO box based on amount
+  const calculateBoxSize = (amount: number) => {
+    if (totalAmount === 0) return { width: 100, height: 100 };
+    
+    // Use square root to make area proportional to amount
+    const ratio = Math.sqrt(amount / totalAmount);
+    const baseSize = 80; // Base size in pixels
+    const maxSize = 160; // Maximum size in pixels
+    
+    const size = Math.max(60, Math.min(maxSize, baseSize + ratio * 100));
+    
+    return {
+      width: size,
+      height: size
+    };
   };
 
   return (
@@ -357,69 +333,24 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
         </div>
       )}
       
-      {/* Legend and summary stats */}
-      <div className="bg-card p-4 rounded-lg shadow-sm mb-4 grid md:grid-cols-4 gap-4">
-        <div className="col-span-full md:col-span-1">
-          <h3 className="text-sm font-medium mb-2">Privacy Risk Distribution</h3>
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-full bg-[#10b981]"></div>
-                <span>Low Risk</span>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="text-sm font-medium">{riskCounts.counts.low} UTXOs</span>
-                <span className="text-xs text-muted-foreground">{safeFormatBTC(riskCounts.amounts.low)}</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-full bg-[#f97316]"></div>
-                <span>Medium Risk</span>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="text-sm font-medium">{riskCounts.counts.medium} UTXOs</span>
-                <span className="text-xs text-muted-foreground">{safeFormatBTC(riskCounts.amounts.medium)}</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-full bg-[#ea384c]"></div>
-                <span>High Risk</span>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="text-sm font-medium">{riskCounts.counts.high} UTXOs</span>
-                <span className="text-xs text-muted-foreground">{safeFormatBTC(riskCounts.amounts.high)}</span>
-              </div>
-            </div>
-          </div>
+      {/* Legend */}
+      <div className="bg-card p-2 rounded-lg shadow-sm mb-4 flex flex-wrap gap-3 text-xs">
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded-full bg-[#10b981]"></div>
+          <span>Low Risk</span>
         </div>
-        
-        {/* Summary stats */}
-        <div className="col-span-full md:col-span-3 grid grid-cols-3 gap-4">
-          <div className="bg-muted p-3 rounded-lg text-center">
-            <h3 className="font-medium">Total UTXOs</h3>
-            <p className="text-2xl font-bold mt-1">{filteredUtxos.length}</p>
-          </div>
-          <div className="bg-muted p-3 rounded-lg text-center">
-            <h3 className="font-medium">Total BTC</h3>
-            <p className="text-2xl font-bold mt-1">{safeFormatBTC(totalAmount)}</p>
-          </div>
-          <div className="bg-muted p-3 rounded-lg text-center">
-            <h3 className="font-medium">Average Size</h3>
-            <p className="text-2xl font-bold mt-1">
-              {filteredUtxos.length > 0 ? safeFormatBTC(totalAmount / filteredUtxos.length) : "₿0.00000000"}
-            </p>
-          </div>
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded-full bg-[#f97316]"></div>
+          <span>Medium Risk</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded-full bg-[#ea384c]"></div>
+          <span>High Risk</span>
         </div>
       </div>
       
       {/* Treemap visualization */}
-      <div 
-        ref={containerRef}
-        className="bg-card rounded-lg shadow-sm p-4 relative" 
-        style={{ height: '70vh', minHeight: '500px' }}
-      >
+      <div className="bg-card rounded-lg shadow-sm p-4" style={{ minHeight: '60vh' }}>
         <h2 className="text-lg font-semibold mb-4">UTXO Privacy Treemap</h2>
         
         {filteredUtxos.length === 0 ? (
@@ -427,96 +358,67 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
             No UTXOs to display. Try adjusting your filters.
           </div>
         ) : (
-          <div className="relative w-full h-full" style={{ padding: '20px' }}>
-            {/* Render treemap using absolute positioning */}
-            <TooltipProvider>
-              {treemapData.map((utxo: TreemapItem) => {
-                const { rect } = utxo;
-                // Only render if the rectangle has valid dimensions
-                if (rect.width < 1 || rect.height < 1) return null;
-                
-                // Determine if tile is large enough for detailed content
-                const isLarge = rect.width > 70 && rect.height > 60;
-                const isMedium = rect.width > 40 && rect.height > 30;
+          <>
+            {/* Summary stats */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="bg-muted p-3 rounded-lg text-center">
+                <h3 className="font-medium">Total UTXOs</h3>
+                <p className="text-2xl font-bold mt-1">{filteredUtxos.length}</p>
+              </div>
+              <div className="bg-muted p-3 rounded-lg text-center">
+                <h3 className="font-medium">Total BTC</h3>
+                <p className="text-2xl font-bold mt-1">{safeFormatBTC(totalAmount)}</p>
+              </div>
+              <div className="bg-muted p-3 rounded-lg text-center">
+                <h3 className="font-medium">Average Size</h3>
+                <p className="text-2xl font-bold mt-1">
+                  {filteredUtxos.length > 0 ? safeFormatBTC(totalAmount / filteredUtxos.length) : "₿0.00000000"}
+                </p>
+              </div>
+            </div>
+            
+            {/* UTXO boxes in a responsive grid */}
+            <div className="flex flex-wrap gap-4 justify-center">
+              {treemapData.map(utxo => {
+                const { width, height } = calculateBoxSize(utxo.value);
                 
                 return (
-                  <Tooltip key={utxo.id}>
-                    <TooltipTrigger asChild>
-                      <div
-                        className={cn(
-                          "absolute cursor-pointer transition-opacity hover:opacity-90",
-                          "border border-white/10"
-                        )}
-                        style={{
-                          left: `${rect.x}px`,
-                          top: `${rect.y}px`,
-                          width: `${rect.width}px`,
-                          height: `${rect.height}px`,
-                          backgroundColor: utxo.color + "40",
-                          borderLeft: `3px solid ${utxo.color}`
-                        }}
-                        onClick={() => handleUtxoClick(utxo.data)}
-                      >
-                        {/* Tile content based on size */}
-                        <div className="absolute inset-0 p-1 flex flex-col overflow-hidden">
-                          {isLarge ? (
-                            <>
-                              <div className="text-xs truncate font-medium">
-                                {utxo.name}
-                              </div>
-                              <div className="text-xs font-mono mt-auto">{safeFormatBTC(utxo.value)}</div>
-                              <Badge 
-                                className="self-start mt-1 text-[0.65rem]"
-                                variant={utxo.data.privacyRisk === "high" ? "destructive" : "outline"}
-                              >
-                                {utxo.data.privacyRisk}
-                              </Badge>
-                              
-                              {utxo.data.tags.length > 0 && (
-                                <div className="absolute top-1 right-1">
-                                  <Badge variant="outline" className="text-[0.6rem]">
-                                    <Tag className="h-2 w-2 mr-1" />
-                                    {utxo.data.tags.length}
-                                  </Badge>
-                                </div>
-                              )}
-                            </>
-                          ) : isMedium ? (
-                            <>
-                              <div className="text-[0.6rem] truncate">{utxo.name}</div>
-                              <div className="text-[0.6rem] mt-auto">{safeFormatBTC(utxo.value)}</div>
-                            </>
-                          ) : (
-                            <div className="w-full h-full" style={{ backgroundColor: utxo.color + "60" }}></div>
-                          )}
-                        </div>
+                  <div
+                    key={utxo.id}
+                    className="flex flex-col items-center justify-center rounded-lg cursor-pointer transition-all hover:shadow-md hover:scale-105 relative p-2"
+                    style={{ 
+                      width: `${width}px`, 
+                      height: `${height}px`,
+                      backgroundColor: `${utxo.color}20`,
+                      border: `2px solid ${utxo.color}`
+                    }}
+                    onClick={() => handleUtxoClick(utxo.data)}
+                  >
+                    <div className="text-xs font-medium truncate w-[90%] text-center">
+                      {utxo.name}
+                    </div>
+                    <div className="text-xs mt-1 font-mono">
+                      {safeFormatBTC(utxo.value)}
+                    </div>
+                    {utxo.data.tags && utxo.data.tags.length > 0 && (
+                      <div className="absolute top-1 right-1">
+                        <Badge variant="outline" className="text-[0.6rem]">
+                          <Tag className="h-2 w-2 mr-1" />
+                          {utxo.data.tags.length}
+                        </Badge>
                       </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">
-                      <div className="text-sm">
-                        <div className="font-medium">{utxo.name}</div>
-                        <div className="mt-1">{safeFormatBTC(utxo.value)}</div>
-                        <div className="mt-1">
-                          <Badge className={getRiskBadgeStyle(utxo.data.privacyRisk)}>
-                            {utxo.data.privacyRisk} risk
-                          </Badge>
-                        </div>
-                        {utxo.data.tags.length > 0 && (
-                          <div className="mt-1 flex gap-1 flex-wrap">
-                            {utxo.data.tags.map((tag, i) => (
-                              <Badge key={i} variant="outline" className="text-[0.7rem]">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
+                    )}
+                    <Badge 
+                      className="mt-1 text-[0.65rem]"
+                      variant={utxo.data.privacyRisk === "high" ? "destructive" : "outline"}
+                    >
+                      {utxo.data.privacyRisk}
+                    </Badge>
+                  </div>
                 );
               })}
-            </TooltipProvider>
-          </div>
+            </div>
+          </>
         )}
       </div>
       
