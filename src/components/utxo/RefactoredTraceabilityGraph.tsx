@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { UTXO } from "@/types/utxo";
 import { GraphNode, GraphLink, UTXOFiltersState } from "@/types/utxo-graph";
+// @ts-ignore - Force Graph package doesn't have proper TypeScript declarations
 import ForceGraph2D from "react-force-graph-2d";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
