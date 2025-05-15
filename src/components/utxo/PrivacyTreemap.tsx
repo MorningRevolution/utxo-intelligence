@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UTXO } from "@/types/utxo";
@@ -305,7 +306,11 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
   }, [tiles, containerRef.current]);
   
   // Handle tile selection
-  const handleTileClick = (tile: TreemapTile) => {
+  const handleTileClick = (e: React.MouseEvent, tile: TreemapTile) => {
+    // Stop event propagation to prevent closing the entire page
+    e.stopPropagation();
+    e.preventDefault();
+    
     setSelectedTile(tile);
     setShowTileInfo(true);
     
@@ -385,7 +390,7 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
               max={2}
               step={0.1}
               value={[zoom]}
-              onValueChange={(value) => value[0] && value[0] !== zoom && value.length > 0 ? setZoom(value[0]) : null}
+              onValueChange={(value) => value[0] && value.length > 0 ? setZoom(value[0]) : null}
             />
           </div>
           
@@ -657,7 +662,7 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.9 }}
-                      onClick={() => handleTileClick(tile)}
+                      onClick={(e) => handleTileClick(e, tile)}
                       whileHover={{ scale: 1.02, zIndex: 10 }}
                       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                     >
@@ -724,7 +729,13 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
       </div>
       
       {/* UTXO Info Dialog */}
-      <Dialog open={showTileInfo} onOpenChange={setShowTileInfo}>
+      <Dialog open={showTileInfo} onOpenChange={(open) => {
+        setShowTileInfo(open);
+        // Clear selection if dialog is closed
+        if (!open) {
+          setSelectedTile(null);
+        }
+      }}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>UTXO Details</DialogTitle>

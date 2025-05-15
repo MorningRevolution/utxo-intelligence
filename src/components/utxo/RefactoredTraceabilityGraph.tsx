@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { UTXO } from "@/types/utxo";
 import { createTraceabilityGraph, optimizeGraphLayout, calculateNodeSize, safeFormatBTC, getVisualizationRiskColor } from "@/utils/visualization-utils";

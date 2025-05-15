@@ -39,10 +39,10 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
         utxos: utxosInTx,
         tags: Array.from(new Set(utxosInTx.flatMap(u => u.tags)))
       },
-      // Calculate weight based on transaction size
-      weight: Math.sqrt(totalAmount) * 2,
-      // Calculate radius proportional to the total amount (with min/max constraints)
-      radius: Math.max(30, Math.min(80, 20 + Math.log10(1 + totalAmount) * 20))
+      // Calculate weight based on transaction size with logarithmic scaling
+      weight: Math.sqrt(totalAmount) * 2.5,
+      // Calculate radius proportional to the total amount with logarithmic scale
+      radius: Math.max(35, Math.min(90, 25 + Math.log10(1 + totalAmount) * 25))
     };
     nodes.push(txNode);
     nodeMap.set(txNodeId, txNode);
@@ -60,8 +60,8 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
             amount: 0, // Will be accumulated
             type: "address",
             data: { address: utxo.address },
-            weight: 1, // Fixed weight for addresses
-            radius: 20 // Fixed radius for address nodes
+            weight: 1.5, // Increased weight for addresses for better spacing
+            radius: 22 // Fixed radius for address nodes
           };
           nodes.push(addrNode);
           nodeMap.set(addrNodeId, addrNode);
@@ -95,8 +95,8 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
             amount: 0,
             type: "address",
             data: { address: utxo.senderAddress },
-            weight: 1,
-            radius: 20
+            weight: 1.5,
+            radius: 22
           };
           nodes.push(senderAddrNode);
           nodeMap.set(senderAddrNodeId, senderAddrNode);
@@ -114,6 +114,7 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
   });
   
   // Create transaction-to-transaction links based on change outputs or shared addresses
+  // but reduce clutter by limiting less important connections
   const processedLinks = new Set<string>();
   
   txGroups.forEach((sourceUtxos, sourceTxid) => {
@@ -138,7 +139,13 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
         )
       );
       
-      if (sharedAddresses.length > 0 || changeConnection) {
+      // Prioritize direct connections and high-value transfers
+      const isDirectlyLinked = sharedAddresses.length > 0 || changeConnection;
+      const totalSourceValue = sourceUtxos.reduce((sum, u) => sum + u.amount, 0);
+      const totalTargetValue = targetUtxos.reduce((sum, u) => sum + u.amount, 0);
+      const isHighValue = Math.min(totalSourceValue, totalTargetValue) > 0.1;
+      
+      if (isDirectlyLinked || isHighValue) {
         // Find highest risk level among involved UTXOs
         const allUtxos = [...sourceUtxos, ...targetUtxos];
         let highestRisk: "low" | "medium" | "high" = "low";
@@ -444,11 +451,11 @@ export const filterUTXOs = (utxos: UTXO[], filters: Partial<UTXOFiltersState>): 
  */
 export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
   // Enhanced force-directed layout simulation
-  const iterations = 200; // Increased iterations for better results
-  const repulsionForce = 800; // Stronger repulsion for better spacing
-  const attractionForce = 0.15;
-  const dampingFactor = 0.9;
-  const collisionRadius = 10; // Minimum distance between nodes
+  const iterations = 250; // Increased iterations for better results
+  const repulsionForce = 1000; // Stronger repulsion for better spacing
+  const attractionForce = 0.12; // Reduced attraction
+  const dampingFactor = 0.85; // More damping for stability
+  const collisionRadius = 15; // Increased minimum distance between nodes
   
   // Initialize node positions if not already set
   nodes.forEach(node => {
@@ -496,29 +503,33 @@ export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
         
         // Stronger repulsion for same-type nodes to create clusters by type
         if (nodeA.type === nodeB.type) {
-          force *= 1.5;
+          force *= 1.8; // Increased from 1.5
         }
         
         // Extra repulsion when nodes are too close (collision avoidance)
         if (distance < minDistance) {
-          force *= 2.5;
+          force *= 3.2; // Increased from 2.5
         }
         
         const fx = force * dx / distance;
         const fy = force * dy / distance;
         
+        // Update node forces with consideration for node weight
+        const nodeAWeight = nodeA.weight || 1;
+        const nodeBWeight = nodeB.weight || 1;
+        
         // Update node forces
         const forceA = forces.get(nodeA.id)!;
-        forceA.fx -= fx;
-        forceA.fy -= fy;
+        forceA.fx -= fx * (1 / nodeAWeight); // Inverse weight for more stability
+        forceA.fy -= fy * (1 / nodeAWeight);
         
         const forceB = forces.get(nodeB.id)!;
-        forceB.fx += fx;
-        forceB.fy += fy;
+        forceB.fx += fx * (1 / nodeBWeight);
+        forceB.fy += fy * (1 / nodeBWeight);
       }
     }
     
-    // Apply attraction along links
+    // Apply attraction along links with priority for transaction-to-address links
     links.forEach(link => {
       // Fix: Handle both string and GraphNode types safely
       const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
@@ -532,6 +543,10 @@ export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
         return;
       }
       
+      // Check if this is a transaction-address link (higher priority) or tx-tx link (lower priority)
+      const isTxToAddress = (sourceNode.type === "transaction" && targetNode.type === "address") ||
+                            (sourceNode.type === "address" && targetNode.type === "transaction");
+      
       const dx = targetNode.x - sourceNode.x;
       const dy = targetNode.y - sourceNode.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
@@ -541,8 +556,16 @@ export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
       
       // Link value influences attraction strength
       const linkValue = link.value || 1;
-      const idealDistance = 120 + Math.log10(1 + linkValue) * 60;
-      const force = attractionForce * (distance - idealDistance) * Math.log10(1 + linkValue);
+      // Ideal distance depends on node types and link value
+      const idealDistance = isTxToAddress ? 
+        // Transaction-address links should be shorter
+        100 + Math.log10(1 + linkValue) * 40 :
+        // Transaction-transaction links can be longer
+        180 + Math.log10(1 + linkValue) * 80;
+      
+      // Attraction force depends on link type
+      const forceFactor = isTxToAddress ? attractionForce * 1.3 : attractionForce * 0.7;
+      const force = forceFactor * (distance - idealDistance) * Math.log10(1 + linkValue);
       
       const fx = force * dx / distance;
       const fy = force * dy / distance;
@@ -574,13 +597,14 @@ export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
       force.fx *= dampingFactor;
       force.fy *= dampingFactor;
       
-      // Update position (with more movement for later iterations)
-      node.x += force.fx * (1 - i/iterations * 0.5); // Gradually reduce movement
-      node.y += force.fy * (1 - i/iterations * 0.5);
+      // Update position with gradually decreasing movement
+      const moveFactor = 1 - i/iterations * 0.7; // More gradual reduction
+      node.x += force.fx * moveFactor;
+      node.y += force.fy * moveFactor;
     });
   }
   
-  // Final pass to ensure nodes are within bounds
+  // Final pass to ensure nodes are within bounds and properly spaced
   const bounds = calculateGraphBounds(nodes);
   const padding = 50;
   
@@ -588,11 +612,16 @@ export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
   const centerX = (bounds.maxX + bounds.minX) / 2;
   const centerY = (bounds.maxY + bounds.minY) / 2;
   
+  // Scale factor to bring nodes closer to center if too spread out
+  const graphWidth = bounds.maxX - bounds.minX;
+  const graphHeight = bounds.maxY - bounds.minY;
+  const scaleFactor = Math.min(1, Math.max(0.7, 1000 / Math.max(graphWidth, graphHeight)));
+  
   nodes.forEach(node => {
     if (node.x && node.y) {
-      // Center the node relative to the graph center
-      node.x = (node.x - centerX) * 0.8 + centerX;
-      node.y = (node.y - centerY) * 0.8 + centerY;
+      // Center the node relative to the graph center with scaling
+      node.x = centerX + (node.x - centerX) * scaleFactor;
+      node.y = centerY + (node.y - centerY) * scaleFactor;
     }
   });
   
@@ -623,14 +652,14 @@ const calculateGraphBounds = (nodes: GraphNode[]) => {
 /**
  * Calculate optimal size for a node based on its amount
  */
-export const calculateNodeSize = (node: GraphNode, minSize = 30, maxSize = 100) => {
+export const calculateNodeSize = (node: GraphNode, minSize = 35, maxSize = 120) => {
   // If node has a defined radius, use that
   if (node.radius) return node.radius;
   
   if (!node.amount) return minSize;
   
   // Use logarithmic scale for better distribution
-  const size = minSize + Math.log10(1 + node.amount) * 15;
+  const size = minSize + Math.log10(1 + node.amount) * 18;
   return Math.min(maxSize, Math.max(minSize, size));
 };
 
