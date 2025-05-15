@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UTXO } from "@/types/utxo";
@@ -233,6 +232,7 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
     zoom,
     position,
     isDragging,
+    setZoom,
     handleZoomIn,
     handleZoomOut,
     handleReset,
