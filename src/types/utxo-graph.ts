@@ -13,8 +13,9 @@ export interface GraphNode {
 }
 
 export interface GraphLink {
-  source: string;
-  target: string;
+  // Update the types to handle both string and GraphNode references
+  source: string | GraphNode;
+  target: string | GraphNode;
   value: number;
   isChangeOutput?: boolean;
   riskLevel?: "low" | "medium" | "high";

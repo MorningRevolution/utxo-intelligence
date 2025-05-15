@@ -1,4 +1,3 @@
-
 import { GraphData, GraphNode, GraphLink, TreemapGroupingOption, UTXOFiltersState } from "@/types/utxo-graph";
 import { UTXO } from "@/types/utxo";
 import { getRiskColor } from "@/utils/utxo-utils";
@@ -493,8 +492,12 @@ export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
     
     // Apply attraction along links
     links.forEach(link => {
-      const sourceNode = nodeMap.get(typeof link.source === 'string' ? link.source : link.source.id);
-      const targetNode = nodeMap.get(typeof link.target === 'string' ? link.target : link.target.id);
+      // Fix: Handle both string and GraphNode types safely
+      const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
+      const targetId = typeof link.target === 'string' ? link.target : link.target.id;
+      
+      const sourceNode = nodeMap.get(sourceId);
+      const targetNode = nodeMap.get(targetId);
       
       if (!sourceNode || !targetNode || sourceNode.x === undefined || sourceNode.y === undefined || 
           targetNode.x === undefined || targetNode.y === undefined) {

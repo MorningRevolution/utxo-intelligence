@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { UTXO } from "@/types/utxo";
 import { createTraceabilityGraph, optimizeGraphLayout, calculateNodeSize, safeFormatBTC } from "@/utils/visualization-utils";
@@ -111,10 +110,12 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
   
   // Get connections for a node
   const getNodeConnections = (nodeId: string) => {
-    return graph.links.filter(link => 
-      (typeof link.source === 'string' ? link.source : link.source.id) === nodeId || 
-      (typeof link.target === 'string' ? link.target : link.target.id) === nodeId
-    );
+    return graph.links.filter(link => {
+      // Fixed: Handle both string and GraphNode types for source and target
+      const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
+      const targetId = typeof link.target === 'string' ? link.target : link.target.id;
+      return sourceId === nodeId || targetId === nodeId;
+    });
   };
   
   // Get the color for a node based on type and risk
@@ -246,6 +247,7 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
           <g transform={transform}>
             {/* Draw links first (behind nodes) */}
             {graph.links.map((link, index) => {
+              // Fix: Handle both string and GraphNode types safely
               const sourceNode = typeof link.source === 'string' 
                 ? graph.nodes.find(n => n.id === link.source) 
                 : link.source;
@@ -486,7 +488,11 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
                 <div className="bg-muted p-3 rounded-lg">
                   {getNodeConnections(selectedNode.id).length > 0 ? (
                     getNodeConnections(selectedNode.id).map((link, i) => {
-                      const isSource = (typeof link.source === 'string' ? link.source : link.source.id) === selectedNode.id;
+                      // Fix: Handle both string and GraphNode types safely
+                      const isSource = typeof link.source === 'string' 
+                        ? link.source === selectedNode.id
+                        : link.source.id === selectedNode.id;
+                      
                       const connectedNodeId = isSource 
                         ? (typeof link.target === 'string' ? link.target : link.target.id)
                         : (typeof link.source === 'string' ? link.source : link.source.id);
