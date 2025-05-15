@@ -6,7 +6,7 @@ import { useWallet } from "@/store/WalletContext";
 import { Table, BarChart, Grid } from "lucide-react";
 import { UTXO } from "@/types/utxo";
 import { toast } from "sonner";
-import { RefactoredTraceabilityGraph } from "@/components/utxo/RefactoredTraceabilityGraph";
+import { CleanTraceabilityGraph } from "@/components/utxo/CleanTraceabilityGraph";
 import { PrivacyTreemap } from "@/components/utxo/PrivacyTreemap";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -101,7 +101,7 @@ const UTXOMap: React.FC = () => {
                   Explore how your coins are linked across the blockchain and identify potential privacy issues.
                 </p>
                 
-                <RefactoredTraceabilityGraph
+                <CleanTraceabilityGraph
                   utxos={walletData.utxos}
                   onSelectUtxo={handleUtxoSelect}
                 />
