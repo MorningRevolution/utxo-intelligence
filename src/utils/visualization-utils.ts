@@ -1,6 +1,6 @@
 import { GraphData, GraphNode, GraphLink, TreemapGroupingOption, UTXOFiltersState, TreemapTile } from "@/types/utxo-graph";
 import { UTXO } from "@/types/utxo";
-import { getRiskColor } from "@/utils/utxo-utils";
+import { getRiskColor as getUtxoRiskColor } from "@/utils/utxo-utils";
 
 /**
  * Creates a traceability graph from UTXOs
@@ -635,9 +635,9 @@ export const calculateNodeSize = (node: GraphNode, minSize = 30, maxSize = 100) 
 };
 
 /**
- * Get risk color for consistent styling
+ * Get visualization risk color for consistent styling (renamed to avoid conflict)
  */
-export const getRiskColor = (risk?: "low" | "medium" | "high") => {
+export const getVisualizationRiskColor = (risk?: "low" | "medium" | "high") => {
   switch (risk) {
     case "high": return "#ea384c"; // Red
     case "medium": return "#f97316"; // Orange

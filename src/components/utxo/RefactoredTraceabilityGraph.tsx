@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { UTXO } from "@/types/utxo";
-import { createTraceabilityGraph, optimizeGraphLayout, calculateNodeSize, safeFormatBTC, getRiskColor } from "@/utils/visualization-utils";
+import { createTraceabilityGraph, optimizeGraphLayout, calculateNodeSize, safeFormatBTC, getVisualizationRiskColor } from "@/utils/visualization-utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -332,7 +331,7 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
               }
               
               // Calculate line color based on risk level
-              const strokeColor = getRiskColor(link.riskLevel);
+              const strokeColor = getVisualizationRiskColor(link.riskLevel);
               
               // Use thicker/more opaque line for larger value transfers and highlighted edges
               const strokeWidth = Math.max(1, Math.min(5, Math.log10(1 + link.value) * 1.5)) + (isHighlighted ? 1 : 0);
