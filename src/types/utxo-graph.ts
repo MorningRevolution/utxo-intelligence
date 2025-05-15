@@ -10,6 +10,12 @@ export interface GraphNode {
   riskLevel?: "low" | "medium" | "high";
   x?: number; // Position for force-directed layout
   y?: number;
+  fx?: number; // Fixed positions (for pinned nodes)
+  fy?: number;
+  // New fields for improved visualizations
+  weight?: number; // For force simulation
+  radius?: number; // Calculated size for rendering
+  expanded?: boolean; // For expandable nodes
 }
 
 export interface GraphLink {
@@ -43,4 +49,26 @@ export interface UTXOFiltersState {
   selectedRiskLevels: ("low" | "medium" | "high")[];
   minAmount?: number;
   maxAmount?: number;
+}
+
+// New type for treemap tile data
+export interface TreemapTile {
+  id: string;
+  name: string;
+  value: number; // BTC amount
+  displaySize: number; // Calculated size for display
+  color: string;
+  data: UTXO; // Original UTXO data
+  x?: number; // Position (calculated during layout)
+  y?: number;
+  width?: number;
+  height?: number;
+}
+
+// New types for improved visualization controls
+export interface VisualizationControls {
+  zoom: number;
+  position: { x: number; y: number };
+  grouping: TreemapGroupingOption;
+  expandedNodes: Set<string>;
 }

@@ -37,6 +37,15 @@ const UTXOMap: React.FC = () => {
     navigate("/utxo-table");
   };
 
+  // Handle view change
+  const handleViewChange = (view: "traceability" | "treemap") => {
+    setActiveView(view);
+    // Update URL to reflect the current view
+    const url = new URL(window.location.href);
+    url.searchParams.set("view", view);
+    window.history.pushState({}, "", url);
+  };
+
   if (!walletData) {
     return (
       <div className="container px-4 md:px-8 py-6">
@@ -69,7 +78,7 @@ const UTXOMap: React.FC = () => {
       <Tabs 
         defaultValue="traceability" 
         value={activeView}
-        onValueChange={(value) => setActiveView(value as "traceability" | "treemap")}
+        onValueChange={(value) => handleViewChange(value as "traceability" | "treemap")}
         className="w-full"
       >
         <TabsList className="w-full max-w-md mx-auto grid grid-cols-2 mb-6">
@@ -102,8 +111,8 @@ const UTXOMap: React.FC = () => {
             {activeView === "treemap" && (
               <>
                 <p className="text-sm text-muted-foreground mb-4">
-                  This visualization displays your UTXOs as tiles sized by their BTC amount and colored by privacy risk.
-                  Click any UTXO to inspect its details and edit metadata.
+                  This visualization displays your UTXOs as proportionally sized tiles based on BTC amount and colored by privacy risk.
+                  Use zoom and pan controls to explore your UTXOs in detail. Click any UTXO to inspect its details.
                 </p>
                 
                 <PrivacyTreemap
@@ -115,6 +124,17 @@ const UTXOMap: React.FC = () => {
           </div>
         </div>
       </Tabs>
+      
+      {/* Display selected UTXO information if needed */}
+      {selectedUtxo && (
+        <div className="bg-card rounded-lg shadow-lg p-4 mb-8 animate-fade-in">
+          <h2 className="text-lg font-bold mb-2">Selected UTXO</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-sm">{selectedUtxo.txid}:{selectedUtxo.vout}</span>
+            <Button variant="outline" size="sm" onClick={() => setSelectedUtxo(null)}>Clear Selection</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

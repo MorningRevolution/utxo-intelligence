@@ -1,13 +1,15 @@
+
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { UTXO } from "@/types/utxo";
-import { createTraceabilityGraph, optimizeGraphLayout, calculateNodeSize, safeFormatBTC } from "@/utils/visualization-utils";
+import { createTraceabilityGraph, optimizeGraphLayout, calculateNodeSize, safeFormatBTC, getRiskColor } from "@/utils/visualization-utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Box, Filter, ZoomIn, ZoomOut, Maximize, Minimize, Layers } from "lucide-react";
+import { Box, Filter, ZoomIn, ZoomOut, Maximize, Minimize, Layers, Plus, Minus } from "lucide-react";
 import { GraphNode, GraphLink } from "@/types/utxo-graph";
 import { toast } from "sonner";
 import { getRiskBadgeStyle } from "@/utils/utxo-utils";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +17,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface RefactoredTraceabilityGraphProps {
   utxos: UTXO[];
@@ -34,9 +42,10 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [showNodeInfo, setShowNodeInfo] = useState(false);
+  const [groupByWallet, setGroupByWallet] = useState(false);
   
   // Reference to the graph container
-  const graphContainer = useRef<HTMLDivElement>(null);
+  const graphContainerRef = useRef<HTMLDivElement>(null);
   
   // Calculate graph data from UTXOs
   useEffect(() => {
@@ -45,16 +54,16 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
     // Optimize layout to minimize overlapping
     const optimizedGraph = optimizeGraphLayout(graphData.nodes, graphData.links);
     setGraph(optimizedGraph);
-  }, [utxos]);
+  }, [utxos, groupByWallet]);
 
   // Calculate dimensions
   const dimensions = useMemo(() => {
-    if (!graphContainer.current) return { width: 800, height: 600 };
+    if (!graphContainerRef.current) return { width: 800, height: 600 };
     return {
-      width: graphContainer.current.clientWidth,
-      height: Math.max(600, graphContainer.current.clientHeight)
+      width: graphContainerRef.current.clientWidth,
+      height: Math.max(600, graphContainerRef.current.clientHeight)
     };
-  }, [graphContainer.current?.clientWidth, graphContainer.current?.clientHeight]);
+  }, [graphContainerRef.current?.clientWidth, graphContainerRef.current?.clientHeight]);
   
   // Handle zoom
   const handleZoomIn = () => {
@@ -91,6 +100,22 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
 
   const handleMouseUp = () => {
     setIsDragging(false);
+  };
+  
+  // Handle wheel zoom
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const delta = e.deltaY * -0.01;
+      const newZoom = Math.max(0.5, Math.min(2, zoom + delta));
+      setZoom(newZoom);
+    }
+  };
+  
+  // Toggle grouping mode
+  const toggleGrouping = () => {
+    setGroupByWallet(prev => !prev);
+    toast.info(groupByWallet ? "Disabled grouping by wallet" : "Enabled grouping by wallet");
   };
   
   // Handle node selection
@@ -172,21 +197,14 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            size="sm"
-            onClick={handleZoomIn}
-            className="flex items-center gap-1"
-          >
-            <ZoomIn className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
+            size="icon"
             onClick={handleZoomOut}
-            className="flex items-center gap-1"
+            className="h-8 w-8"
           >
-            <ZoomOut className="h-4 w-4" />
+            <Minus className="h-4 w-4" />
           </Button>
-          <div className="w-32">
+          
+          <div className="w-24">
             <Slider
               min={0.5}
               max={2}
@@ -195,6 +213,16 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
               onValueChange={(value) => handleZoomChange(value[0])}
             />
           </div>
+          
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleZoomIn}
+            className="h-8 w-8"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+          
           <Button
             variant="outline"
             size="sm"
@@ -204,29 +232,37 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
             <Maximize className="h-4 w-4" />
             <span>Reset</span>
           </Button>
+          
+          <Button
+            variant={groupByWallet ? "default" : "outline"}
+            size="sm"
+            onClick={toggleGrouping}
+            className="flex items-center gap-1"
+          >
+            <Layers className="h-4 w-4" />
+            <span>Group by Wallet</span>
+          </Button>
         </div>
         
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        {/* Legend */}
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           <div className="flex items-center gap-1">
-            <Box className="h-4 w-4 text-[#8E9196]" />
+            <div className="h-4 w-4 rounded bg-[#8E9196]" />
             <span>Transactions</span>
           </div>
-          <div className="flex items-center gap-1">
-            <Box className="h-4 w-4 text-[#9b87f5]" />
+          <div className="flex items-center gap-1 ml-1">
+            <div className="h-4 w-4 rounded-full bg-[#9b87f5]" />
             <span>Addresses</span>
           </div>
-        </div>
-        
-        <div className="flex items-center gap-1">
-          <div className="flex items-center gap-1 text-xs">
+          <div className="flex items-center gap-1 ml-1">
             <div className="w-3 h-3 rounded-full bg-[#10b981]"></div>
             <span>Low Risk</span>
           </div>
-          <div className="flex items-center gap-1 text-xs ml-2">
+          <div className="flex items-center gap-1 ml-1">
             <div className="w-3 h-3 rounded-full bg-[#f97316]"></div>
             <span>Medium Risk</span>
           </div>
-          <div className="flex items-center gap-1 text-xs ml-2">
+          <div className="flex items-center gap-1 ml-1">
             <div className="w-3 h-3 rounded-full bg-[#ea384c]"></div>
             <span>High Risk</span>
           </div>
@@ -237,13 +273,14 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
       <div 
         className="bg-card rounded-lg shadow-sm p-4 relative overflow-hidden"
         style={{ height: '70vh', cursor: isDragging ? 'grabbing' : 'grab' }}
-        ref={graphContainer}
+        ref={graphContainerRef}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onWheel={handleWheel}
       >
-        <svg width="100%" height="100%">
+        <svg width="100%" height="100%" style={{ overflow: "visible" }}>
           <g transform={transform}>
             {/* Draw links first (behind nodes) */}
             {graph.links.map((link, index) => {
@@ -267,8 +304,8 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
               const endY = targetNode.y || 0;
               
               // Calculate source and target node sizes for proper edge connection
-              const sourceSize = calculateNodeSize(sourceNode);
-              const targetSize = calculateNodeSize(targetNode);
+              const sourceSize = sourceNode.radius || calculateNodeSize(sourceNode);
+              const targetSize = targetNode.radius || calculateNodeSize(targetNode);
               
               // Calculate proper start and end points for the edge 
               // so it connects to the border of the nodes, not center
@@ -295,14 +332,7 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
               }
               
               // Calculate line color based on risk level
-              let strokeColor = "#8E9196"; // Default gray
-              if (link.riskLevel === "high") {
-                strokeColor = "#ea384c";
-              } else if (link.riskLevel === "medium") {
-                strokeColor = "#f97316";
-              } else if (link.riskLevel === "low") {
-                strokeColor = "#10b981";
-              }
+              const strokeColor = getRiskColor(link.riskLevel);
               
               // Use thicker/more opaque line for larger value transfers and highlighted edges
               const strokeWidth = Math.max(1, Math.min(5, Math.log10(1 + link.value) * 1.5)) + (isHighlighted ? 1 : 0);
@@ -320,6 +350,7 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
                     strokeWidth={strokeWidth}
                     strokeOpacity={opacity}
                     strokeDasharray={strokeDasharray}
+                    strokeLinecap="round"
                   />
                   
                   {/* Arrow marker */}
@@ -338,7 +369,9 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
                       textAnchor="middle"
                       fill="currentColor"
                       fontSize="10"
+                      fontWeight={isHighlighted ? "bold" : "normal"}
                       pointerEvents="none"
+                      opacity={isHighlighted ? 1 : 0.7}
                     >
                       {link.value < 0.0001 ? "<0.0001" : link.value.toFixed(4)}
                     </text>
@@ -349,72 +382,121 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
             
             {/* Draw nodes on top */}
             {graph.nodes.map((node) => {
-              const size = calculateNodeSize(node);
+              const size = node.radius || calculateNodeSize(node);
               const isHighlighted = node.id === (selectedNode?.id || hoveredNode);
               const nodeColor = getNodeColor(node);
               const borderColor = getNodeBorderColor(node);
-              const nodeOpacity = isHighlighted ? 0.8 : 0.6;
+              const nodeOpacity = isHighlighted ? 0.9 : 0.7;
               const textSize = node.type === "transaction" ? 12 : 10;
               
               const x = node.x || 0;
               const y = node.y || 0;
               
               return (
-                <g 
-                  key={node.id} 
-                  transform={`translate(${x},${y})`}
-                  onMouseEnter={() => setHoveredNode(node.id)}
-                  onMouseLeave={() => setHoveredNode(null)}
-                  onClick={() => handleNodeClick(node)}
-                  style={{ cursor: "pointer" }}
-                >
-                  {/* Main node shape */}
-                  {node.type === "transaction" ? (
-                    <rect
-                      x={-size / 2}
-                      y={-size / 2}
-                      width={size}
-                      height={size}
-                      rx={4}
-                      ry={4}
-                      fill={nodeColor}
-                      fillOpacity={nodeOpacity}
-                      stroke={borderColor}
-                      strokeWidth={isHighlighted ? 2 : 0}
-                    />
-                  ) : (
-                    <circle
-                      r={size / 2}
-                      fill={nodeColor}
-                      fillOpacity={nodeOpacity}
-                      stroke={borderColor}
-                      strokeWidth={isHighlighted ? 2 : 0}
-                    />
-                  )}
-                  
-                  {/* Label within node */}
-                  <text
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fill="white"
-                    fontSize={textSize}
-                    fontWeight={isHighlighted ? "bold" : "normal"}
-                    pointerEvents="none"
-                  >
-                    {node.name.length > 10 ? `${node.name.substring(0, 10)}...` : node.name}
-                  </text>
-                  
-                  {/* Amount label */}
-                  <text
-                    textAnchor="middle"
-                    y={15}
-                    fill="white"
-                    fontSize="10"
-                    pointerEvents="none"
-                  >
-                    {node.amount > 0 ? `${node.amount.toFixed(4)}` : ""}
-                  </text>
-                </g>
+                <TooltipProvider key={node.id}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <g 
+                        transform={`translate(${x},${y})`}
+                        onMouseEnter={() => setHoveredNode(node.id)}
+                        onMouseLeave={() => setHoveredNode(null)}
+                        onClick={() => handleNodeClick(node)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        {/* Main node shape with animation for hover */}
+                        {node.type === "transaction" ? (
+                          <rect
+                            x={-size / 2}
+                            y={-size / 2}
+                            width={size}
+                            height={size}
+                            rx={6}
+                            ry={6}
+                            fill={nodeColor}
+                            fillOpacity={nodeOpacity}
+                            stroke={borderColor}
+                            strokeWidth={isHighlighted ? 2 : 0}
+                            strokeOpacity={isHighlighted ? 1 : 0.5}
+                            filter={isHighlighted ? "drop-shadow(0 0 4px rgba(255,255,255,0.4))" : ""}
+                          />
+                        ) : (
+                          <circle
+                            r={size / 2}
+                            fill={nodeColor}
+                            fillOpacity={nodeOpacity}
+                            stroke={borderColor}
+                            strokeWidth={isHighlighted ? 2 : 0}
+                            strokeOpacity={isHighlighted ? 1 : 0.5}
+                            filter={isHighlighted ? "drop-shadow(0 0 4px rgba(255,255,255,0.4))" : ""}
+                          />
+                        )}
+                        
+                        {/* Label within node */}
+                        <text
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fill="white"
+                          fontSize={textSize}
+                          fontWeight={isHighlighted ? "bold" : "normal"}
+                          pointerEvents="none"
+                        >
+                          {node.name.length > 10 ? `${node.name.substring(0, 10)}...` : node.name}
+                        </text>
+                        
+                        {/* Amount label */}
+                        {node.amount > 0 && (
+                          <text
+                            textAnchor="middle"
+                            y={15}
+                            fill="white"
+                            fontSize="10"
+                            pointerEvents="none"
+                          >
+                            {node.amount.toFixed(4)} BTC
+                          </text>
+                        )}
+                        
+                        {/* Tags indicator (if transaction has tags) */}
+                        {node.type === "transaction" && node.data?.tags && node.data.tags.length > 0 && (
+                          <g transform={`translate(${size/2 - 14}, ${-size/2 + 10})`}>
+                            <rect 
+                              width={12} 
+                              height={12} 
+                              rx={4} 
+                              fill="white" 
+                              fillOpacity={0.6}
+                            />
+                            <text 
+                              x={6} 
+                              y={9}
+                              textAnchor="middle"
+                              fontSize="9"
+                              fontWeight="bold"
+                              fill={nodeColor}
+                            >
+                              {node.data.tags.length}
+                            </text>
+                          </g>
+                        )}
+                      </g>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="p-2">
+                        <div className="font-bold capitalize">{node.type}</div>
+                        <div className="text-sm">{node.id}</div>
+                        {node.amount > 0 && (
+                          <div className="text-sm mt-1">{safeFormatBTC(node.amount)}</div>
+                        )}
+                        {node.type === "transaction" && node.data?.utxos && (
+                          <div className="text-xs mt-1">
+                            Contains {node.data.utxos.length} UTXOs
+                          </div>
+                        )}
+                        <div className="text-xs mt-1">Click for details</div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               );
             })}
           </g>
@@ -422,7 +504,7 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
         
         {/* Instructions overlay */}
         <div className="absolute bottom-4 left-4 right-4 bg-card/50 p-2 rounded text-xs text-center backdrop-blur-sm">
-          Click and drag to move. Use zoom controls to zoom in/out. Click on nodes for details.
+          Click and drag to move. Use mouse wheel or zoom controls to zoom in/out. Click on nodes for details.
         </div>
       </div>
       
@@ -469,6 +551,28 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
                   </div>
                 )}
               </div>
+              
+              {/* UTXOs in transaction */}
+              {selectedNode.type === "transaction" && selectedNode.data?.utxos && selectedNode.data.utxos.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium mb-2">UTXOs in Transaction</h3>
+                  <div className="bg-muted p-3 rounded-lg max-h-[200px] overflow-y-auto">
+                    {selectedNode.data.utxos.map((utxo: UTXO, i: number) => (
+                      <div key={i} className="flex justify-between items-center py-1 border-b last:border-b-0">
+                        <div className="text-sm font-mono truncate max-w-[150px]">
+                          {`${utxo.txid.substring(0, 8)}...${utxo.vout}`}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className={getRiskBadgeStyle(utxo.privacyRisk)}>
+                            {utxo.privacyRisk}
+                          </Badge>
+                          <span className="text-sm font-mono">{safeFormatBTC(utxo.amount)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               
               {/* Tags for transaction nodes */}
               {selectedNode.type === "transaction" && selectedNode.data?.tags && selectedNode.data.tags.length > 0 && (

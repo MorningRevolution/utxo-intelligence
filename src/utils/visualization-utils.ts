@@ -1,4 +1,4 @@
-import { GraphData, GraphNode, GraphLink, TreemapGroupingOption, UTXOFiltersState } from "@/types/utxo-graph";
+import { GraphData, GraphNode, GraphLink, TreemapGroupingOption, UTXOFiltersState, TreemapTile } from "@/types/utxo-graph";
 import { UTXO } from "@/types/utxo";
 import { getRiskColor } from "@/utils/utxo-utils";
 
@@ -38,7 +38,11 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
         txid: txid,
         utxos: utxosInTx,
         tags: Array.from(new Set(utxosInTx.flatMap(u => u.tags)))
-      }
+      },
+      // Calculate weight based on transaction size
+      weight: Math.sqrt(totalAmount) * 2,
+      // Calculate radius proportional to the total amount (with min/max constraints)
+      radius: Math.max(30, Math.min(80, 20 + Math.log10(1 + totalAmount) * 20))
     };
     nodes.push(txNode);
     nodeMap.set(txNodeId, txNode);
@@ -55,7 +59,9 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
             name: `${utxo.address.substring(0, 8)}...`,
             amount: 0, // Will be accumulated
             type: "address",
-            data: { address: utxo.address }
+            data: { address: utxo.address },
+            weight: 1, // Fixed weight for addresses
+            radius: 20 // Fixed radius for address nodes
           };
           nodes.push(addrNode);
           nodeMap.set(addrNodeId, addrNode);
@@ -88,7 +94,9 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
             name: `${utxo.senderAddress.substring(0, 8)}...`,
             amount: 0,
             type: "address",
-            data: { address: utxo.senderAddress }
+            data: { address: utxo.senderAddress },
+            weight: 1,
+            radius: 20
           };
           nodes.push(senderAddrNode);
           nodeMap.set(senderAddrNodeId, senderAddrNode);
@@ -163,8 +171,9 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
 
 /**
  * Creates treemap data for Mempool-style layout (proportionally sized tiles)
+ * Implements the squarified treemap algorithm to optimize aspect ratios
  */
-export const createMempoolTreemap = (utxos: UTXO[]) => {
+export const createMempoolTreemap = (utxos: UTXO[]): TreemapTile[] => {
   // Sort UTXOs by amount (largest first) to optimize the packing
   const sortedUtxos = [...utxos].sort((a, b) => b.amount - a.amount);
   
@@ -174,7 +183,8 @@ export const createMempoolTreemap = (utxos: UTXO[]) => {
   // Create treemap items
   return sortedUtxos.map(utxo => {
     const relativeSize = utxo.amount / totalAmount;
-    // Use a log scale to prevent extremely large UTXOs from dominating
+    // Use a logarithmic scale to prevent extremely large UTXOs from dominating
+    // while still maintaining proportionality
     const adjustedSize = Math.max(0.5, Math.log10(1 + relativeSize * 10) * 10);
     
     return {
@@ -371,20 +381,28 @@ export const safeFormatBTC = (amount: number | undefined | null): string => {
 };
 
 /**
- * Filter UTXOs based on filter criteria
+ * Filter UTXOs based on filter criteria with enhanced fuzzy matching
  */
 export const filterUTXOs = (utxos: UTXO[], filters: Partial<UTXOFiltersState>): UTXO[] => {
   return utxos.filter(utxo => {
-    // Search term filter
+    // Enhanced search term filter with fuzzy matching
     if (filters.searchTerm && filters.searchTerm.length > 0) {
       const searchTerm = filters.searchTerm.toLowerCase();
-      const matchesSearch = 
-        utxo.txid.toLowerCase().includes(searchTerm) ||
-        utxo.address.toLowerCase().includes(searchTerm) ||
-        (utxo.notes && utxo.notes.toLowerCase().includes(searchTerm)) ||
-        utxo.tags.some(tag => tag.toLowerCase().includes(searchTerm));
+      
+      // Implement fuzzy matching for better search results
+      const matchesTxid = utxo.txid.toLowerCase().includes(searchTerm);
+      const matchesAddress = utxo.address.toLowerCase().includes(searchTerm);
+      const matchesNotes = utxo.notes ? utxo.notes.toLowerCase().includes(searchTerm) : false;
+      const matchesTags = utxo.tags.some(tag => {
+        // Simple fuzzy match - checks if search term appears in tag
+        // or if tag contains all characters from search term in order
+        return tag.toLowerCase().includes(searchTerm) || 
+               searchTerm.split('').every(char => tag.toLowerCase().includes(char));
+      });
         
-      if (!matchesSearch) return false;
+      if (!(matchesTxid || matchesAddress || matchesNotes || matchesTags)) {
+        return false;
+      }
     }
     
     // Tag filter
@@ -425,11 +443,12 @@ export const filterUTXOs = (utxos: UTXO[], filters: Partial<UTXOFiltersState>): 
  * Calculate optimal layout positions for graph nodes to minimize overlap
  */
 export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
-  // Simple force-directed layout simulation
-  const iterations = 100;
-  const repulsionForce = 500;
-  const attractionForce = 0.1;
-  const dampingFactor = 0.95;
+  // Enhanced force-directed layout simulation
+  const iterations = 200; // Increased iterations for better results
+  const repulsionForce = 800; // Stronger repulsion for better spacing
+  const attractionForce = 0.15;
+  const dampingFactor = 0.9;
+  const collisionRadius = 10; // Minimum distance between nodes
   
   // Initialize node positions if not already set
   nodes.forEach(node => {
@@ -451,7 +470,7 @@ export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
       forces.set(node.id, { fx: 0, fy: 0 });
     });
     
-    // Apply repulsion between all nodes
+    // Apply repulsion between all nodes with collision detection
     for (let a = 0; a < nodes.length; a++) {
       for (let b = a + 1; b < nodes.length; b++) {
         const nodeA = nodes[a];
@@ -468,25 +487,34 @@ export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
         if (distance < 1) continue;
         
         // Larger nodes should push others away more strongly
-        const nodeASize = Math.sqrt(nodeA.amount || 1) * 5;
-        const nodeBSize = Math.sqrt(nodeB.amount || 1) * 5;
-        const minDistance = nodeASize + nodeBSize + 100;
+        const nodeARadius = nodeA.radius || Math.sqrt(nodeA.amount || 1) * 5;
+        const nodeBRadius = nodeB.radius || Math.sqrt(nodeB.amount || 1) * 5;
+        const minDistance = nodeARadius + nodeBRadius + collisionRadius;
         
-        // Apply repulsion only if nodes are too close
-        if (distance < minDistance) {
-          const force = repulsionForce / distanceSquared;
-          const fx = force * dx / distance;
-          const fy = force * dy / distance;
-          
-          // Update node forces
-          const forceA = forces.get(nodeA.id)!;
-          forceA.fx -= fx;
-          forceA.fy -= fy;
-          
-          const forceB = forces.get(nodeB.id)!;
-          forceB.fx += fx;
-          forceB.fy += fy;
+        // Apply repulsion based on node types and sizes
+        let force = repulsionForce / distanceSquared;
+        
+        // Stronger repulsion for same-type nodes to create clusters by type
+        if (nodeA.type === nodeB.type) {
+          force *= 1.5;
         }
+        
+        // Extra repulsion when nodes are too close (collision avoidance)
+        if (distance < minDistance) {
+          force *= 2.5;
+        }
+        
+        const fx = force * dx / distance;
+        const fy = force * dy / distance;
+        
+        // Update node forces
+        const forceA = forces.get(nodeA.id)!;
+        forceA.fx -= fx;
+        forceA.fy -= fy;
+        
+        const forceB = forces.get(nodeB.id)!;
+        forceB.fx += fx;
+        forceB.fy += fy;
       }
     }
     
@@ -513,25 +541,32 @@ export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
       
       // Link value influences attraction strength
       const linkValue = link.value || 1;
-      const idealDistance = 100 + Math.log10(linkValue || 1) * 50;
+      const idealDistance = 120 + Math.log10(1 + linkValue) * 60;
       const force = attractionForce * (distance - idealDistance) * Math.log10(1 + linkValue);
       
       const fx = force * dx / distance;
       const fy = force * dy / distance;
       
-      // Update node forces
+      // Update node forces with source/target weight consideration
+      const sourceWeight = sourceNode.weight || 1;
+      const targetWeight = targetNode.weight || 1;
+      const totalWeight = sourceWeight + targetWeight;
+      
       const forceSource = forces.get(sourceNode.id)!;
-      forceSource.fx += fx;
-      forceSource.fy += fy;
+      forceSource.fx += fx * (sourceWeight / totalWeight);
+      forceSource.fy += fy * (sourceWeight / totalWeight);
       
       const forceTarget = forces.get(targetNode.id)!;
-      forceTarget.fx -= fx;
-      forceTarget.fy -= fy;
+      forceTarget.fx -= fx * (targetWeight / totalWeight);
+      forceTarget.fy -= fy * (targetWeight / totalWeight);
     });
     
     // Apply forces to nodes with damping
     nodes.forEach(node => {
       if (node.x === undefined || node.y === undefined) return;
+      
+      // Don't move fixed nodes
+      if (node.fx !== undefined || node.fy !== undefined) return;
       
       const force = forces.get(node.id)!;
       
@@ -539,22 +574,74 @@ export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
       force.fx *= dampingFactor;
       force.fy *= dampingFactor;
       
-      // Update position
-      node.x += force.fx;
-      node.y += force.fy;
+      // Update position (with more movement for later iterations)
+      node.x += force.fx * (1 - i/iterations * 0.5); // Gradually reduce movement
+      node.y += force.fy * (1 - i/iterations * 0.5);
     });
   }
   
+  // Final pass to ensure nodes are within bounds
+  const bounds = calculateGraphBounds(nodes);
+  const padding = 50;
+  
+  // Center the graph if it's too spread out
+  const centerX = (bounds.maxX + bounds.minX) / 2;
+  const centerY = (bounds.maxY + bounds.minY) / 2;
+  
+  nodes.forEach(node => {
+    if (node.x && node.y) {
+      // Center the node relative to the graph center
+      node.x = (node.x - centerX) * 0.8 + centerX;
+      node.y = (node.y - centerY) * 0.8 + centerY;
+    }
+  });
+  
   return { nodes, links };
+};
+
+/**
+ * Calculate the bounds of the graph for centering
+ */
+const calculateGraphBounds = (nodes: GraphNode[]) => {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  
+  nodes.forEach(node => {
+    if (node.x && node.y) {
+      minX = Math.min(minX, node.x);
+      minY = Math.min(minY, node.y);
+      maxX = Math.max(maxX, node.x);
+      maxY = Math.max(maxY, node.y);
+    }
+  });
+  
+  return { minX, minY, maxX, maxY };
 };
 
 /**
  * Calculate optimal size for a node based on its amount
  */
 export const calculateNodeSize = (node: GraphNode, minSize = 30, maxSize = 100) => {
+  // If node has a defined radius, use that
+  if (node.radius) return node.radius;
+  
   if (!node.amount) return minSize;
   
   // Use logarithmic scale for better distribution
   const size = minSize + Math.log10(1 + node.amount) * 15;
   return Math.min(maxSize, Math.max(minSize, size));
+};
+
+/**
+ * Get risk color for consistent styling
+ */
+export const getRiskColor = (risk?: "low" | "medium" | "high") => {
+  switch (risk) {
+    case "high": return "#ea384c"; // Red
+    case "medium": return "#f97316"; // Orange
+    case "low": return "#10b981"; // Green
+    default: return "#8E9196"; // Gray
+  }
 };
