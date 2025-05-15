@@ -1,23 +1,21 @@
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { UTXO } from "@/types/utxo";
-import { GraphNode, GraphLink, UTXOFiltersState } from "@/types/utxo-graph";
-import { createTraceabilityGraph, safeFormatBTC, filterUTXOs } from "@/utils/visualization-utils";
+import { createTraceabilityGraph, optimizeGraphLayout, calculateNodeSize, safeFormatBTC } from "@/utils/visualization-utils";
 import { Badge } from "@/components/ui/badge";
-import { getRiskBadgeStyle } from "@/utils/utxo-utils";
-import { ZoomIn, ZoomOut, Filter, Search, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
+import { Box, Filter, ZoomIn, ZoomOut, Maximize, Minimize, Layers } from "lucide-react";
+import { GraphNode, GraphLink } from "@/types/utxo-graph";
 import { toast } from "sonner";
+import { getRiskBadgeStyle } from "@/utils/utxo-utils";
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface RefactoredTraceabilityGraphProps {
   utxos: UTXO[];
@@ -28,952 +26,498 @@ export const RefactoredTraceabilityGraph: React.FC<RefactoredTraceabilityGraphPr
   utxos, 
   onSelectUtxo 
 }) => {
-  // State for graph data
-  const [graphData, setGraphData] = useState<{ nodes: GraphNode[], links: GraphLink[] }>({ nodes: [], links: [] });
-  
-  // State for interaction
-  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
-  const [showDrawer, setShowDrawer] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState(1);
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  // State for graph visualization
+  const [graph, setGraph] = useState<{nodes: GraphNode[], links: GraphLink[]}>({ nodes: [], links: [] });
+  const [zoom, setZoom] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [showNodeInfo, setShowNodeInfo] = useState(false);
   
-  // State for filters
-  const [filters, setFilters] = useState<UTXOFiltersState>({
-    searchTerm: "",
-    selectedTags: [],
-    selectedWallets: [],
-    selectedRiskLevels: []
-  });
-  const [showFilters, setShowFilters] = useState(false);
+  // Reference to the graph container
+  const graphContainer = useRef<HTMLDivElement>(null);
   
-  // Refs for the graph container
-  const graphContainerRef = useRef<HTMLDivElement>(null);
-  
-  // Extract all available tags for filters
-  const availableTags = useMemo(() => {
-    const tags = new Set<string>();
-    utxos.forEach(utxo => {
-      utxo.tags.forEach(tag => tags.add(tag));
-    });
-    return Array.from(tags);
+  // Calculate graph data from UTXOs
+  useEffect(() => {
+    const graphData = createTraceabilityGraph(utxos);
+    
+    // Optimize layout to minimize overlapping
+    const optimizedGraph = optimizeGraphLayout(graphData.nodes, graphData.links);
+    setGraph(optimizedGraph);
   }, [utxos]);
 
-  // Extract all available wallets
-  const availableWallets = useMemo(() => {
-    const wallets = new Set<string>();
-    utxos.forEach(utxo => {
-      wallets.add(utxo.walletName || "Unknown");
-    });
-    return Array.from(wallets);
-  }, [utxos]);
-
-  // Generate graph data from filtered UTXOs
-  useEffect(() => {
-    const filteredUtxos = filterUTXOs(utxos, filters);
-    const newGraphData = createTraceabilityGraph(filteredUtxos);
-    
-    // Assign initial positions to nodes using a force-directed algorithm
-    if (newGraphData.nodes.length > 0) {
-      // Simple grid layout as starting point
-      const cols = Math.ceil(Math.sqrt(newGraphData.nodes.length));
-      const spacingX = 250;
-      const spacingY = 200;
-      
-      newGraphData.nodes.forEach((node, i) => {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        
-        // Assign initial positions
-        node.x = col * spacingX + 100;
-        node.y = row * spacingY + 100;
-      });
-    }
-    
-    setGraphData(newGraphData);
-  }, [utxos, filters]);
-
-  // Apply force-directed layout simulation
-  useEffect(() => {
-    let animFrameId: number;
-    let iteration = 0;
-    const maxIterations = 50; // Limit iterations
-    
-    const simulate = () => {
-      if (iteration >= maxIterations) return;
-      
-      // Copy nodes for manipulation
-      const nodes = [...graphData.nodes];
-      
-      // Apply repulsive forces between nodes
-      for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i];
-        
-        for (let j = 0; j < nodes.length; j++) {
-          if (i !== j) {
-            const otherNode = nodes[j];
-            const dx = (node.x || 0) - (otherNode.x || 0);
-            const dy = (node.y || 0) - (otherNode.y || 0);
-            const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-            
-            // Stronger repulsion for larger nodes
-            const repulsionForce = Math.min(5000 / (distance * distance), 50);
-            const nodeSizeFactor = Math.sqrt(node.amount || 1) / 2;
-            
-            if (node.x !== undefined && node.y !== undefined) {
-              node.x += dx * repulsionForce / distance * 0.1 * nodeSizeFactor;
-              node.y += dy * repulsionForce / distance * 0.1 * nodeSizeFactor;
-            }
-          }
-        }
-      }
-      
-      // Apply attractive forces along links
-      graphData.links.forEach(link => {
-        const sourceNode = nodes.find(n => n.id === link.source);
-        const targetNode = nodes.find(n => n.id === link.target);
-        
-        if (sourceNode && targetNode && 
-            sourceNode.x !== undefined && sourceNode.y !== undefined &&
-            targetNode.x !== undefined && targetNode.y !== undefined) {
-          const dx = sourceNode.x - targetNode.x;
-          const dy = sourceNode.y - targetNode.y;
-          const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-          
-          // Define ideal distance based on node sizes
-          const idealDistance = 200 + 
-            Math.sqrt((sourceNode.amount || 1) * 30) + 
-            Math.sqrt((targetNode.amount || 1) * 30);
-          
-          // Apply forces
-          const strength = (distance - idealDistance) * 0.03;
-          
-          sourceNode.x -= dx * strength / distance;
-          sourceNode.y -= dy * strength / distance;
-          targetNode.x += dx * strength / distance;
-          targetNode.y += dy * strength / distance;
-        }
-      });
-      
-      // Center gravity force
-      nodes.forEach(node => {
-        if (node.x !== undefined && node.y !== undefined) {
-          const width = graphContainerRef.current?.clientWidth || 1000;
-          const height = graphContainerRef.current?.clientHeight || 800;
-          const dx = node.x - width / 2;
-          const dy = node.y - height / 2;
-          
-          node.x -= dx * 0.001;
-          node.y -= dy * 0.001;
-        }
-      });
-      
-      // Update graph data with new positions
-      setGraphData(prevData => ({
-        ...prevData,
-        nodes
-      }));
-      
-      iteration++;
-      animFrameId = requestAnimationFrame(simulate);
+  // Calculate dimensions
+  const dimensions = useMemo(() => {
+    if (!graphContainer.current) return { width: 800, height: 600 };
+    return {
+      width: graphContainer.current.clientWidth,
+      height: Math.max(600, graphContainer.current.clientHeight)
     };
-    
-    if (graphData.nodes.length > 0) {
-      animFrameId = requestAnimationFrame(simulate);
-    }
-    
-    return () => {
-      cancelAnimationFrame(animFrameId);
-    };
-  }, [graphData.nodes.length, graphData.links]);
+  }, [graphContainer.current?.clientWidth, graphContainer.current?.clientHeight]);
   
-  // Handle mouse interactions for dragging and zooming
-  const handleMouseDown = (e: React.MouseEvent, node?: GraphNode) => {
-    if (node) {
-      // If clicking on a node, select it without starting drag
-      setSelectedNode(node);
-      setShowDrawer(true);
-      
-      if (node.type === "utxo" && node.data && onSelectUtxo) {
-        onSelectUtxo(node.data);
-      }
-    } else {
-      // Otherwise start pan drag
-      setIsDragging(true);
-      setDragStart({ x: e.clientX, y: e.clientY });
-    }
-    
-    e.stopPropagation(); // Prevent event bubbling
+  // Handle zoom
+  const handleZoomIn = () => {
+    setZoom(prev => Math.min(2, prev + 0.1));
+  };
+
+  const handleZoomOut = () => {
+    setZoom(prev => Math.max(0.5, prev - 0.1));
   };
   
+  const handleZoomChange = (value: number) => {
+    setZoom(value);
+  };
+  
+  const handleReset = () => {
+    setZoom(1);
+    setPosition({ x: 0, y: 0 });
+  };
+  
+  // Handle panning
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+  };
+
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return;
     
-    const dx = e.clientX - dragStart.x;
-    const dy = e.clientY - dragStart.y;
+    const newX = e.clientX - dragStart.x;
+    const newY = e.clientY - dragStart.y;
     
-    setPanOffset(prev => ({
-      x: prev.x + dx,
-      y: prev.y + dy
-    }));
-    
-    setDragStart({ x: e.clientX, y: e.clientY });
+    setPosition({ x: newX, y: newY });
   };
-  
+
   const handleMouseUp = () => {
     setIsDragging(false);
   };
   
-  // Handle node dragging
-  const handleNodeMouseDown = (e: React.MouseEvent, node: GraphNode) => {
-    e.stopPropagation(); // Prevent propagation to container
-    
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const nodeStartX = node.x || 0;
-    const nodeStartY = node.y || 0;
-    
-    const handleNodeMouseMove = (moveEvent: MouseEvent) => {
-      const dx = moveEvent.clientX - startX;
-      const dy = moveEvent.clientY - startY;
-      
-      // Update node position
-      setGraphData(prev => {
-        const updatedNodes = prev.nodes.map(n => {
-          if (n.id === node.id) {
-            return {
-              ...n,
-              x: nodeStartX + dx / zoomLevel,
-              y: nodeStartY + dy / zoomLevel
-            };
-          }
-          return n;
-        });
-        
-        return {
-          ...prev,
-          nodes: updatedNodes
-        };
-      });
-    };
-    
-    const handleNodeMouseUp = () => {
-      document.removeEventListener('mousemove', handleNodeMouseMove);
-      document.removeEventListener('mouseup', handleNodeMouseUp);
-    };
-    
-    document.addEventListener('mousemove', handleNodeMouseMove);
-    document.addEventListener('mouseup', handleNodeMouseUp);
-    
-    // Also select the node when dragging starts
+  // Handle node selection
+  const handleNodeClick = (node: GraphNode) => {
     setSelectedNode(node);
-  };
-  
-  // Handle zoom in/out
-  const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 0.2, 3));
-  };
-  
-  const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 0.2, 0.3));
-  };
-  
-  // Handle wheel event for zooming
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
+    setShowNodeInfo(true);
     
-    if (e.deltaY < 0) {
-      setZoomLevel(prev => Math.min(prev + 0.1, 3));
-    } else {
-      setZoomLevel(prev => Math.max(prev - 0.1, 0.3));
-    }
-  };
-  
-  // Toggle filters visibility
-  const toggleFilters = () => {
-    setShowFilters(prev => !prev);
-  };
-  
-  // Handle filter changes
-  const handleFilterChange = (key: keyof UTXOFiltersState, value: any) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  };
-  
-  // Handle tag filter toggle
-  const handleTagFilterToggle = (tag: string) => {
-    setFilters(prev => {
-      const newTags = prev.selectedTags.includes(tag)
-        ? prev.selectedTags.filter(t => t !== tag)
-        : [...prev.selectedTags, tag];
-      
-      return { ...prev, selectedTags: newTags };
-    });
-  };
-  
-  // Handle wallet filter toggle
-  const handleWalletFilterToggle = (wallet: string) => {
-    setFilters(prev => {
-      const newWallets = prev.selectedWallets.includes(wallet)
-        ? prev.selectedWallets.filter(w => w !== wallet)
-        : [...prev.selectedWallets, wallet];
-      
-      return { ...prev, selectedWallets: newWallets };
-    });
-  };
-  
-  // Handle risk filter toggle
-  const handleRiskFilterToggle = (risk: "low" | "medium" | "high") => {
-    setFilters(prev => {
-      const newRisks = prev.selectedRiskLevels.includes(risk)
-        ? prev.selectedRiskLevels.filter(r => r !== risk)
-        : [...prev.selectedRiskLevels, risk];
-      
-      return { ...prev, selectedRiskLevels: newRisks };
-    });
-  };
-  
-  // Clear all filters
-  const clearFilters = () => {
-    setFilters({
-      searchTerm: "",
-      selectedTags: [],
-      selectedWallets: [],
-      selectedRiskLevels: []
-    });
-  };
-  
-  // Calculate node size based on amount and type
-  const getNodeSize = (node: GraphNode) => {
-    const baseSize = node.type === "transaction" ? 100 : 60;
-    const sizeMultiplier = node.type === "transaction" ? 30 : 15;
-    
-    // Logarithmic scale for better visualization
-    return baseSize + Math.log10(1 + (node.amount || 0)) * sizeMultiplier;
-  };
-  
-  // Determine node color based on type and risk level
-  const getNodeColor = (node: GraphNode) => {
-    if (node.type === "transaction") {
-      return "#6366F1"; // Indigo for transactions
-    } else if (node.type === "address") {
-      return "#E5DEFF"; // Light purple for addresses
-    } else if (node.riskLevel) {
-      // Color by risk for UTXOs
-      switch (node.riskLevel) {
-        case "high": return "#ea384c";
-        case "medium": return "#f97316";
-        case "low": return "#10b981";
-        default: return "#8E9196";
+    // If it's a transaction node with UTXOs, notify parent component
+    if (node.type === "transaction" && node.data?.utxos?.length > 0) {
+      // Select the first UTXO for display
+      const utxo = node.data.utxos[0];
+      if (onSelectUtxo) {
+        onSelectUtxo(utxo);
       }
     }
+  };
+  
+  // Get connections for a node
+  const getNodeConnections = (nodeId: string) => {
+    return graph.links.filter(link => 
+      (typeof link.source === 'string' ? link.source : link.source.id) === nodeId || 
+      (typeof link.target === 'string' ? link.target : link.target.id) === nodeId
+    );
+  };
+  
+  // Get the color for a node based on type and risk
+  const getNodeColor = (node: GraphNode) => {
+    if (node.type === "transaction") {
+      // Use the highest risk level of any UTXO in the transaction
+      if (node.data?.utxos) {
+        const hasHighRisk = node.data.utxos.some(u => u.privacyRisk === 'high');
+        if (hasHighRisk) return "#ea384c";
+        
+        const hasMediumRisk = node.data.utxos.some(u => u.privacyRisk === 'medium');
+        if (hasMediumRisk) return "#f97316";
+        
+        return "#10b981"; // Low risk
+      }
+      return "#8E9196"; // Default gray for transaction nodes
+    } else if (node.type === "address") {
+      return "#9b87f5"; // Purple for address nodes
+    }
+    
     return "#8E9196"; // Default gray
   };
   
-  // Determine node shape and style
-  const getNodeShape = (node: GraphNode) => {
-    if (node.type === "transaction") {
-      return "rounded-md"; // Square with rounded corners
-    } else if (node.type === "address") {
-      return "rounded-full"; // Circle
+  // Get the border color for a node when hovered or selected
+  const getNodeBorderColor = (node: GraphNode) => {
+    if (node.id === (selectedNode?.id || hoveredNode)) {
+      return "#ffffff"; // White for selected/hovered nodes
     }
-    return "rounded-lg"; // Rounded rectangle
+    return "transparent";
   };
+
+  // Function to calculate position for midpoint labels on links
+  const calculateLabelPosition = (source: GraphNode, target: GraphNode) => {
+    const midX = (source.x || 0) + ((target.x || 0) - (source.x || 0)) / 2;
+    const midY = (source.y || 0) + ((target.y || 0) - (source.y || 0)) / 2;
+    return { x: midX, y: midY };
+  };
+
+  // Calculate view box and transformation 
+  const viewBox = useMemo(() => {
+    const width = dimensions.width;
+    const height = dimensions.height;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    return `${-centerX} ${-centerY} ${width} ${height}`;
+  }, [dimensions]);
   
-  // Determine node border style
-  const getNodeBorder = (node: GraphNode) => {
-    if (node.type === "transaction") {
-      return "border-2 border-indigo-600";
-    } else if (node.type === "address") {
-      return "border border-purple-200";
-    }
-    return "border border-gray-300";
-  };
+  const transform = `translate(${position.x}, ${position.y}) scale(${zoom})`;
 
   return (
     <div className="w-full">
-      {/* Toolbar */}
-      <div className="bg-card p-2 rounded-lg shadow-sm mb-4 flex flex-wrap gap-2 items-center">
-        <div className="flex-1 min-w-[200px] relative">
-          <div className="relative flex items-center">
-            <Search className="absolute left-2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by txid, address, tag..."
-              value={filters.searchTerm}
-              onChange={(e) => handleFilterChange("searchTerm", e.target.value)}
-              className="w-full pl-8"
+      {/* Controls */}
+      <div className="bg-card p-2 rounded-lg shadow-sm mb-4 flex flex-wrap justify-between items-center gap-2">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleZoomIn}
+            className="flex items-center gap-1"
+          >
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleZoomOut}
+            className="flex items-center gap-1"
+          >
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          <div className="w-32">
+            <Slider
+              min={0.5}
+              max={2}
+              step={0.1}
+              value={[zoom]}
+              onValueChange={(value) => handleZoomChange(value[0])}
             />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            className="flex items-center gap-1"
+          >
+            <Maximize className="h-4 w-4" />
+            <span>Reset</span>
+          </Button>
+        </div>
+        
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Box className="h-4 w-4 text-[#8E9196]" />
+            <span>Transactions</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Box className="h-4 w-4 text-[#9b87f5]" />
+            <span>Addresses</span>
           </div>
         </div>
         
-        <div className="flex gap-2">
-          {/* Filter toggle */}
-          <Button 
-            variant={showFilters ? "default" : "outline"} 
-            size="sm"
-            onClick={toggleFilters}
-            className="flex items-center gap-1"
-          >
-            <Filter className="h-4 w-4" />
-            <span>Filters</span>
-            {(filters.selectedTags.length > 0 || 
-              filters.selectedWallets.length > 0 || 
-              filters.selectedRiskLevels.length > 0) && (
-              <Badge variant="secondary" className="ml-1">
-                {filters.selectedTags.length + 
-                 filters.selectedWallets.length + 
-                 filters.selectedRiskLevels.length}
-              </Badge>
-            )}
-          </Button>
-          
-          {/* Tag Filter Preview */}
-          <div className="flex flex-wrap gap-1 items-center">
-            {filters.selectedTags.slice(0, 2).map(tag => (
-              <Badge 
-                key={tag}
-                variant="default"
-                className="cursor-pointer"
-                onClick={() => handleTagFilterToggle(tag)}
-              >
-                {tag}
-              </Badge>
-            ))}
-            {filters.selectedTags.length > 2 && (
-              <Badge variant="outline">+{filters.selectedTags.length - 2} more</Badge>
-            )}
+        <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 text-xs">
+            <div className="w-3 h-3 rounded-full bg-[#10b981]"></div>
+            <span>Low Risk</span>
           </div>
-          
-          {/* Zoom controls */}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={handleZoomOut}>
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-            <span className="text-xs">{Math.round(zoomLevel * 100)}%</span>
-            <Button variant="outline" size="icon" onClick={handleZoomIn}>
-              <ZoomIn className="h-4 w-4" />
-            </Button>
+          <div className="flex items-center gap-1 text-xs ml-2">
+            <div className="w-3 h-3 rounded-full bg-[#f97316]"></div>
+            <span>Medium Risk</span>
           </div>
-          
-          {/* Reset pan/zoom */}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => {
-              setZoomLevel(1);
-              setPanOffset({ x: 0, y: 0 });
-            }}
-          >
-            Reset View
-          </Button>
+          <div className="flex items-center gap-1 text-xs ml-2">
+            <div className="w-3 h-3 rounded-full bg-[#ea384c]"></div>
+            <span>High Risk</span>
+          </div>
         </div>
       </div>
       
-      {/* Expanded filters panel */}
-      {showFilters && (
-        <div className="bg-card p-4 rounded-lg shadow-sm mb-4 grid gap-4 md:grid-cols-3">
-          {/* Tags filter */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-sm font-medium">Filter by Tags</h3>
-              {filters.selectedTags.length > 0 && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => handleFilterChange("selectedTags", [])}
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
-            <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2">
-              {availableTags.map(tag => (
-                <div key={tag} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id={`tag-${tag}`}
-                    checked={filters.selectedTags.includes(tag)}
-                    onChange={() => handleTagFilterToggle(tag)}
-                    className="h-4 w-4 rounded"
-                  />
-                  <label htmlFor={`tag-${tag}`} className="text-sm">
-                    {tag}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {/* Wallets filter */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-sm font-medium">Filter by Wallets</h3>
-              {filters.selectedWallets.length > 0 && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => handleFilterChange("selectedWallets", [])}
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
-            <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2">
-              {availableWallets.map(wallet => (
-                <div key={wallet} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id={`wallet-${wallet}`}
-                    checked={filters.selectedWallets.includes(wallet)}
-                    onChange={() => handleWalletFilterToggle(wallet)}
-                    className="h-4 w-4 rounded"
-                  />
-                  <label htmlFor={`wallet-${wallet}`} className="text-sm">
-                    {wallet}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {/* Risk levels filter */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-sm font-medium">Filter by Risk Level</h3>
-              {filters.selectedRiskLevels.length > 0 && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => handleFilterChange("selectedRiskLevels", [])}
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="risk-low"
-                  checked={filters.selectedRiskLevels.includes("low")}
-                  onChange={() => handleRiskFilterToggle("low")}
-                  className="h-4 w-4 rounded"
-                />
-                <label htmlFor="risk-low" className="text-sm flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-[#10b981]"></div>
-                  Low Risk
-                </label>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="risk-medium"
-                  checked={filters.selectedRiskLevels.includes("medium")}
-                  onChange={() => handleRiskFilterToggle("medium")}
-                  className="h-4 w-4 rounded"
-                />
-                <label htmlFor="risk-medium" className="text-sm flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-[#f97316]"></div>
-                  Medium Risk
-                </label>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="risk-high"
-                  checked={filters.selectedRiskLevels.includes("high")}
-                  onChange={() => handleRiskFilterToggle("high")}
-                  className="h-4 w-4 rounded"
-                />
-                <label htmlFor="risk-high" className="text-sm flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-[#ea384c]"></div>
-                  High Risk
-                </label>
-              </div>
-            </div>
-          </div>
-          
-          {/* Filter actions */}
-          <div className="md:col-span-3 flex justify-end">
-            <Button variant="outline" onClick={clearFilters} className="mr-2">
-              Clear All Filters
-            </Button>
-            <Button onClick={toggleFilters}>
-              Apply Filters
-            </Button>
-          </div>
-        </div>
-      )}
-      
-      {/* Legend */}
-      <div className="bg-card p-2 rounded-lg shadow-sm mb-4 flex flex-wrap gap-3 text-xs">
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-md bg-[#6366F1]"></div>
-          <span>Transaction</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-[#E5DEFF]"></div>
-          <span>Address</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-[#10b981]"></div>
-          <span>Low Risk</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-[#f97316]"></div>
-          <span>Medium Risk</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-[#ea384c]"></div>
-          <span>High Risk</span>
-        </div>
-      </div>
-      
-      {/* Graph container */}
+      {/* Graph visualization */}
       <div 
-        ref={graphContainerRef}
-        className="bg-card rounded-lg shadow-sm p-4 overflow-hidden cursor-move relative min-h-[60vh]" 
-        onMouseDown={(e) => handleMouseDown(e)}
+        className="bg-card rounded-lg shadow-sm p-4 relative overflow-hidden"
+        style={{ height: '70vh', cursor: isDragging ? 'grabbing' : 'grab' }}
+        ref={graphContainer}
+        onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
       >
-        {graphData.nodes.length === 0 ? (
-          <div className="h-[500px] flex items-center justify-center text-muted-foreground">
-            No transactions to display. Try adjusting your filters.
-          </div>
-        ) : (
-          <div 
-            className="relative"
-            style={{ 
-              transform: `scale(${zoomLevel}) translate(${panOffset.x}px, ${panOffset.y}px)`, 
-              transformOrigin: 'center center',
-              minHeight: '800px',
-              minWidth: '1200px'
-            }}
-          >
-            {/* Render links as SVG paths */}
-            <svg className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{zIndex: 0}}>
-              <defs>
-                <marker
-                  id="arrowhead"
-                  markerWidth="10"
-                  markerHeight="7"
-                  refX="10"
-                  refY="3.5"
-                  orient="auto"
-                >
-                  <polygon points="0 0, 10 3.5, 0 7" fill="#8E9196" />
-                </marker>
-              </defs>
-              <g>
-                {graphData.links.map((link, i) => {
-                  // Find source and target nodes
-                  const sourceNode = graphData.nodes.find(n => n.id === link.source);
-                  const targetNode = graphData.nodes.find(n => n.id === link.target);
-                  
-                  if (!sourceNode || !targetNode || 
-                      sourceNode.x === undefined || sourceNode.y === undefined ||
-                      targetNode.x === undefined || targetNode.y === undefined) {
-                    return null;
-                  }
-                  
-                  // Calculate source and target positions
-                  const sourceSize = getNodeSize(sourceNode);
-                  const targetSize = getNodeSize(targetNode);
-                  const sourceX = sourceNode.x;
-                  const sourceY = sourceNode.y;
-                  const targetX = targetNode.x;
-                  const targetY = targetNode.y;
-                  
-                  // Calculate direction vector
-                  const dx = targetX - sourceX;
-                  const dy = targetY - sourceY;
-                  const length = Math.sqrt(dx * dx + dy * dy);
-                  
-                  // Adjust start and end points to be on the edge of the nodes
-                  const sx = sourceX + (dx / length) * (sourceSize / 2);
-                  const sy = sourceY + (dy / length) * (sourceSize / 2);
-                  const tx = targetX - (dx / length) * (targetSize / 2);
-                  const ty = targetY - (dy / length) * (targetSize / 2);
-                  
-                  // Determine link color based on risk level
-                  let linkColor = "#8E9196"; // Default gray
-                  if (link.riskLevel) {
-                    switch (link.riskLevel) {
-                      case "high": linkColor = "#ea384c"; break;
-                      case "medium": linkColor = "#f97316"; break;
-                      case "low": linkColor = "#10b981"; break;
-                    }
-                  }
-                  
-                  // Path type can be straight or curved
-                  // Fix the type comparison issue by using a boolean flag
-                  const useCurvedPath = false; // Set to true to use curved paths
-                  let path = "";
-                  
-                  if (useCurvedPath) {
-                    // Create a curved path
-                    const midX = (sx + tx) / 2;
-                    const midY = (sy + ty) / 2;
-                    const controlX = midX - (sy - ty) * 0.2;
-                    const controlY = midY - (tx - sx) * 0.2;
-                    
-                    path = `M ${sx} ${sy} Q ${controlX} ${controlY}, ${tx} ${ty}`;
-                  } else {
-                    // Simple straight path
-                    path = `M ${sx} ${sy} L ${tx} ${ty}`;
-                  }
-                  
-                  return (
-                    <path
-                      key={`link-${i}`}
-                      d={path}
-                      stroke={linkColor}
-                      strokeWidth={Math.max(2, link.value * 0.5)}
-                      opacity={0.7}
-                      markerEnd="url(#arrowhead)"
-                    />
-                  );
-                })}
-              </g>
-            </svg>
-            
-            {/* Render nodes */}
-            {graphData.nodes.map((node) => {
-              if (node.x === undefined || node.y === undefined) return null;
+        <svg width="100%" height="100%">
+          <g transform={transform}>
+            {/* Draw links first (behind nodes) */}
+            {graph.links.map((link, index) => {
+              const sourceNode = typeof link.source === 'string' 
+                ? graph.nodes.find(n => n.id === link.source) 
+                : link.source;
               
-              const nodeSize = getNodeSize(node);
-              const nodeColor = getNodeColor(node);
+              const targetNode = typeof link.target === 'string'
+                ? graph.nodes.find(n => n.id === link.target)
+                : link.target;
+                
+              if (!sourceNode || !targetNode) return null;
+              
+              const isHighlighted = selectedNode && 
+                ((selectedNode.id === sourceNode.id) || (selectedNode.id === targetNode.id));
+              
+              const startX = sourceNode.x || 0;
+              const startY = sourceNode.y || 0;
+              const endX = targetNode.x || 0;
+              const endY = targetNode.y || 0;
+              
+              // Calculate source and target node sizes for proper edge connection
+              const sourceSize = calculateNodeSize(sourceNode);
+              const targetSize = calculateNodeSize(targetNode);
+              
+              // Calculate proper start and end points for the edge 
+              // so it connects to the border of the nodes, not center
+              const dx = endX - startX;
+              const dy = endY - startY;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              
+              // Normalize the direction vector and scale by node radius
+              const dirX = dx / distance;
+              const dirY = dy / distance;
+              
+              // Adjust starting point
+              const adjustedStartX = startX + dirX * (sourceSize / 2);
+              const adjustedStartY = startY + dirY * (sourceSize / 2);
+              
+              // Adjust ending point
+              const adjustedEndX = endX - dirX * (targetSize / 2);
+              const adjustedEndY = endY - dirY * (targetSize / 2);
+              
+              // Calculate line style based on link properties
+              let strokeDasharray = "none";
+              if (link.isChangeOutput) {
+                strokeDasharray = "5,3";
+              }
+              
+              // Calculate line color based on risk level
+              let strokeColor = "#8E9196"; // Default gray
+              if (link.riskLevel === "high") {
+                strokeColor = "#ea384c";
+              } else if (link.riskLevel === "medium") {
+                strokeColor = "#f97316";
+              } else if (link.riskLevel === "low") {
+                strokeColor = "#10b981";
+              }
+              
+              // Use thicker/more opaque line for larger value transfers and highlighted edges
+              const strokeWidth = Math.max(1, Math.min(5, Math.log10(1 + link.value) * 1.5)) + (isHighlighted ? 1 : 0);
+              const opacity = isHighlighted ? 0.8 : 0.5;
               
               return (
-                <div
-                  key={node.id}
-                  className={`absolute flex flex-col items-center justify-center cursor-pointer transition-shadow hover:shadow-lg ${getNodeShape(node)} ${getNodeBorder(node)}`}
-                  style={{
-                    width: `${nodeSize}px`,
-                    height: node.type === "transaction" ? `${nodeSize * 0.75}px` : `${nodeSize}px`,
-                    backgroundColor: node.type === "transaction" ? nodeColor : `${nodeColor}20`,
-                    color: node.type === "transaction" ? "white" : "black",
-                    left: `${node.x - nodeSize / 2}px`,
-                    top: `${node.y - nodeSize / 2}px`,
-                    zIndex: node.type === "transaction" ? 2 : 1
-                  }}
-                  onClick={(e) => handleMouseDown(e, node)}
-                  onMouseDown={(e) => handleNodeMouseDown(e, node)}
-                >
-                  {/* Node content varies by type */}
-                  {node.type === "transaction" && (
-                    <>
-                      <div className="text-xs font-medium text-white mb-1">
-                        {node.name}
-                      </div>
-                      <div className="text-xs text-white font-bold">
-                        {safeFormatBTC(node.amount)}
-                      </div>
-                      {node.data?.tags && node.data.tags.length > 0 && (
-                        <div className="mt-1 flex gap-1 flex-wrap justify-center">
-                          {node.data.tags.slice(0, 2).map((tag, i) => (
-                            <Badge 
-                              key={i}
-                              variant="outline" 
-                              className="text-[0.6rem] border-white text-white"
-                            >
-                              {tag}
-                            </Badge>
-                          ))}
-                          {node.data.tags.length > 2 && (
-                            <Badge 
-                              variant="outline" 
-                              className="text-[0.6rem] border-white text-white"
-                            >
-                              +{node.data.tags.length - 2}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  )}
+                <g key={`link-${index}`}>
+                  {/* Edge */}
+                  <line
+                    x1={adjustedStartX}
+                    y1={adjustedStartY}
+                    x2={adjustedEndX}
+                    y2={adjustedEndY}
+                    stroke={strokeColor}
+                    strokeWidth={strokeWidth}
+                    strokeOpacity={opacity}
+                    strokeDasharray={strokeDasharray}
+                  />
                   
-                  {node.type === "address" && (
-                    <>
-                      <div className="text-xs font-medium truncate max-w-[90%] text-center">
-                        {node.name}
-                      </div>
-                      <div className="text-xs mt-1">
-                        {safeFormatBTC(node.amount)}
-                      </div>
-                    </>
-                  )}
+                  {/* Arrow marker */}
+                  <polygon 
+                    points="0,-3 6,0 0,3"
+                    transform={`translate(${adjustedEndX},${adjustedEndY}) rotate(${Math.atan2(dy, dx) * 180 / Math.PI})`}
+                    fill={strokeColor}
+                    opacity={opacity}
+                  />
                   
-                  {node.type === "utxo" && (
-                    <>
-                      <div className="text-xs font-medium truncate max-w-[90%] text-center">
-                        {node.name}
-                      </div>
-                      <div className="text-xs mt-1">
-                        {safeFormatBTC(node.amount)}
-                      </div>
-                      {node.riskLevel && (
-                        <Badge 
-                          className="mt-1 text-[0.6rem]"
-                          variant={node.riskLevel === "high" ? "destructive" : "outline"}
-                        >
-                          {node.riskLevel}
-                        </Badge>
-                      )}
-                    </>
+                  {/* Edge value label (only for larger values and when zoomed enough) */}
+                  {(link.value > 0.1 && zoom > 0.8) && (
+                    <text
+                      x={(adjustedStartX + adjustedEndX) / 2}
+                      y={(adjustedStartY + adjustedEndY) / 2 - 5}
+                      textAnchor="middle"
+                      fill="currentColor"
+                      fontSize="10"
+                      pointerEvents="none"
+                    >
+                      {link.value < 0.0001 ? "<0.0001" : link.value.toFixed(4)}
+                    </text>
                   )}
-                </div>
+                </g>
               );
             })}
-          </div>
-        )}
+            
+            {/* Draw nodes on top */}
+            {graph.nodes.map((node) => {
+              const size = calculateNodeSize(node);
+              const isHighlighted = node.id === (selectedNode?.id || hoveredNode);
+              const nodeColor = getNodeColor(node);
+              const borderColor = getNodeBorderColor(node);
+              const nodeOpacity = isHighlighted ? 0.8 : 0.6;
+              const textSize = node.type === "transaction" ? 12 : 10;
+              
+              const x = node.x || 0;
+              const y = node.y || 0;
+              
+              return (
+                <g 
+                  key={node.id} 
+                  transform={`translate(${x},${y})`}
+                  onMouseEnter={() => setHoveredNode(node.id)}
+                  onMouseLeave={() => setHoveredNode(null)}
+                  onClick={() => handleNodeClick(node)}
+                  style={{ cursor: "pointer" }}
+                >
+                  {/* Main node shape */}
+                  {node.type === "transaction" ? (
+                    <rect
+                      x={-size / 2}
+                      y={-size / 2}
+                      width={size}
+                      height={size}
+                      rx={4}
+                      ry={4}
+                      fill={nodeColor}
+                      fillOpacity={nodeOpacity}
+                      stroke={borderColor}
+                      strokeWidth={isHighlighted ? 2 : 0}
+                    />
+                  ) : (
+                    <circle
+                      r={size / 2}
+                      fill={nodeColor}
+                      fillOpacity={nodeOpacity}
+                      stroke={borderColor}
+                      strokeWidth={isHighlighted ? 2 : 0}
+                    />
+                  )}
+                  
+                  {/* Label within node */}
+                  <text
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill="white"
+                    fontSize={textSize}
+                    fontWeight={isHighlighted ? "bold" : "normal"}
+                    pointerEvents="none"
+                  >
+                    {node.name.length > 10 ? `${node.name.substring(0, 10)}...` : node.name}
+                  </text>
+                  
+                  {/* Amount label */}
+                  <text
+                    textAnchor="middle"
+                    y={15}
+                    fill="white"
+                    fontSize="10"
+                    pointerEvents="none"
+                  >
+                    {node.amount > 0 ? `${node.amount.toFixed(4)}` : ""}
+                  </text>
+                </g>
+              );
+            })}
+          </g>
+        </svg>
+        
+        {/* Instructions overlay */}
+        <div className="absolute bottom-4 left-4 right-4 bg-card/50 p-2 rounded text-xs text-center backdrop-blur-sm">
+          Click and drag to move. Use zoom controls to zoom in/out. Click on nodes for details.
+        </div>
       </div>
       
-      {/* Details Drawer */}
-      <Drawer open={showDrawer} onOpenChange={setShowDrawer}>
-        <DrawerContent className="max-h-[85vh]">
-          <DrawerHeader>
-            <DrawerTitle>
-              {selectedNode?.type === "transaction" ? "Transaction Details" : 
-               selectedNode?.type === "address" ? "Address Details" : 
-               "UTXO Details"}
-            </DrawerTitle>
-            <DrawerDescription>
-              {selectedNode?.name || "No node selected"}
-            </DrawerDescription>
-          </DrawerHeader>
+      {/* Node info dialog */}
+      <Dialog open={showNodeInfo} onOpenChange={setShowNodeInfo}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedNode?.type === "transaction" ? "Transaction" : "Address"} Details
+            </DialogTitle>
+            <DialogDescription>
+              {selectedNode?.id}
+            </DialogDescription>
+          </DialogHeader>
           
-          <div className="px-4 py-2">
-            {selectedNode ? (
-              <div className="space-y-4">
-                {/* Basic node info */}
-                <div className="bg-muted p-3 rounded-lg">
-                  <h3 className="text-sm font-medium mb-1">
-                    {selectedNode.type === "transaction" ? "Transaction ID" : 
-                     selectedNode.type === "address" ? "Address" : 
-                     "UTXO ID"}
-                  </h3>
-                  <p className="text-xs break-all font-mono">
-                    {selectedNode.type === "transaction" ? selectedNode.data?.txid : 
-                     selectedNode.type === "address" ? selectedNode.data?.address : 
-                     selectedNode.data?.txid + ":" + selectedNode.data?.vout}
-                  </p>
-                  <div className="mt-2">
-                    <span className="text-sm font-medium">Amount: </span>
-                    <span className="font-mono">{safeFormatBTC(selectedNode.amount)}</span>
-                  </div>
+          {selectedNode && (
+            <div className="space-y-4 py-2">
+              <div className="bg-muted p-3 rounded-lg">
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Type:</span>
+                  <span className="text-sm font-mono capitalize">{selectedNode.type}</span>
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-sm font-medium">Name:</span>
+                  <span className="text-sm font-mono">{selectedNode.name}</span>
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-sm font-medium">BTC Amount:</span>
+                  <span className="text-sm font-mono">{safeFormatBTC(selectedNode.amount)}</span>
                 </div>
                 
-                {/* Transaction-specific details */}
-                {selectedNode.type === "transaction" && selectedNode.data?.utxos && (
-                  <div>
-                    <h3 className="text-sm font-medium mb-2">UTXOs in this Transaction</h3>
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-                      {selectedNode.data.utxos.map((utxo: UTXO, i: number) => (
-                        <div 
-                          key={`${utxo.txid}-${utxo.vout}`}
-                          className="border rounded-md p-2 flex justify-between"
-                        >
-                          <div>
-                            <p className="text-xs font-medium">{utxo.txid.substring(0, 8)}...:{utxo.vout}</p>
-                            <p className="text-xs font-mono">{safeFormatBTC(utxo.amount)}</p>
-                            <p className="text-xs text-muted-foreground truncate max-w-[200px]">{utxo.address}</p>
+                {/* Additional data based on node type */}
+                {selectedNode.type === "transaction" && selectedNode.data?.txid && (
+                  <div className="flex justify-between mt-1">
+                    <span className="text-sm font-medium">Transaction ID:</span>
+                    <span className="text-sm font-mono truncate max-w-[250px]">{selectedNode.data.txid}</span>
+                  </div>
+                )}
+                
+                {selectedNode.type === "address" && selectedNode.data?.address && (
+                  <div className="flex justify-between mt-1">
+                    <span className="text-sm font-medium">Full Address:</span>
+                    <span className="text-sm font-mono truncate max-w-[250px]">{selectedNode.data.address}</span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Tags for transaction nodes */}
+              {selectedNode.type === "transaction" && selectedNode.data?.tags && selectedNode.data.tags.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium mb-2">Tags</h3>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedNode.data.tags.map((tag: string, i: number) => (
+                      <Badge key={i} variant="outline">{tag}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Connections */}
+              <div>
+                <h3 className="text-sm font-medium mb-2">Connections</h3>
+                <div className="bg-muted p-3 rounded-lg">
+                  {getNodeConnections(selectedNode.id).length > 0 ? (
+                    getNodeConnections(selectedNode.id).map((link, i) => {
+                      const isSource = (typeof link.source === 'string' ? link.source : link.source.id) === selectedNode.id;
+                      const connectedNodeId = isSource 
+                        ? (typeof link.target === 'string' ? link.target : link.target.id)
+                        : (typeof link.source === 'string' ? link.source : link.source.id);
+                      
+                      const connectedNode = graph.nodes.find(n => n.id === connectedNodeId);
+                      
+                      return (
+                        <div key={i} className="flex justify-between items-center py-1 border-b last:border-b-0">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs ${isSource ? 'text-green-500' : 'text-blue-500'}`}>
+                              {isSource ? 'Output →' : '← Input'}
+                            </span>
+                            <span className="text-sm">
+                              {connectedNode?.name} ({connectedNode?.type})
+                            </span>
                           </div>
-                          <Badge className={getRiskBadgeStyle(utxo.privacyRisk)}>
-                            {utxo.privacyRisk}
+                          <Badge className={getRiskBadgeStyle(link.riskLevel || 'low')}>
+                            {link.value.toFixed(6)}
                           </Badge>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {/* Address-specific details */}
-                {selectedNode.type === "address" && (
-                  <div>
-                    <h3 className="text-sm font-medium mb-2">Transaction History</h3>
-                    {/* List transactions related to this address */}
-                    <div className="text-sm text-muted-foreground">
-                      Showing transactions linked to this address.
-                    </div>
-                    <div className="mt-2 space-y-2">
-                      {graphData.links
-                        .filter(link => {
-                          return link.source === selectedNode.id || link.target === selectedNode.id;
-                        })
-                        .map((link, i) => {
-                          const connectedId = link.source === selectedNode.id ? link.target : link.source;
-                          const connectedNode = graphData.nodes.find(n => n.id === connectedId);
-                          
-                          if (!connectedNode || connectedNode.type !== "transaction") return null;
-                          
-                          const direction = link.source === selectedNode.id ? "Outgoing" : "Incoming";
-                          
-                          return (
-                            <div key={i} className="border rounded-md p-2">
-                              <Badge variant={direction === "Incoming" ? "default" : "outline"} className="mb-1">
-                                {direction}
-                              </Badge>
-                              <p className="text-xs">{connectedNode.name}</p>
-                              <p className="text-xs text-muted-foreground">{safeFormatBTC(link.value)}</p>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  </div>
-                )}
-                
-                {/* UTXO-specific details */}
-                {selectedNode.type === "utxo" && selectedNode.data && (
-                  <>
-                    {/* Tags */}
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Tags</h3>
-                      <div className="flex flex-wrap gap-1">
-                        {selectedNode.data.tags.map((tag: string, i: number) => (
-                          <Badge key={i} variant="outline">
-                            {tag}
-                          </Badge>
-                        ))}
-                        {selectedNode.data.tags.length === 0 && (
-                          <span className="text-xs text-muted-foreground">No tags</span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Risk assessment */}
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Privacy Risk</h3>
-                      <div className={`p-3 rounded-lg text-sm ${
-                        selectedNode.data.privacyRisk === 'high' ? 'bg-red-100 dark:bg-red-950/20' :
-                        selectedNode.data.privacyRisk === 'medium' ? 'bg-orange-100 dark:bg-orange-950/20' :
-                        'bg-green-100 dark:bg-green-950/20'
-                      }`}>
-                        <Badge className={getRiskBadgeStyle(selectedNode.data.privacyRisk)}>
-                          {selectedNode.data.privacyRisk.toUpperCase()} RISK
-                        </Badge>
-                      </div>
-                    </div>
-                  </>
-                )}
+                      );
+                    })
+                  ) : (
+                    <p className="text-muted-foreground text-sm">No connections found</p>
+                  )}
+                </div>
               </div>
-            ) : (
-              <div className="text-center text-muted-foreground p-8">
-                Select a node to view details
-              </div>
-            )}
-          </div>
-          
-          <DrawerFooter>
-            <Button variant="outline" onClick={() => setShowDrawer(false)}>
-              Close
-            </Button>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

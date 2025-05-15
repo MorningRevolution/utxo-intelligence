@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { getRiskBadgeStyle } from "@/utils/utxo-utils";
-import { Search, Tag, Filter } from "lucide-react";
+import { Search, Tag, Filter, Layers } from "lucide-react";
 import { toast } from "sonner";
 import {
   Drawer,
@@ -65,7 +65,7 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
     return filterUTXOs(utxos, filters);
   }, [utxos, filters]);
   
-  // Generate treemap data
+  // Generate treemap data using the new mempool-style layout
   const treemapData = useMemo(() => {
     return createPrivacyTreemap(filteredUtxos);
   }, [filteredUtxos]);
@@ -154,23 +154,6 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
         notes: editableNote
       };
     });
-  };
-  
-  // Calculate size for UTXO box based on amount
-  const calculateBoxSize = (amount: number) => {
-    if (totalAmount === 0) return { width: 100, height: 100 };
-    
-    // Use square root to make area proportional to amount
-    const ratio = Math.sqrt(amount / totalAmount);
-    const baseSize = 80; // Base size in pixels
-    const maxSize = 160; // Maximum size in pixels
-    
-    const size = Math.max(60, Math.min(maxSize, baseSize + ratio * 100));
-    
-    return {
-      width: size,
-      height: size
-    };
   };
 
   return (
@@ -377,46 +360,47 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
               </div>
             </div>
             
-            {/* UTXO boxes in a responsive grid */}
-            <div className="flex flex-wrap gap-4 justify-center">
-              {treemapData.map(utxo => {
-                const { width, height } = calculateBoxSize(utxo.value);
-                
-                return (
-                  <div
-                    key={utxo.id}
-                    className="flex flex-col items-center justify-center rounded-lg cursor-pointer transition-all hover:shadow-md hover:scale-105 relative p-2"
-                    style={{ 
-                      width: `${width}px`, 
-                      height: `${height}px`,
-                      backgroundColor: `${utxo.color}20`,
-                      border: `2px solid ${utxo.color}`
-                    }}
-                    onClick={() => handleUtxoClick(utxo.data)}
-                  >
-                    <div className="text-xs font-medium truncate w-[90%] text-center">
-                      {utxo.name}
-                    </div>
-                    <div className="text-xs mt-1 font-mono">
-                      {safeFormatBTC(utxo.value)}
-                    </div>
-                    {utxo.data.tags && utxo.data.tags.length > 0 && (
-                      <div className="absolute top-1 right-1">
-                        <Badge variant="outline" className="text-[0.6rem]">
-                          <Tag className="h-2 w-2 mr-1" />
-                          {utxo.data.tags.length}
-                        </Badge>
-                      </div>
-                    )}
-                    <Badge 
-                      className="mt-1 text-[0.65rem]"
-                      variant={utxo.data.privacyRisk === "high" ? "destructive" : "outline"}
+            {/* Mempool-style UTXO layout */}
+            <div className="relative bg-gray-50 dark:bg-gray-900 p-4 rounded-lg" style={{ minHeight: '500px' }}>
+              <div className="flex flex-wrap gap-1">
+                {treemapData.map(utxo => {
+                  // Use the displaySize property for relative sizing
+                  return (
+                    <div
+                      key={utxo.id}
+                      className="flex flex-col items-center justify-center rounded-md cursor-pointer transition-all hover:shadow-md hover:z-10 hover:scale-105 relative"
+                      style={{ 
+                        width: `${Math.max(60, utxo.displaySize * 20)}px`, 
+                        height: `${Math.max(60, utxo.displaySize * 20)}px`,
+                        backgroundColor: `${utxo.color}15`,
+                        borderLeft: `3px solid ${utxo.color}`,
+                      }}
+                      onClick={() => handleUtxoClick(utxo.data)}
                     >
-                      {utxo.data.privacyRisk}
-                    </Badge>
-                  </div>
-                );
-              })}
+                      <div className="text-xs font-medium truncate w-[90%] text-center">
+                        {utxo.name}
+                      </div>
+                      <div className="text-xs mt-1 font-mono">
+                        {safeFormatBTC(utxo.value)}
+                      </div>
+                      {utxo.data.tags && utxo.data.tags.length > 0 && (
+                        <div className="absolute top-1 right-1">
+                          <Badge variant="outline" className="text-[0.6rem]">
+                            <Tag className="h-2 w-2 mr-1" />
+                            {utxo.data.tags.length}
+                          </Badge>
+                        </div>
+                      )}
+                      <Badge 
+                        className="mt-1 text-[0.65rem]"
+                        variant={utxo.data.privacyRisk === "high" ? "destructive" : "outline"}
+                      >
+                        {utxo.data.privacyRisk}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </>
         )}

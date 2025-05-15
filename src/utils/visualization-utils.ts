@@ -1,3 +1,4 @@
+
 import { GraphData, GraphNode, GraphLink, TreemapGroupingOption, UTXOFiltersState } from "@/types/utxo-graph";
 import { UTXO } from "@/types/utxo";
 import { getRiskColor } from "@/utils/utxo-utils";
@@ -162,18 +163,40 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
 };
 
 /**
+ * Creates treemap data for Mempool-style layout (proportionally sized tiles)
+ */
+export const createMempoolTreemap = (utxos: UTXO[]) => {
+  // Sort UTXOs by amount (largest first) to optimize the packing
+  const sortedUtxos = [...utxos].sort((a, b) => b.amount - a.amount);
+  
+  // Calculate total amount for proportional sizing
+  const totalAmount = sortedUtxos.reduce((sum, utxo) => sum + utxo.amount, 0);
+  
+  // Create treemap items
+  return sortedUtxos.map(utxo => {
+    const relativeSize = utxo.amount / totalAmount;
+    // Use a log scale to prevent extremely large UTXOs from dominating
+    const adjustedSize = Math.max(0.5, Math.log10(1 + relativeSize * 10) * 10);
+    
+    return {
+      id: `${utxo.txid}-${utxo.vout}`,
+      name: `${utxo.txid.substring(0, 8)}...${utxo.vout}`,
+      value: utxo.amount,
+      // Calculate display size as % of total (with min size)
+      displaySize: adjustedSize,
+      color: utxo.privacyRisk === 'high' ? '#ea384c' : 
+             utxo.privacyRisk === 'medium' ? '#f97316' : '#10b981',
+      data: utxo
+    };
+  });
+};
+
+/**
  * Creates treemap data for individual UTXOs (not grouped)
  */
 export const createPrivacyTreemap = (utxos: UTXO[]) => {
-  // Create individual UTXO tiles with no grouping
-  return utxos.map(utxo => ({
-    id: `${utxo.txid}-${utxo.vout}`,
-    name: `${utxo.txid.substring(0, 8)}...${utxo.vout}`,
-    value: utxo.amount || 0,
-    color: utxo.privacyRisk === 'high' ? '#ea384c' : 
-           utxo.privacyRisk === 'medium' ? '#f97316' : '#10b981',
-    data: utxo
-  }));
+  // Use the new mempool-style layout
+  return createMempoolTreemap(utxos);
 };
 
 /**
@@ -181,15 +204,8 @@ export const createPrivacyTreemap = (utxos: UTXO[]) => {
  */
 export const createTreemapData = (utxos: UTXO[], groupingOption: TreemapGroupingOption = "risk") => {
   if (groupingOption === "none") {
-    // Individual UTXO tiles with no grouping
-    return utxos.map(utxo => ({
-      id: `${utxo.txid}-${utxo.vout}`,
-      name: `${utxo.txid.substring(0, 8)}...${utxo.vout}`,
-      value: utxo.amount || 0,
-      color: utxo.privacyRisk === 'high' ? '#ea384c' : 
-             utxo.privacyRisk === 'medium' ? '#f97316' : '#10b981',
-      data: utxo
-    }));
+    // Individual UTXO tiles with mempool-style layout
+    return createMempoolTreemap(utxos);
   } 
   else if (groupingOption === "risk") {
     // Group UTXOs by privacy risk
@@ -341,15 +357,8 @@ export const createTreemapData = (utxos: UTXO[], groupingOption: TreemapGrouping
     return Array.from(tagGroups.values());
   }
   
-  // Default case - return individual UTXOs
-  return utxos.map(utxo => ({
-    id: `${utxo.txid}-${utxo.vout}`,
-    name: `${utxo.txid.substring(0, 8)}...${utxo.vout}`,
-    value: utxo.amount || 0,
-    color: utxo.privacyRisk === 'high' ? '#ea384c' : 
-           utxo.privacyRisk === 'medium' ? '#f97316' : '#10b981',
-    data: utxo
-  }));
+  // Default case - return individual UTXOs with new mempool-style layout
+  return createMempoolTreemap(utxos);
 };
 
 /**
@@ -411,4 +420,138 @@ export const filterUTXOs = (utxos: UTXO[], filters: Partial<UTXOFiltersState>): 
     
     return true;
   });
+};
+
+/**
+ * Calculate optimal layout positions for graph nodes to minimize overlap
+ */
+export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
+  // Simple force-directed layout simulation
+  const iterations = 100;
+  const repulsionForce = 500;
+  const attractionForce = 0.1;
+  const dampingFactor = 0.95;
+  
+  // Initialize node positions if not already set
+  nodes.forEach(node => {
+    if (node.x === undefined || node.y === undefined) {
+      node.x = Math.random() * 1000;
+      node.y = Math.random() * 600;
+    }
+  });
+  
+  // Create a map for faster node lookup
+  const nodeMap = new Map<string, GraphNode>();
+  nodes.forEach(node => nodeMap.set(node.id, node));
+  
+  // Run simulation
+  for (let i = 0; i < iterations; i++) {
+    // Reset forces
+    const forces = new Map<string, { fx: number; fy: number }>();
+    nodes.forEach(node => {
+      forces.set(node.id, { fx: 0, fy: 0 });
+    });
+    
+    // Apply repulsion between all nodes
+    for (let a = 0; a < nodes.length; a++) {
+      for (let b = a + 1; b < nodes.length; b++) {
+        const nodeA = nodes[a];
+        const nodeB = nodes[b];
+        
+        if (nodeA.x === undefined || nodeA.y === undefined || nodeB.x === undefined || nodeB.y === undefined) continue;
+        
+        const dx = nodeB.x - nodeA.x;
+        const dy = nodeB.y - nodeA.y;
+        const distanceSquared = dx * dx + dy * dy;
+        const distance = Math.sqrt(distanceSquared);
+        
+        // Prevent division by zero
+        if (distance < 1) continue;
+        
+        // Larger nodes should push others away more strongly
+        const nodeASize = Math.sqrt(nodeA.amount || 1) * 5;
+        const nodeBSize = Math.sqrt(nodeB.amount || 1) * 5;
+        const minDistance = nodeASize + nodeBSize + 100;
+        
+        // Apply repulsion only if nodes are too close
+        if (distance < minDistance) {
+          const force = repulsionForce / distanceSquared;
+          const fx = force * dx / distance;
+          const fy = force * dy / distance;
+          
+          // Update node forces
+          const forceA = forces.get(nodeA.id)!;
+          forceA.fx -= fx;
+          forceA.fy -= fy;
+          
+          const forceB = forces.get(nodeB.id)!;
+          forceB.fx += fx;
+          forceB.fy += fy;
+        }
+      }
+    }
+    
+    // Apply attraction along links
+    links.forEach(link => {
+      const sourceNode = nodeMap.get(typeof link.source === 'string' ? link.source : link.source.id);
+      const targetNode = nodeMap.get(typeof link.target === 'string' ? link.target : link.target.id);
+      
+      if (!sourceNode || !targetNode || sourceNode.x === undefined || sourceNode.y === undefined || 
+          targetNode.x === undefined || targetNode.y === undefined) {
+        return;
+      }
+      
+      const dx = targetNode.x - sourceNode.x;
+      const dy = targetNode.y - sourceNode.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Prevent division by zero
+      if (distance < 1) return;
+      
+      // Link value influences attraction strength
+      const linkValue = link.value || 1;
+      const idealDistance = 100 + Math.log10(linkValue || 1) * 50;
+      const force = attractionForce * (distance - idealDistance) * Math.log10(1 + linkValue);
+      
+      const fx = force * dx / distance;
+      const fy = force * dy / distance;
+      
+      // Update node forces
+      const forceSource = forces.get(sourceNode.id)!;
+      forceSource.fx += fx;
+      forceSource.fy += fy;
+      
+      const forceTarget = forces.get(targetNode.id)!;
+      forceTarget.fx -= fx;
+      forceTarget.fy -= fy;
+    });
+    
+    // Apply forces to nodes with damping
+    nodes.forEach(node => {
+      if (node.x === undefined || node.y === undefined) return;
+      
+      const force = forces.get(node.id)!;
+      
+      // Apply damping
+      force.fx *= dampingFactor;
+      force.fy *= dampingFactor;
+      
+      // Update position
+      node.x += force.fx;
+      node.y += force.fy;
+    });
+  }
+  
+  return { nodes, links };
+};
+
+/**
+ * Calculate optimal size for a node based on its amount
+ */
+export const calculateNodeSize = (node: GraphNode, minSize = 30, maxSize = 100) => {
+  if (!node.amount) return minSize;
+  
+  // Use logarithmic scale for better distribution
+  const size = minSize + Math.log10(1 + node.amount) * 15;
+  return Math.min(maxSize, Math.max(minSize, size));
 };
