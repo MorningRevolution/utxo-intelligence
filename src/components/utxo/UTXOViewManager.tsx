@@ -94,16 +94,6 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
         onRowClick={handleRowClick}
       />
     );
-  } else if (view === "visual") {
-    return (
-      <div className="mt-6 p-2 md:p-4">
-        <UTXOVisualizer 
-          selectedUtxo={selectedVisualUtxo} 
-          filteredUtxos={filteredUtxos}
-          onUtxoSelect={handleVisualSelect}
-        />
-      </div>
-    );
   } else if (view === "traceability" || view === "treemap") {
     // Navigate to the UTXO Map page with the appropriate tab selected
     navigate(`/utxo-map?view=${view}`);

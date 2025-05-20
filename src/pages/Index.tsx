@@ -1,14 +1,13 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Shield, Coins, Users, CircleDollarSign, Info, Lock, HandCoins, Heart, Gift, Handshake } from "lucide-react";
+import { ArrowRight, Shield, Coins, Users, CircleDollarSign, Info, Lock, HandCoins, Heart, Handshake } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 
 const Index = () => {
   const navigate = useNavigate();
-  const [showDonationQR, setShowDonationQR] = useState(false);
 
   const handleGetStarted = () => {
     navigate('/dashboard');
@@ -306,7 +305,7 @@ const Index = () => {
       
       <Separator className="my-12" />
 
-      {/* About Us Section - New */}
+      {/* About Us Section - Modified to include link to X and privacy examples */}
       <div className="container mx-auto px-4 py-12 mb-12">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-8">About This Project</h2>
@@ -323,61 +322,44 @@ const Index = () => {
                   We're committed to making Bitcoin privacy tools accessible to everyone.
                 </p>
                 <div className="flex items-center mb-4">
-                  <Gift className="h-6 w-6 text-primary mr-3" />
-                  <h3 className="text-xl font-semibold">Support Our Mission</h3>
+                  <Users className="h-6 w-6 text-primary mr-3" />
+                  <h3 className="text-xl font-semibold">Connect With Us</h3>
                 </div>
                 <p className="text-muted-foreground mb-6">
-                  We rely on community support to continue building privacy tools for Bitcoin users. 
-                  Your contribution helps us maintain and improve these free resources.
+                  Connect with Morning Revolution on X: <a href="https://x.com/morningrevo" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">https://x.com/morningrevo</a>
                 </p>
-                <Button 
-                  onClick={() => setShowDonationQR(!showDonationQR)}
-                  variant="outline"
-                  className="w-full md:w-auto"
-                >
-                  {showDonationQR ? "Hide Donation QR" : "Support With Bitcoin"}
-                </Button>
               </div>
               
-              {showDonationQR ? (
-                <div className="flex flex-col items-center justify-center">
-                  <div className="bg-white p-4 rounded-lg w-48 h-48 flex items-center justify-center">
-                    {/* Placeholder for a QR code image */}
-                    <div className="text-center">
-                      <div className="border-4 border-primary w-full h-full p-4 rounded">
-                        <div className="bg-primary/20 w-full h-full flex items-center justify-center">
-                          <span className="text-xs">QR Code Placeholder</span>
-                        </div>
-                      </div>
+              <div className="flex flex-col justify-center">
+                <div className="bg-primary/5 p-6 rounded-lg w-full">
+                  <h4 className="font-medium mb-4 text-center">Real-World Privacy Risks</h4>
+                  <div className="space-y-4">
+                    <div className="bg-background p-4 rounded-lg border border-border">
+                      <h5 className="font-medium text-sm mb-2 text-destructive">Address Reuse</h5>
+                      <p className="text-sm text-muted-foreground">
+                        A user received multiple payments to the same address. When they later spent them together, 
+                        they unintentionally revealed that all past payments were to the same person.
+                      </p>
                     </div>
-                  </div>
-                  <p className="text-sm text-center mt-4 text-muted-foreground">
-                    Scan this QR code with your Bitcoin wallet to donate<br />
-                    or copy the address below
-                  </p>
-                  <div className="mt-2 w-full">
-                    <div className="flex items-center justify-between bg-muted p-2 rounded text-xs">
-                      <span className="truncate">bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh</span>
-                      <Button variant="ghost" size="sm" className="h-6 px-2">
-                        <span>Copy</span>
-                      </Button>
+                    
+                    <div className="bg-background p-4 rounded-lg border border-border">
+                      <h5 className="font-medium text-sm mb-2 text-destructive">Mixing Transaction Types</h5>
+                      <p className="text-sm text-muted-foreground">
+                        A user combined a salary payment UTXO with UTXOs from online marketplace sales in one transaction, 
+                        revealing their identity to all marketplace customers they had interacted with.
+                      </p>
+                    </div>
+                    
+                    <div className="bg-background p-4 rounded-lg border border-border">
+                      <h5 className="font-medium text-sm mb-2 text-destructive">Change Address Linking</h5>
+                      <p className="text-sm text-muted-foreground">
+                        When making a small payment, a user's wallet created a change output. Later spending this change 
+                        output connected their full wallet balance to their identity.
+                      </p>
                     </div>
                   </div>
                 </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center">
-                  <div className="bg-primary/5 p-6 rounded-lg w-full text-center">
-                    <Users className="h-12 w-12 text-primary mx-auto mb-4" />
-                    <h4 className="font-medium mb-2">Join Our Community</h4>
-                    <p className="text-muted-foreground mb-4">
-                      Connect with like-minded Bitcoiners who care about privacy and sovereignty. Share tips, get help, and contribute to the project.
-                    </p>
-                    <Button variant="outline" className="w-full">
-                      Join Our Discord
-                    </Button>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           </div>
         </div>

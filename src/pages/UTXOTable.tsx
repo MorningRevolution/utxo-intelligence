@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,7 @@ import { toast } from "sonner";
 import { useWallet } from "@/store/WalletContext";
 import { UTXOFilters } from "@/components/utxo/UTXOFilters";
 import { AddUTXOModal } from "@/components/portfolio/AddUTXOModal";
-import { Bookmark, Network } from "lucide-react";
+import { Bookmark, Network, Table } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UTXO } from "@/types/utxo";
 import { UTXOViewManager } from "@/components/utxo/UTXOViewManager";
@@ -49,8 +48,8 @@ const UTXOTable = () => {
   // Check for state passed during navigation
   const locationState = location.state as { view?: "table" | "visual"; selectedUtxo?: UTXO } | null;
   
-  // Add view state with the correct type
-  const [currentView, setCurrentView] = useState<"table" | "visual">(locationState?.view || "table");
+  // Set view state to "table" only - visual view removed
+  const [currentView, setCurrentView] = useState<"table" | "visual">("table");
   const [selectedVisualUtxo, setSelectedVisualUtxo] = useState<UTXO | null>(locationState?.selectedUtxo || null);
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -181,9 +180,6 @@ const UTXOTable = () => {
   // Update handler for visual UTXO selection to handle clear selection
   const handleVisualSelect = (utxo: UTXO | null) => {
     setSelectedVisualUtxo(utxo);
-    if (utxo) {
-      setCurrentView("visual");
-    }
   };
 
   const clearFilters = () => {
@@ -251,6 +247,7 @@ const UTXOTable = () => {
 
   // Define which columns to show based on screen size
   const getVisibleColumns = () => {
+    // ... keep existing code (column visibility logic)
     if (isMobile) {
       return {
         txid: true,
@@ -291,21 +288,16 @@ const UTXOTable = () => {
         <h1 className="text-2xl font-bold text-foreground">UTXO Management</h1>
         
         <div className="flex flex-wrap items-center gap-2">
+          {/* Updated Table View button with icon */}
           <Button
-            variant={currentView === "table" ? "default" : "outline"}
+            variant="default"
             size="sm"
-            onClick={() => handleViewChange("table")}
           >
+            <Table className="mr-2 h-4 w-4" />
             Table View
           </Button>
           
-          <Button
-            variant={currentView === "visual" ? "default" : "outline"}
-            size="sm"
-            onClick={() => handleViewChange("visual")}
-          >
-            Visual View
-          </Button>
+          {/* Visual View button removed */}
           
           {!isMobile && (
             <>
@@ -346,7 +338,7 @@ const UTXOTable = () => {
         />
 
         <UTXOViewManager
-          view={currentView}
+          view="table" // Always use table view since we removed the visual view
           filteredUtxos={filteredUtxos}
           walletData={walletData}
           visibleColumns={visibleColumns}
