@@ -305,7 +305,7 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
     };
   }, [tiles, containerRef.current]);
   
-  // Handle tile selection
+  // Handle tile selection - fixed to prevent event propagation
   const handleTileClick = (e: React.MouseEvent, tile: TreemapTile) => {
     // Stop event propagation to prevent closing the entire page
     e.stopPropagation();
@@ -390,7 +390,7 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
               max={2}
               step={0.1}
               value={[zoom]}
-              onValueChange={(value) => value[0] && value.length > 0 ? setZoom(value[0]) : null}
+              onValueChange={(value) => value[0] && setZoom(value[0])}
             />
           </div>
           
@@ -728,15 +728,15 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
         </div>
       </div>
       
-      {/* UTXO Info Dialog */}
+      {/* UTXO Info Dialog - Isolated from parent component */}
       <Dialog open={showTileInfo} onOpenChange={(open) => {
         setShowTileInfo(open);
         // Clear selection if dialog is closed
-        if (!open) {
+        if (!open && !selectedTile?.id) {
           setSelectedTile(null);
         }
       }}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px]" onClick={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>UTXO Details</DialogTitle>
             <DialogDescription>
@@ -823,3 +823,4 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
     </div>
   );
 };
+

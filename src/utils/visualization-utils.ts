@@ -378,13 +378,27 @@ export const createTreemapData = (utxos: UTXO[], groupingOption: TreemapGrouping
 };
 
 /**
- * Format BTC amount with appropriate precision and handle undefined/null values
+ * Format BTC amount with appropriate precision and hide trailing zeros
+ * @param amount - BTC amount to format
+ * @returns Formatted BTC string like ₿1.23 (instead of ₿1.23000000)
  */
 export const safeFormatBTC = (amount: number | undefined | null): string => {
   if (amount === undefined || amount === null || isNaN(amount)) {
-    return "₿0.00000000";
+    return "₿0";
   }
-  return `₿${amount.toFixed(8)}`;
+  
+  // Format with 8 decimal places initially
+  const formatted = amount.toFixed(8);
+  
+  // If it's a whole number, just return it without decimals
+  if (amount === Math.floor(amount)) {
+    return `₿${amount}`;
+  }
+  
+  // Remove trailing zeros and decimal point if needed
+  const trimmed = formatted.replace(/\.?0+$/, '');
+  
+  return `₿${trimmed}`;
 };
 
 /**

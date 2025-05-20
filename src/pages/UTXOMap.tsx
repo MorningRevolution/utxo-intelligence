@@ -37,7 +37,7 @@ const UTXOMap: React.FC = () => {
     navigate("/utxo-table");
   };
 
-  // Handle view change
+  // Handle view change with URL update
   const handleViewChange = (view: "traceability" | "treemap") => {
     setActiveView(view);
     // Update URL to reflect the current view
@@ -58,7 +58,7 @@ const UTXOMap: React.FC = () => {
   }
 
   return (
-    <div className="container px-4 md:px-8 py-6">
+    <div className="container px-4 md:px-8 py-6" onClick={(e) => e.stopPropagation()}>
       <div className="flex flex-col md:flex-row justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-foreground">UTXO Visualization</h1>
         
