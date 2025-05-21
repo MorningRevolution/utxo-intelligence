@@ -3,6 +3,7 @@ import React from "react";
 import { UTXO } from "@/types/utxo";
 import { UTXOTableBody } from "./UTXOTableBody";
 import { UTXOViewType } from "@/types/utxo-graph";
+import { SimpleTraceabilityGraph } from "./SimpleTraceabilityGraph";
 
 interface UTXOViewManagerProps {
   view: UTXOViewType;
@@ -67,29 +68,40 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
 
   return (
     <div className="w-full">
-      <div className="max-w-full overflow-x-auto">
-        <UTXOTableBody 
-          filteredUtxos={filteredUtxos}
-          walletData={walletData}
-          visibleColumns={visibleColumns}
-          sortConfig={sortConfig}
-          handleSort={handleSort}
-          editableUtxo={editableUtxo}
-          setEditableUtxo={setEditableUtxo}
-          datePickerOpen={datePickerOpen}
-          setDatePickerOpen={setDatePickerOpen}
-          confirmDeleteUtxo={confirmDeleteUtxo}
-          handleTagSelection={handleTagSelection}
-          handleAddToSimulation={handleAddToSimulation}
-          handleSenderAddressEdit={handleSenderAddressEdit}
-          handleReceiverAddressEdit={handleReceiverAddressEdit}
-          handleDateEdit={handleDateEdit}
-          handleBtcPriceEdit={handleBtcPriceEdit}
-          handleCostBasisEdit={handleCostBasisEdit}
-          handleNotesEdit={handleNotesEdit}
-          onRowClick={handleRowClick}
-        />
-      </div>
+      {view === 'table' && (
+        <div className="max-w-full overflow-x-auto">
+          <UTXOTableBody 
+            filteredUtxos={filteredUtxos}
+            walletData={walletData}
+            visibleColumns={visibleColumns}
+            sortConfig={sortConfig}
+            handleSort={handleSort}
+            editableUtxo={editableUtxo}
+            setEditableUtxo={setEditableUtxo}
+            datePickerOpen={datePickerOpen}
+            setDatePickerOpen={setDatePickerOpen}
+            confirmDeleteUtxo={confirmDeleteUtxo}
+            handleTagSelection={handleTagSelection}
+            handleAddToSimulation={handleAddToSimulation}
+            handleSenderAddressEdit={handleSenderAddressEdit}
+            handleReceiverAddressEdit={handleReceiverAddressEdit}
+            handleDateEdit={handleDateEdit}
+            handleBtcPriceEdit={handleBtcPriceEdit}
+            handleCostBasisEdit={handleCostBasisEdit}
+            handleNotesEdit={handleNotesEdit}
+            onRowClick={handleRowClick}
+          />
+        </div>
+      )}
+      {view === 'visual' && (
+        <div className="w-full h-[600px]">
+          <SimpleTraceabilityGraph 
+            utxos={filteredUtxos} 
+            onSelectUtxo={handleVisualSelect} 
+            layout="vertical"
+          />
+        </div>
+      )}
     </div>
   );
 };

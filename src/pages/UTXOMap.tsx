@@ -3,10 +3,11 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/store/WalletContext";
-import { Table, BarChart, Grid, CalendarDays } from "lucide-react";
+import { Table, BarChart, Grid, CalendarDays, Network } from "lucide-react";
 import { UTXO } from "@/types/utxo";
 import { toast } from "sonner";
 import { TimelineTraceabilityGraph } from "@/components/utxo/TimelineTraceabilityGraph";
+import { SimpleTraceabilityGraph } from "@/components/utxo/SimpleTraceabilityGraph";
 import { PrivacyTreemap } from "@/components/utxo/PrivacyTreemap";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -15,10 +16,8 @@ const UTXOMap: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { walletData, hasWallet } = useWallet();
   const [selectedUtxo, setSelectedUtxo] = useState<UTXO | null>(null);
-  const [activeView, setActiveView] = useState<"timeline" | "treemap">(
-    (searchParams.get("view") === "treemap" 
-      ? "treemap" 
-      : "timeline") as "timeline" | "treemap"
+  const [activeView, setActiveView] = useState<"timeline" | "treemap" | "traceability">(
+    (searchParams.get("view") as "timeline" | "treemap" | "traceability") || "timeline"
   );
 
   useEffect(() => {
@@ -40,7 +39,7 @@ const UTXOMap: React.FC = () => {
   };
 
   // Handle view change with URL update
-  const handleViewChange = (view: "timeline" | "treemap") => {
+  const handleViewChange = (view: "timeline" | "treemap" | "traceability") => {
     setActiveView(view);
     // Update URL to reflect the current view
     const url = new URL(window.location.href);
@@ -80,51 +79,69 @@ const UTXOMap: React.FC = () => {
       <Tabs 
         defaultValue="timeline" 
         value={activeView}
-        onValueChange={(value) => handleViewChange(value as "timeline" | "treemap")}
+        onValueChange={(value) => handleViewChange(value as "timeline" | "treemap" | "traceability")}
         className="w-full"
       >
-        <TabsList className="w-full max-w-md mx-auto grid grid-cols-2 mb-6">
+        <TabsList className="w-full max-w-md mx-auto grid grid-cols-3 mb-6">
           <TabsTrigger value="timeline" className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4" />
-            <span>Timeline View</span>
+            <span>Timeline</span>
+          </TabsTrigger>
+          <TabsTrigger value="traceability" className="flex items-center gap-2">
+            <Network className="h-4 w-4" />
+            <span>Traceability</span>
           </TabsTrigger>
           <TabsTrigger value="treemap" className="flex items-center gap-2">
             <Grid className="h-4 w-4" />
-            <span>Privacy Treemap</span>
+            <span>Treemap</span>
           </TabsTrigger>
         </TabsList>
 
         <div className="bg-card rounded-lg shadow-lg p-2 md:p-4 mb-8">
-          <div className="mt-2">
-            {activeView === "timeline" && (
-              <>
-                <p className="text-sm text-muted-foreground mb-4">
-                  This timeline view shows your transactions chronologically, grouped by month.
-                  Boxes represent transactions, sized by BTC amount and color-coded by risk level.
-                  Toggle connections to see the flow of your funds between transactions over time.
-                </p>
-                
-                <TimelineTraceabilityGraph
-                  utxos={walletData.utxos}
-                  onSelectUtxo={handleUtxoSelect}
-                />
-              </>
-            )}
+          <TabsContent value="timeline">
+            <p className="text-sm text-muted-foreground mb-4">
+              This timeline view shows your transactions chronologically, grouped by month.
+              Boxes represent transactions, sized by BTC amount and color-coded by risk level.
+              Toggle connections to see the flow of your funds between transactions over time.
+            </p>
             
-            {activeView === "treemap" && (
-              <>
-                <p className="text-sm text-muted-foreground mb-4">
-                  This visualization displays your UTXOs as proportionally sized tiles based on BTC amount and colored by privacy risk.
-                  Use zoom and pan controls to explore your UTXOs in detail.
-                </p>
-                
-                <PrivacyTreemap
-                  utxos={walletData.utxos}
-                  onSelectUtxo={handleUtxoSelect}
-                />
-              </>
-            )}
-          </div>
+            <div className="h-[600px]">
+              <TimelineTraceabilityGraph
+                utxos={walletData.utxos}
+                onSelectUtxo={handleUtxoSelect}
+              />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="traceability">
+            <p className="text-sm text-muted-foreground mb-4">
+              This traceability graph shows relationships between your transactions.
+              Each node represents a transaction, sized by BTC amount and color-coded by risk level.
+              Use zoom and pan to explore the graph. Toggle connections to see relationships between transactions.
+            </p>
+            
+            <div className="h-[600px]">
+              <SimpleTraceabilityGraph
+                utxos={walletData.utxos}
+                onSelectUtxo={handleUtxoSelect}
+                layout="vertical"
+              />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="treemap">
+            <p className="text-sm text-muted-foreground mb-4">
+              This visualization displays your UTXOs as proportionally sized tiles based on BTC amount and colored by privacy risk.
+              Use zoom and pan controls to explore your UTXOs in detail.
+            </p>
+            
+            <div className="h-[600px]">
+              <PrivacyTreemap
+                utxos={walletData.utxos}
+                onSelectUtxo={handleUtxoSelect}
+              />
+            </div>
+          </TabsContent>
         </div>
       </Tabs>
       

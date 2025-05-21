@@ -118,9 +118,11 @@ export const calculateTransactionPrivacyRisk = (
   inputs: any[], 
   outputAddresses: string[]
 ): { 
-  privacyRisk: 'low' | 'medium' | 'high',
-  issues: string[],
-  suggestions: string[]
+  transaction: any;
+  privacyRisk: 'low' | 'medium' | 'high';
+  reasons: string[];
+  recommendations: string[];
+  safeAlternative?: string | null;
 } => {
   const issues: string[] = [];
   const suggestions: string[] = [];
@@ -189,10 +191,23 @@ export const calculateTransactionPrivacyRisk = (
     suggestions.push("Continue using good privacy practices");
   }
   
-  return {
+  // Create a transaction object to satisfy the SimulationResult type
+  const transaction = {
+    id: `sim-${Date.now()}`,
+    inputs: inputs,
+    outputs: outputAddresses.map(address => ({ address, amount: 0 })),
+    fee: 0,
+    timestamp: new Date().toISOString(),
     privacyRisk,
-    issues,
-    suggestions
+    reasons: issues,
+  };
+  
+  return {
+    transaction,
+    privacyRisk,
+    reasons: issues,
+    recommendations: suggestions,
+    safeAlternative: null
   };
 };
 
