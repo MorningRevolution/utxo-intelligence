@@ -12,7 +12,7 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
   const addedTxs = new Set<string>();
   const addedAddresses = new Set<string>();
   
-  // Group UTXOs by transaction first
+  // Group UTXOs by transaction first - this is key for unified transaction nodes
   const txGroups = new Map<string, UTXO[]>();
   
   utxos.forEach(utxo => {
@@ -22,7 +22,7 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
     txGroups.get(utxo.txid)!.push(utxo);
   });
   
-  // Process transactions to build unified TX nodes
+  // Process transactions to build unified TX nodes (one node per txid)
   txGroups.forEach((utxosInTx, txid) => {
     // Calculate total amount for this transaction
     const totalAmount = utxosInTx.reduce((sum, u) => sum + (u.amount || 0), 0);
@@ -39,9 +39,9 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
         utxos: utxosInTx,
         tags: Array.from(new Set(utxosInTx.flatMap(u => u.tags)))
       },
-      // Calculate weight based on transaction size with logarithmic scaling
+      // Use a weight to influence graph physics - based on total BTC amount
       weight: Math.sqrt(totalAmount) * 2.5,
-      // Calculate radius proportional to the total amount with logarithmic scale
+      // Calculate radius proportional to the total amount with logarithmic scale for better visualization
       radius: Math.max(35, Math.min(90, 25 + Math.log10(1 + totalAmount) * 25))
     };
     nodes.push(txNode);
@@ -60,7 +60,7 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
             amount: 0, // Will be accumulated
             type: "address",
             data: { address: utxo.address },
-            weight: 1.5, // Increased weight for addresses for better spacing
+            weight: 1.5, // Better weight for address nodes
             radius: 22 // Fixed radius for address nodes
           };
           nodes.push(addrNode);
@@ -83,7 +83,7 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
         });
       }
       
-      // Handle sender address
+      // Handle sender address - only add if it exists
       if (utxo.senderAddress) {
         const senderAddrNodeId = `addr-${utxo.senderAddress}`;
         
@@ -113,8 +113,8 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
     });
   });
   
-  // Create transaction-to-transaction links based on change outputs or shared addresses
-  // but reduce clutter by limiting less important connections
+  // Create transaction-to-transaction links but ONLY for high-value connections
+  // This significantly reduces visual clutter
   const processedLinks = new Set<string>();
   
   txGroups.forEach((sourceUtxos, sourceTxid) => {
@@ -127,7 +127,7 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
       // Skip if we've already processed this link
       if (processedLinks.has(linkKey) || processedLinks.has(reverseLinkKey)) return;
       
-      // Check for shared addresses
+      // Check for shared addresses - direct connections
       const sourceAddresses = sourceUtxos.map(u => u.address).filter(Boolean) as string[];
       const targetAddresses = targetUtxos.map(u => u.address).filter(Boolean) as string[];
       const sharedAddresses = sourceAddresses.filter(addr => targetAddresses.includes(addr));
@@ -139,10 +139,12 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
         )
       );
       
-      // Prioritize direct connections and high-value transfers
+      // Prioritize direct connections and higher value transfers - reduce clutter
       const isDirectlyLinked = sharedAddresses.length > 0 || changeConnection;
       const totalSourceValue = sourceUtxos.reduce((sum, u) => sum + u.amount, 0);
       const totalTargetValue = targetUtxos.reduce((sum, u) => sum + u.amount, 0);
+      
+      // Only create links for direct connections or significant value transfers
       const isHighValue = Math.min(totalSourceValue, totalTargetValue) > 0.1;
       
       if (isDirectlyLinked || isHighValue) {
@@ -178,7 +180,6 @@ export const createTraceabilityGraph = (utxos: UTXO[]): GraphData => {
 
 /**
  * Creates treemap data for Mempool-style layout (proportionally sized tiles)
- * Implements the squarified treemap algorithm to optimize aspect ratios
  */
 export const createMempoolTreemap = (utxos: UTXO[]): TreemapTile[] => {
   // Sort UTXOs by amount (largest first) to optimize the packing
@@ -187,18 +188,16 @@ export const createMempoolTreemap = (utxos: UTXO[]): TreemapTile[] => {
   // Calculate total amount for proportional sizing
   const totalAmount = sortedUtxos.reduce((sum, utxo) => sum + utxo.amount, 0);
   
-  // Create treemap items
+  // Create treemap items with improved sizing
   return sortedUtxos.map(utxo => {
     const relativeSize = utxo.amount / totalAmount;
     // Use a logarithmic scale to prevent extremely large UTXOs from dominating
-    // while still maintaining proportionality
     const adjustedSize = Math.max(0.5, Math.log10(1 + relativeSize * 10) * 10);
     
     return {
       id: `${utxo.txid}-${utxo.vout}`,
       name: `${utxo.txid.substring(0, 8)}...${utxo.vout}`,
       value: utxo.amount,
-      // Calculate display size as % of total (with min size)
       displaySize: adjustedSize,
       color: utxo.privacyRisk === 'high' ? '#ea384c' : 
              utxo.privacyRisk === 'medium' ? '#f97316' : '#10b981',
@@ -464,18 +463,21 @@ export const filterUTXOs = (utxos: UTXO[], filters: Partial<UTXOFiltersState>): 
  * Calculate optimal layout positions for graph nodes to minimize overlap
  */
 export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
-  // Enhanced force-directed layout simulation
-  const iterations = 250; // Increased iterations for better results
-  const repulsionForce = 1000; // Stronger repulsion for better spacing
-  const attractionForce = 0.12; // Reduced attraction
+  // Enhanced force-directed layout simulation with improved parameters
+  const iterations = 300; // More iterations for better layout
+  const repulsionForce = 1500; // Stronger repulsion to reduce clustering
+  const attractionForce = 0.08; // Reduced attraction for better spacing
   const dampingFactor = 0.85; // More damping for stability
-  const collisionRadius = 15; // Increased minimum distance between nodes
+  const collisionRadius = 25; // Increased minimum distance between nodes
   
-  // Initialize node positions if not already set
-  nodes.forEach(node => {
+  // Initialize node positions with better spacing
+  nodes.forEach((node, i) => {
     if (node.x === undefined || node.y === undefined) {
-      node.x = Math.random() * 1000;
-      node.y = Math.random() * 600;
+      // Use a spiral layout for initial positions to avoid random clumping
+      const angle = i * 2.5; // Angle in radians
+      const radius = 10 * Math.sqrt(i); // Increasing radius
+      node.x = Math.cos(angle) * radius * 20 + 500; // Center X
+      node.y = Math.sin(angle) * radius * 20 + 300; // Center Y
     }
   });
   
@@ -507,22 +509,24 @@ export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
         // Prevent division by zero
         if (distance < 1) continue;
         
-        // Larger nodes should push others away more strongly
+        // Get node sizes for better spacing
         const nodeARadius = nodeA.radius || Math.sqrt(nodeA.amount || 1) * 5;
         const nodeBRadius = nodeB.radius || Math.sqrt(nodeB.amount || 1) * 5;
         const minDistance = nodeARadius + nodeBRadius + collisionRadius;
         
-        // Apply repulsion based on node types and sizes
+        // Apply stronger repulsion for nodes of same type and for nodes that are too close
         let force = repulsionForce / distanceSquared;
         
-        // Stronger repulsion for same-type nodes to create clusters by type
+        // Group similar node types together
         if (nodeA.type === nodeB.type) {
-          force *= 1.8; // Increased from 1.5
+          force *= 0.8; // Reduced from 1.8 to allow some grouping of same types
+        } else {
+          force *= 1.5; // Increased repulsion between different types
         }
         
-        // Extra repulsion when nodes are too close (collision avoidance)
+        // Extra strong repulsion when nodes are too close (collision avoidance)
         if (distance < minDistance) {
-          force *= 3.2; // Increased from 2.5
+          force *= 4.0; // Increased from 3.2 for better spacing
         }
         
         const fx = force * dx / distance;
@@ -532,9 +536,8 @@ export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
         const nodeAWeight = nodeA.weight || 1;
         const nodeBWeight = nodeB.weight || 1;
         
-        // Update node forces
         const forceA = forces.get(nodeA.id)!;
-        forceA.fx -= fx * (1 / nodeAWeight); // Inverse weight for more stability
+        forceA.fx -= fx * (1 / nodeAWeight);
         forceA.fy -= fy * (1 / nodeAWeight);
         
         const forceB = forces.get(nodeB.id)!;
@@ -545,7 +548,7 @@ export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
     
     // Apply attraction along links with priority for transaction-to-address links
     links.forEach(link => {
-      // Fix: Handle both string and GraphNode types safely
+      // Handle both string and GraphNode types safely
       const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
       const targetId = typeof link.target === 'string' ? link.target : link.target.id;
       
@@ -557,7 +560,7 @@ export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
         return;
       }
       
-      // Check if this is a transaction-address link (higher priority) or tx-tx link (lower priority)
+      // Check if this is a transaction-address link or tx-tx link
       const isTxToAddress = (sourceNode.type === "transaction" && targetNode.type === "address") ||
                             (sourceNode.type === "address" && targetNode.type === "transaction");
       
@@ -570,21 +573,20 @@ export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
       
       // Link value influences attraction strength
       const linkValue = link.value || 1;
+      
       // Ideal distance depends on node types and link value
       const idealDistance = isTxToAddress ? 
-        // Transaction-address links should be shorter
-        100 + Math.log10(1 + linkValue) * 40 :
-        // Transaction-transaction links can be longer
-        180 + Math.log10(1 + linkValue) * 80;
+        120 + Math.log10(1 + linkValue) * 40 : // Transaction-address links
+        200 + Math.log10(1 + linkValue) * 80;  // Transaction-transaction links
       
       // Attraction force depends on link type
-      const forceFactor = isTxToAddress ? attractionForce * 1.3 : attractionForce * 0.7;
+      const forceFactor = isTxToAddress ? attractionForce * 1.5 : attractionForce * 0.5;
       const force = forceFactor * (distance - idealDistance) * Math.log10(1 + linkValue);
       
       const fx = force * dx / distance;
       const fy = force * dy / distance;
       
-      // Update node forces with source/target weight consideration
+      // Consider node weights for more stable layout
       const sourceWeight = sourceNode.weight || 1;
       const targetWeight = targetNode.weight || 1;
       const totalWeight = sourceWeight + targetWeight;
@@ -598,7 +600,7 @@ export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
       forceTarget.fy -= fy * (targetWeight / totalWeight);
     });
     
-    // Apply forces to nodes with damping
+    // Apply forces to nodes with damping and gradually decreasing movement
     nodes.forEach(node => {
       if (node.x === undefined || node.y === undefined) return;
       
@@ -611,25 +613,24 @@ export const optimizeGraphLayout = (nodes: GraphNode[], links: GraphLink[]) => {
       force.fx *= dampingFactor;
       force.fy *= dampingFactor;
       
-      // Update position with gradually decreasing movement
-      const moveFactor = 1 - i/iterations * 0.7; // More gradual reduction
+      // Gradually decrease movement over iterations for better convergence
+      const moveFactor = 1 - (i/iterations) * 0.7;
       node.x += force.fx * moveFactor;
       node.y += force.fy * moveFactor;
     });
   }
   
-  // Final pass to ensure nodes are within bounds and properly spaced
+  // Final pass to center the graph and ensure proper spacing
   const bounds = calculateGraphBounds(nodes);
-  const padding = 50;
   
-  // Center the graph if it's too spread out
+  // Center the graph
   const centerX = (bounds.maxX + bounds.minX) / 2;
   const centerY = (bounds.maxY + bounds.minY) / 2;
   
-  // Scale factor to bring nodes closer to center if too spread out
+  // Scale factor if graph is too spread out or too condensed
   const graphWidth = bounds.maxX - bounds.minX;
   const graphHeight = bounds.maxY - bounds.minY;
-  const scaleFactor = Math.min(1, Math.max(0.7, 1000 / Math.max(graphWidth, graphHeight)));
+  const scaleFactor = Math.min(1, Math.max(0.7, 900 / Math.max(graphWidth, graphHeight)));
   
   nodes.forEach(node => {
     if (node.x && node.y) {
@@ -678,7 +679,7 @@ export const calculateNodeSize = (node: GraphNode, minSize = 35, maxSize = 120) 
 };
 
 /**
- * Get visualization risk color for consistent styling (renamed to avoid conflict)
+ * Get visualization risk color for consistent styling
  */
 export const getVisualizationRiskColor = (risk?: "low" | "medium" | "high") => {
   switch (risk) {

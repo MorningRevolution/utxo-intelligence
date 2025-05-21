@@ -58,7 +58,7 @@ const UTXOMap: React.FC = () => {
   }
 
   return (
-    <div className="container px-4 md:px-8 py-6" onClick={(e) => e.stopPropagation()}>
+    <div className="container px-4 md:px-8 py-6">
       <div className="flex flex-col md:flex-row justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-foreground">UTXO Visualization</h1>
         
@@ -98,7 +98,8 @@ const UTXOMap: React.FC = () => {
               <>
                 <p className="text-sm text-muted-foreground mb-4">
                   This visualization shows connections between your transactions and addresses.
-                  Explore how your coins are linked across the blockchain and identify potential privacy issues.
+                  Each transaction is displayed as a single node sized by total BTC amount.
+                  Explore how your coins are linked across the blockchain.
                 </p>
                 
                 <CleanTraceabilityGraph
@@ -112,7 +113,7 @@ const UTXOMap: React.FC = () => {
               <>
                 <p className="text-sm text-muted-foreground mb-4">
                   This visualization displays your UTXOs as proportionally sized tiles based on BTC amount and colored by privacy risk.
-                  Use zoom and pan controls to explore your UTXOs in detail. Click any UTXO to inspect its details.
+                  Use zoom and pan controls to explore your UTXOs in detail.
                 </p>
                 
                 <PrivacyTreemap

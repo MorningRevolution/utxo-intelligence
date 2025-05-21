@@ -2,7 +2,6 @@
 import React from "react";
 import { UTXO } from "@/types/utxo";
 import { UTXOTableBody } from "./UTXOTableBody";
-import { UTXOVisualizer } from "./UTXOVisualizer";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { UTXOViewType } from "@/types/utxo-graph";
@@ -70,87 +69,28 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
     }
   };
 
-  if (view === "table") {
-    return (
-      <UTXOTableBody 
-        filteredUtxos={filteredUtxos}
-        walletData={walletData}
-        visibleColumns={visibleColumns}
-        sortConfig={sortConfig}
-        handleSort={handleSort}
-        editableUtxo={editableUtxo}
-        setEditableUtxo={setEditableUtxo}
-        datePickerOpen={datePickerOpen}
-        setDatePickerOpen={setDatePickerOpen}
-        confirmDeleteUtxo={confirmDeleteUtxo}
-        handleTagSelection={handleTagSelection}
-        handleAddToSimulation={handleAddToSimulation}
-        handleSenderAddressEdit={handleSenderAddressEdit}
-        handleReceiverAddressEdit={handleReceiverAddressEdit}
-        handleDateEdit={handleDateEdit}
-        handleBtcPriceEdit={handleBtcPriceEdit}
-        handleCostBasisEdit={handleCostBasisEdit}
-        handleNotesEdit={handleNotesEdit}
-        onRowClick={handleRowClick}
-      />
-    );
-  } else if (view === "traceability" || view === "treemap") {
-    // Navigate to the UTXO Map page with the appropriate tab selected
-    navigate(`/utxo-map?view=${view}`);
-    toast.info(`Redirecting to ${view === "traceability" ? "Traceability Graph" : "Privacy Treemap"} visualization`);
-    
-    // Return table view as fallback while redirecting
-    return (
-      <UTXOTableBody 
-        filteredUtxos={filteredUtxos}
-        walletData={walletData}
-        visibleColumns={visibleColumns}
-        sortConfig={sortConfig}
-        handleSort={handleSort}
-        editableUtxo={editableUtxo}
-        setEditableUtxo={setEditableUtxo}
-        datePickerOpen={datePickerOpen}
-        setDatePickerOpen={setDatePickerOpen}
-        confirmDeleteUtxo={confirmDeleteUtxo}
-        handleTagSelection={handleTagSelection}
-        handleAddToSimulation={handleAddToSimulation}
-        handleSenderAddressEdit={handleSenderAddressEdit}
-        handleReceiverAddressEdit={handleReceiverAddressEdit}
-        handleDateEdit={handleDateEdit}
-        handleBtcPriceEdit={handleBtcPriceEdit}
-        handleCostBasisEdit={handleCostBasisEdit}
-        handleNotesEdit={handleNotesEdit}
-        onRowClick={handleRowClick}
-      />
-    );
-  } else {
-    // Map view should be on a separate page
-    navigate("/utxo-map");
-    toast("Redirecting to UTXO Map");
-    
-    // Return table view as fallback while redirecting
-    return (
-      <UTXOTableBody 
-        filteredUtxos={filteredUtxos}
-        walletData={walletData}
-        visibleColumns={visibleColumns}
-        sortConfig={sortConfig}
-        handleSort={handleSort}
-        editableUtxo={editableUtxo}
-        setEditableUtxo={setEditableUtxo}
-        datePickerOpen={datePickerOpen}
-        setDatePickerOpen={setDatePickerOpen}
-        confirmDeleteUtxo={confirmDeleteUtxo}
-        handleTagSelection={handleTagSelection}
-        handleAddToSimulation={handleAddToSimulation}
-        handleSenderAddressEdit={handleSenderAddressEdit}
-        handleReceiverAddressEdit={handleReceiverAddressEdit}
-        handleDateEdit={handleDateEdit}
-        handleBtcPriceEdit={handleBtcPriceEdit}
-        handleCostBasisEdit={handleCostBasisEdit}
-        handleNotesEdit={handleNotesEdit}
-        onRowClick={handleRowClick}
-      />
-    );
-  }
+  // Show table view only - visual views are on separate pages
+  return (
+    <UTXOTableBody 
+      filteredUtxos={filteredUtxos}
+      walletData={walletData}
+      visibleColumns={visibleColumns}
+      sortConfig={sortConfig}
+      handleSort={handleSort}
+      editableUtxo={editableUtxo}
+      setEditableUtxo={setEditableUtxo}
+      datePickerOpen={datePickerOpen}
+      setDatePickerOpen={setDatePickerOpen}
+      confirmDeleteUtxo={confirmDeleteUtxo}
+      handleTagSelection={handleTagSelection}
+      handleAddToSimulation={handleAddToSimulation}
+      handleSenderAddressEdit={handleSenderAddressEdit}
+      handleReceiverAddressEdit={handleReceiverAddressEdit}
+      handleDateEdit={handleDateEdit}
+      handleBtcPriceEdit={handleBtcPriceEdit}
+      handleCostBasisEdit={handleCostBasisEdit}
+      handleNotesEdit={handleNotesEdit}
+      onRowClick={handleRowClick}
+    />
+  );
 };

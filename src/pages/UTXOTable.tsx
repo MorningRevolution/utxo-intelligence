@@ -20,7 +20,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { UTXO } from "@/types/utxo";
 import { UTXOViewManager } from "@/components/utxo/UTXOViewManager";
 import { useUTXOModifiers } from "@/hooks/useUTXOModifiers";
-import { UTXOViewType } from "@/types/utxo-graph";
 
 const UTXOTable = () => {
   const navigate = useNavigate();
@@ -84,7 +83,6 @@ const UTXOTable = () => {
   }, [hasWallet, navigate]);
 
   const filteredUtxos = useMemo(() => {
-    // ... keep existing code (calculating filtered UTXOs)
     if (!walletData) return [];
 
     return walletData.utxos.filter(utxo => {
@@ -228,10 +226,6 @@ const UTXOTable = () => {
     }
   };
 
-  const handleViewChange = (view: "table" | "visual") => {
-    setCurrentView(view);
-  };
-
   const navigateToMap = () => {
     navigate("/utxo-map");
   };
@@ -247,7 +241,6 @@ const UTXOTable = () => {
 
   // Define which columns to show based on screen size
   const getVisibleColumns = () => {
-    // ... keep existing code (column visibility logic)
     if (isMobile) {
       return {
         txid: true,
@@ -283,12 +276,12 @@ const UTXOTable = () => {
   const visibleColumns = getVisibleColumns();
 
   return (
-    <div className="container px-4 md:px-8 py-6 overflow-x-hidden">
+    <div className="container px-4 md:px-8 py-6 max-w-full">
       <div className="flex flex-col md:flex-row justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-foreground">UTXO Management</h1>
         
         <div className="flex flex-wrap items-center gap-2">
-          {/* Updated Table View button with icon */}
+          {/* Table View button with icon */}
           <Button
             variant="default"
             size="sm"
@@ -296,8 +289,6 @@ const UTXOTable = () => {
             <Table className="mr-2 h-4 w-4" />
             Table View
           </Button>
-          
-          {/* Visual View button removed */}
           
           {!isMobile && (
             <>
@@ -323,7 +314,7 @@ const UTXOTable = () => {
         </div>
       </div>
 
-      <div className="bg-card rounded-lg shadow-lg p-2 md:p-4 mb-8 overflow-x-hidden">
+      <div className="bg-card rounded-lg shadow-lg p-2 md:p-4 mb-8">
         <UTXOFilters 
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
@@ -337,29 +328,31 @@ const UTXOTable = () => {
           onAddUTXO={handleAddUTXO}
         />
 
-        <UTXOViewManager
-          view="table" // Always use table view since we removed the visual view
-          filteredUtxos={filteredUtxos}
-          walletData={walletData}
-          visibleColumns={visibleColumns}
-          sortConfig={sortConfig}
-          handleSort={handleSort}
-          editableUtxo={editableUtxo}
-          setEditableUtxo={setEditableUtxo}
-          datePickerOpen={datePickerOpen}
-          setDatePickerOpen={setDatePickerOpen}
-          confirmDeleteUtxo={confirmDeleteUtxo}
-          handleTagSelection={handleTagSelection}
-          handleAddToSimulation={handleAddToSimulation}
-          handleSenderAddressEdit={handleSenderAddressEdit}
-          handleReceiverAddressEdit={handleReceiverAddressEdit}
-          handleDateEdit={handleDateEdit}
-          handleBtcPriceEdit={handleBtcPriceEdit}
-          handleCostBasisEdit={handleCostBasisEdit}
-          handleNotesEdit={handleNotesEdit}
-          selectedVisualUtxo={selectedVisualUtxo}
-          handleVisualSelect={handleVisualSelect}
-        />
+        <div className="overflow-x-auto md:overflow-visible">
+          <UTXOViewManager
+            view="table" 
+            filteredUtxos={filteredUtxos}
+            walletData={walletData}
+            visibleColumns={visibleColumns}
+            sortConfig={sortConfig}
+            handleSort={handleSort}
+            editableUtxo={editableUtxo}
+            setEditableUtxo={setEditableUtxo}
+            datePickerOpen={datePickerOpen}
+            setDatePickerOpen={setDatePickerOpen}
+            confirmDeleteUtxo={confirmDeleteUtxo}
+            handleTagSelection={handleTagSelection}
+            handleAddToSimulation={handleAddToSimulation}
+            handleSenderAddressEdit={handleSenderAddressEdit}
+            handleReceiverAddressEdit={handleReceiverAddressEdit}
+            handleDateEdit={handleDateEdit}
+            handleBtcPriceEdit={handleBtcPriceEdit}
+            handleCostBasisEdit={handleCostBasisEdit}
+            handleNotesEdit={handleNotesEdit}
+            selectedVisualUtxo={selectedVisualUtxo}
+            handleVisualSelect={handleVisualSelect}
+          />
+        </div>
       </div>
       
       {/* Delete confirmation dialog */}
