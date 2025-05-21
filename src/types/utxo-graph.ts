@@ -8,24 +8,25 @@ export interface GraphNode {
   type: "utxo" | "transaction" | "address";
   data?: any; // Original data
   riskLevel?: "low" | "medium" | "high";
-  x?: number; // Position for force-directed layout
+  x?: number; // Position for layout
   y?: number;
   fx?: number; // Fixed positions (for pinned nodes)
   fy?: number;
   // New fields for improved visualizations
-  weight?: number; // For force simulation
+  weight?: number; // For sizing
   radius?: number; // Calculated size for rendering
   expanded?: boolean; // For expandable nodes
   date?: Date; // For timeline visualization
+  month?: string; // For monthly grouping
 }
 
 export interface GraphLink {
-  // Update the types to handle both string and GraphNode references
   source: string | GraphNode;
   target: string | GraphNode;
   value: number;
   isChangeOutput?: boolean;
   riskLevel?: "low" | "medium" | "high";
+  path?: string; // SVG path for curved edges
 }
 
 export interface GraphData {
@@ -34,7 +35,7 @@ export interface GraphData {
 }
 
 // Define view types for navigation
-export type UTXOViewType = "table" | "visual" | "map" | "traceability" | "treemap" | "timeline";
+export type UTXOViewType = "table" | "visual" | "map" | "timeline" | "treemap";
 
 // Define a type for node selection callbacks
 export type NodeSelectionCallback = (nodeId: string, nodeType: "utxo" | "transaction" | "address", data: any) => void;
@@ -42,7 +43,7 @@ export type NodeSelectionCallback = (nodeId: string, nodeType: "utxo" | "transac
 // Define grouping options for treemap
 export type TreemapGroupingOption = "risk" | "wallet" | "tag" | "none";
 
-// Define filtering options - modified to match what the error suggests we need
+// Define filtering options
 export interface UTXOFiltersState {
   searchTerm: string;
   selectedTags: string[];
@@ -50,6 +51,8 @@ export interface UTXOFiltersState {
   selectedRiskLevels: ("low" | "medium" | "high")[];
   minAmount?: number;
   maxAmount?: number;
+  startDate?: Date;
+  endDate?: Date;
 }
 
 // New type for treemap tile data
@@ -72,6 +75,8 @@ export interface VisualizationControls {
   position: { x: number; y: number };
   grouping: TreemapGroupingOption;
   expandedNodes: Set<string>;
+  showAddresses: boolean;
+  showLabels: boolean;
 }
 
 // Timeline-specific types
@@ -109,4 +114,35 @@ export interface TimePeriod {
   label: string;
   x: number;
   width: number;
+}
+
+// New interface for transaction timeline view
+export interface TransactionTimelineNode {
+  id: string;
+  date: Date;
+  amount: number; 
+  utxos: UTXO[];
+  addresses: string[];
+  tags: string[];
+  riskLevel: "low" | "medium" | "high";
+  x: number;
+  y: number;
+  width: number; 
+  height: number;
+}
+
+export interface MonthGroup {
+  startDate: Date;
+  endDate: Date;
+  label: string;
+  x: number;
+  width: number;
+}
+
+export interface TransactionConnection {
+  source: string;
+  target: string;
+  amount: number;
+  path: string;
+  riskLevel: "low" | "medium" | "high";
 }

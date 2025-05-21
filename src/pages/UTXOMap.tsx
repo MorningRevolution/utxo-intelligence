@@ -6,7 +6,6 @@ import { useWallet } from "@/store/WalletContext";
 import { Table, BarChart, Grid, CalendarDays } from "lucide-react";
 import { UTXO } from "@/types/utxo";
 import { toast } from "sonner";
-import { CleanTraceabilityGraph } from "@/components/utxo/CleanTraceabilityGraph";
 import { TimelineTraceabilityGraph } from "@/components/utxo/TimelineTraceabilityGraph";
 import { PrivacyTreemap } from "@/components/utxo/PrivacyTreemap";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,12 +15,10 @@ const UTXOMap: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { walletData, hasWallet } = useWallet();
   const [selectedUtxo, setSelectedUtxo] = useState<UTXO | null>(null);
-  const [activeView, setActiveView] = useState<"traceability" | "timeline" | "treemap">(
+  const [activeView, setActiveView] = useState<"timeline" | "treemap">(
     (searchParams.get("view") === "treemap" 
       ? "treemap" 
-      : searchParams.get("view") === "timeline"
-        ? "timeline"
-        : "traceability") as "traceability" | "timeline" | "treemap"
+      : "timeline") as "timeline" | "treemap"
   );
 
   useEffect(() => {
@@ -43,7 +40,7 @@ const UTXOMap: React.FC = () => {
   };
 
   // Handle view change with URL update
-  const handleViewChange = (view: "traceability" | "timeline" | "treemap") => {
+  const handleViewChange = (view: "timeline" | "treemap") => {
     setActiveView(view);
     // Update URL to reflect the current view
     const url = new URL(window.location.href);
@@ -81,16 +78,12 @@ const UTXOMap: React.FC = () => {
       </div>
 
       <Tabs 
-        defaultValue="traceability" 
+        defaultValue="timeline" 
         value={activeView}
-        onValueChange={(value) => handleViewChange(value as "traceability" | "timeline" | "treemap")}
+        onValueChange={(value) => handleViewChange(value as "timeline" | "treemap")}
         className="w-full"
       >
-        <TabsList className="w-full max-w-md mx-auto grid grid-cols-3 mb-6">
-          <TabsTrigger value="traceability" className="flex items-center gap-2">
-            <BarChart className="h-4 w-4" />
-            <span>Graph View</span>
-          </TabsTrigger>
+        <TabsList className="w-full max-w-md mx-auto grid grid-cols-2 mb-6">
           <TabsTrigger value="timeline" className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4" />
             <span>Timeline View</span>
@@ -103,27 +96,12 @@ const UTXOMap: React.FC = () => {
 
         <div className="bg-card rounded-lg shadow-lg p-2 md:p-4 mb-8">
           <div className="mt-2">
-            {activeView === "traceability" && (
-              <>
-                <p className="text-sm text-muted-foreground mb-4">
-                  This visualization shows connections between your transactions and addresses.
-                  Each transaction is displayed as a single node sized by total BTC amount.
-                  Explore how your coins are linked across the blockchain.
-                </p>
-                
-                <CleanTraceabilityGraph
-                  utxos={walletData.utxos}
-                  onSelectUtxo={handleUtxoSelect}
-                />
-              </>
-            )}
-
             {activeView === "timeline" && (
               <>
                 <p className="text-sm text-muted-foreground mb-4">
-                  This timeline view shows your transactions grouped chronologically by date.
+                  This timeline view shows your transactions chronologically, grouped by month.
                   Boxes represent transactions, sized by BTC amount and color-coded by risk level.
-                  See the flow of your funds over time and identify patterns in your transaction history.
+                  Toggle connections to see the flow of your funds between transactions over time.
                 </p>
                 
                 <TimelineTraceabilityGraph

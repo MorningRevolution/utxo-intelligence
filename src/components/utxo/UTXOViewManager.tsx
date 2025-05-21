@@ -2,7 +2,6 @@
 import React from "react";
 import { UTXO } from "@/types/utxo";
 import { UTXOTableBody } from "./UTXOTableBody";
-import { useNavigate } from "react-router-dom";
 import { UTXOViewType } from "@/types/utxo-graph";
 
 interface UTXOViewManagerProps {
@@ -52,8 +51,6 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
   selectedVisualUtxo,
   handleVisualSelect,
 }) => {
-  const navigate = useNavigate();
-
   const handleRowClick = (utxo: UTXO) => {
     // Only select for visualization if not currently editing
     if (!editableUtxo) {
@@ -70,27 +67,29 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
 
   return (
     <div className="w-full">
-      <UTXOTableBody 
-        filteredUtxos={filteredUtxos}
-        walletData={walletData}
-        visibleColumns={visibleColumns}
-        sortConfig={sortConfig}
-        handleSort={handleSort}
-        editableUtxo={editableUtxo}
-        setEditableUtxo={setEditableUtxo}
-        datePickerOpen={datePickerOpen}
-        setDatePickerOpen={setDatePickerOpen}
-        confirmDeleteUtxo={confirmDeleteUtxo}
-        handleTagSelection={handleTagSelection}
-        handleAddToSimulation={handleAddToSimulation}
-        handleSenderAddressEdit={handleSenderAddressEdit}
-        handleReceiverAddressEdit={handleReceiverAddressEdit}
-        handleDateEdit={handleDateEdit}
-        handleBtcPriceEdit={handleBtcPriceEdit}
-        handleCostBasisEdit={handleCostBasisEdit}
-        handleNotesEdit={handleNotesEdit}
-        onRowClick={handleRowClick}
-      />
+      <div className="max-w-full overflow-x-auto">
+        <UTXOTableBody 
+          filteredUtxos={filteredUtxos}
+          walletData={walletData}
+          visibleColumns={visibleColumns}
+          sortConfig={sortConfig}
+          handleSort={handleSort}
+          editableUtxo={editableUtxo}
+          setEditableUtxo={setEditableUtxo}
+          datePickerOpen={datePickerOpen}
+          setDatePickerOpen={setDatePickerOpen}
+          confirmDeleteUtxo={confirmDeleteUtxo}
+          handleTagSelection={handleTagSelection}
+          handleAddToSimulation={handleAddToSimulation}
+          handleSenderAddressEdit={handleSenderAddressEdit}
+          handleReceiverAddressEdit={handleReceiverAddressEdit}
+          handleDateEdit={handleDateEdit}
+          handleBtcPriceEdit={handleBtcPriceEdit}
+          handleCostBasisEdit={handleCostBasisEdit}
+          handleNotesEdit={handleNotesEdit}
+          onRowClick={handleRowClick}
+        />
+      </div>
     </div>
   );
 };

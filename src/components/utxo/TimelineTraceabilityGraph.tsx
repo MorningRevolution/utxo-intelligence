@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { UTXO } from "@/types/utxo";
-import { format, parseISO, differenceInDays, addDays } from "date-fns";
+import { format, parseISO, differenceInDays, addDays, addMonths, startOfMonth } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -40,6 +41,15 @@ interface TransactionNode {
   tags: string[];
 }
 
+// Interface for month group
+interface MonthGroup {
+  startDate: Date;
+  endDate: Date;
+  label: string;
+  x: number;
+  width: number;
+}
+
 // Interface for connection between transactions
 interface TransactionLink {
   source: string;
@@ -51,14 +61,6 @@ interface TransactionLink {
   path?: string;
 }
 
-// Time divisions for timeline
-interface TimelineDivision {
-  date: Date;
-  label: string;
-  x: number;
-  width: number;
-}
-
 export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps> = ({ 
   utxos, 
   onSelectUtxo 
@@ -66,7 +68,7 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
   // State for graph visualization
   const [transactions, setTransactions] = useState<TransactionNode[]>([]);
   const [links, setLinks] = useState<TransactionLink[]>([]);
-  const [timeDivisions, setTimeDivisions] = useState<TimelineDivision[]>([]);
+  const [monthGroups, setMonthGroups] = useState<MonthGroup[]>([]);
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -74,7 +76,7 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionNode | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
-  const [showAddresses, setShowAddresses] = useState(false);
+  const [showConnections, setShowConnections] = useState(false);
   
   // Reference to the graph container
   const containerRef = useRef<HTMLDivElement>(null);
@@ -122,26 +124,40 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
     const minDate = allDates.length ? allDates[0] : new Date();
     const maxDate = allDates.length ? allDates[allDates.length - 1] : new Date();
     
-    // Add padding of 1 day to start and end
-    const startDate = addDays(minDate, -1);
-    const endDate = addDays(maxDate, 1);
+    // Add padding of 1 month to start and end
+    const startDate = startOfMonth(addMonths(minDate, -1));
+    const endDate = addMonths(maxDate, 1);
     
-    // Calculate total date range in days
-    const totalDays = differenceInDays(endDate, startDate) + 1;
-    
-    // Create time divisions (one per day)
-    const divisions: TimelineDivision[] = [];
+    // Generate month divisions
+    const months: MonthGroup[] = [];
+    let currentDate = new Date(startDate);
     const timelineWidth = dimensions.width * 1.5; // Make timeline wider than viewport
-    const dayWidth = timelineWidth / totalDays;
     
-    for (let i = 0; i < totalDays; i++) {
-      const date = addDays(startDate, i);
-      divisions.push({
-        date,
-        label: format(date, 'MMM d'),
-        x: i * dayWidth,
-        width: dayWidth
+    // Count number of months
+    let monthCount = 0;
+    while (currentDate <= endDate) {
+      monthCount++;
+      currentDate = addMonths(currentDate, 1);
+    }
+    
+    // Reset and calculate month widths
+    currentDate = new Date(startDate);
+    const monthWidth = timelineWidth / monthCount;
+    
+    let i = 0;
+    while (currentDate <= endDate) {
+      const nextMonth = addMonths(currentDate, 1);
+      
+      months.push({
+        startDate: currentDate,
+        endDate: nextMonth,
+        label: format(currentDate, 'MMM yyyy'),
+        x: i * monthWidth,
+        width: monthWidth
       });
+      
+      currentDate = nextMonth;
+      i++;
     }
     
     // Create transaction nodes
@@ -160,9 +176,17 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
         }
       }
       
-      // Calculate position based on date
-      const dayIndex = differenceInDays(txDate, startDate);
-      const x = dayIndex * dayWidth + (dayWidth / 2);
+      // Find which month this transaction belongs to
+      const month = months.find(m => txDate >= m.startDate && txDate < m.endDate);
+      
+      if (!month) return; // Skip if no month found
+      
+      // Calculate position within month
+      const daysIntoMonth = differenceInDays(txDate, month.startDate);
+      const daysInMonth = differenceInDays(month.endDate, month.startDate);
+      const xOffset = (daysIntoMonth / daysInMonth) * month.width;
+      
+      const x = month.x + xOffset;
       
       // Calculate total amount
       const totalAmount = groupUtxos.reduce((sum, u) => sum + u.amount, 0);
@@ -177,7 +201,7 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
       
       // Create node
       const height = Math.max(60, Math.min(100, 50 + Math.log10(1 + totalAmount) * 25));
-      const width = Math.max(120, Math.min(200, 100 + Math.log10(1 + totalAmount) * 40));
+      const width = Math.max(100, Math.min(180, 80 + Math.log10(1 + totalAmount) * 40));
       
       // Randomize Y position slightly to avoid perfect alignment
       const y = dimensions.height / 2 + (Math.random() - 0.5) * 100;
@@ -260,7 +284,7 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
     
     setTransactions(nodes);
     setLinks(nodeLinks);
-    setTimeDivisions(divisions);
+    setMonthGroups(months);
   }, [utxos, dimensions]);
   
   // Process data when utxos or dimensions change
@@ -286,9 +310,9 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
     setPosition({ x: 0, y: 0 });
   };
   
-  const toggleAddressView = () => {
-    setShowAddresses(prev => !prev);
-    toast.info(showAddresses ? "Address connections hidden" : "Address connections visible");
+  const toggleConnectionsView = () => {
+    setShowConnections(prev => !prev);
+    toast.info(showConnections ? "Address connections hidden" : "Address connections visible");
   };
   
   // Handle panning
@@ -341,14 +365,13 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
     }
   };
   
-  // Format BTC amount - new improved format that trims extra zeros
+  // Format BTC amount - trimmed format that removes trailing zeros
   const formatBTC = (amount: number) => {
-    // Remove trailing zeros but keep at least 2 decimal places
+    // Convert to string and remove trailing zeros
     const formatted = amount.toFixed(8).replace(/\.?0+$/, '');
-    // If the number has no decimal part or fewer than 2 decimal places, ensure 2 decimal places
-    const parts = formatted.split('.');
-    if (!parts[1] || parts[1].length < 2) {
-      return `${parts[0]}.${(parts[1] || '').padEnd(2, '0')} BTC`;
+    // If no decimal points left, add .0
+    if (!formatted.includes('.')) {
+      return `${formatted}.0 BTC`;
     }
     return `${formatted} BTC`;
   };
@@ -400,12 +423,12 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
           </Button>
           
           <Button
-            variant={showAddresses ? "default" : "outline"}
+            variant={showConnections ? "default" : "outline"}
             size="sm"
-            onClick={toggleAddressView}
+            onClick={toggleConnectionsView}
             className="flex items-center gap-1"
           >
-            {showAddresses ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
+            {showConnections ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
             <span>Show Connections</span>
           </Button>
         </div>
@@ -444,35 +467,37 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
       >
         <svg width="100%" height="100%" className="overflow-visible">
           <g transform={transform}>
-            {/* Time division lines and labels */}
+            {/* Month group backgrounds and labels */}
             <g>
-              {timeDivisions.map((division, i) => (
-                <g key={`division-${i}`} transform={`translate(${division.x}, 0)`}>
-                  <line 
-                    x1="0" 
-                    y1="0" 
-                    x2="0" 
-                    y2={dimensions.height} 
-                    stroke="#e5e7eb" 
-                    strokeWidth="1" 
-                    strokeDasharray="5,5" 
-                    opacity="0.5"
+              {monthGroups.map((month, i) => (
+                <g key={`month-${i}`} transform={`translate(${month.x}, 0)`}>
+                  {/* Month background */}
+                  <rect
+                    x="0"
+                    y="0"
+                    width={month.width}
+                    height={dimensions.height}
+                    fill={i % 2 === 0 ? "rgba(0,0,0,0.02)" : "rgba(0,0,0,0.05)"}
                   />
-                  <text 
-                    x="5" 
-                    y="20" 
-                    fontSize="12" 
-                    fill="currentColor" 
+                  
+                  {/* Month label */}
+                  <text
+                    x={month.width / 2}
+                    y="25"
+                    textAnchor="middle"
+                    fontSize="14"
+                    fontWeight="bold"
+                    fill="currentColor"
                     opacity="0.7"
                   >
-                    {division.label}
+                    {month.label}
                   </text>
                 </g>
               ))}
             </g>
             
             {/* Links between transactions */}
-            {showAddresses && links.map((link, i) => {
+            {showConnections && links.map((link, i) => {
               const sourceNode = transactions.find(n => n.id === link.source);
               const targetNode = transactions.find(n => n.id === link.target);
               
@@ -531,7 +556,7 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
               
               return (
                 <TooltipProvider key={tx.id}>
-                  <Tooltip>
+                  <Tooltip delayDuration={200}>
                     <TooltipTrigger asChild>
                       <g
                         transform={`translate(${tx.x - tx.width/2}, ${tx.y - tx.height/2})`}
@@ -558,7 +583,7 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
                           y={tx.height / 2}
                           textAnchor="middle"
                           fill="white"
-                          fontSize="18"
+                          fontSize="16"
                           fontWeight="600"
                         >
                           {formatBTC(tx.amount)}
@@ -572,7 +597,7 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
                           fill="white"
                           fontSize="12"
                         >
-                          {tx.id.substring(0, 8)}...
+                          {tx.id.substring(0, 7)}...
                         </text>
                         
                         {/* Risk indicator */}
@@ -621,28 +646,24 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
                         </text>
                       </g>
                     </TooltipTrigger>
-                    <TooltipContent>
-                      <div className="p-2">
-                        <div className="font-bold">Transaction</div>
-                        <div className="text-sm font-mono">{tx.id}</div>
-                        <div className="text-sm mt-1">
+                    <TooltipContent side="top">
+                      <div className="p-1">
+                        <div className="font-bold">{format(tx.date, 'MMM d, yyyy')}</div>
+                        <div className="text-sm font-mono truncate max-w-[220px]">{tx.id}</div>
+                        <div className="text-sm mt-1 font-medium">
                           {formatBTC(tx.amount)}
                         </div>
-                        <div className="text-xs mt-1">
-                          {format(tx.date, 'MMM d, yyyy')} • 
-                          <span className={`ml-1 ${
-                            tx.riskLevel === 'high' ? 'text-red-500' : 
+                        <div className="flex items-center gap-1 text-xs mt-1">
+                          <span className={`
+                            ${tx.riskLevel === 'high' ? 'text-red-500' : 
                             tx.riskLevel === 'medium' ? 'text-amber-500' : 
-                            'text-green-500'
-                          }`}>
+                            'text-green-500'}
+                          `}>
                             {tx.riskLevel} risk
                           </span>
+                          <span>•</span>
+                          <span>{tx.utxos.length} UTXOs</span>
                         </div>
-                        {tx.utxos.length > 0 && (
-                          <div className="text-xs mt-1">
-                            Contains {tx.utxos.length} UTXOs
-                          </div>
-                        )}
                       </div>
                     </TooltipContent>
                   </Tooltip>
