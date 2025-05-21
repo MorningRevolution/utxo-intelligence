@@ -180,12 +180,12 @@ export const CleanTraceabilityGraph: React.FC<CleanTraceabilityGraphProps> = ({
       node.y += (Math.random() - 0.5) * 100;
     });
     
-    // Apply force-directed layout
+    // Apply hierarchical layout
     const optimizedGraph = applyForceDirectedLayout(newGraph.nodes, newGraph.links);
     setGraph(optimizedGraph);
   }, [utxos]);
   
-  // Force-directed layout algorithm
+  // Simple layout algorithm for improved node positioning
   const applyForceDirectedLayout = (nodes: GraphNode[], links: GraphLink[]) => {
     const iterations = 100;
     const repulsionForce = 800;
