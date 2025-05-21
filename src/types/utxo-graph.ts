@@ -1,4 +1,3 @@
-
 import { UTXO } from "./utxo";
 
 export interface GraphNode {
@@ -71,4 +70,40 @@ export interface VisualizationControls {
   position: { x: number; y: number };
   grouping: TreemapGroupingOption;
   expandedNodes: Set<string>;
+}
+
+// Timeline-specific types
+export interface TimelineData {
+  nodes: TimelineNode[];
+  links: TimelineLink[];
+  timePeriods: TimePeriod[];
+}
+
+export interface TimelineNode {
+  id: string;
+  type: "transaction" | "address";
+  date: Date;
+  amount: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  risk: "low" | "medium" | "high";
+  metadata?: any;
+}
+
+export interface TimelineLink {
+  source: string;
+  target: string;
+  value: number;
+  riskLevel: "low" | "medium" | "high";
+  path?: string;
+}
+
+export interface TimePeriod {
+  start: Date;
+  end: Date;
+  label: string;
+  x: number;
+  width: number;
 }
