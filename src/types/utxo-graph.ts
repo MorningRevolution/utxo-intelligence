@@ -1,3 +1,4 @@
+
 import { UTXO } from "./utxo";
 
 export interface GraphNode {
@@ -15,6 +16,7 @@ export interface GraphNode {
   weight?: number; // For force simulation
   radius?: number; // Calculated size for rendering
   expanded?: boolean; // For expandable nodes
+  date?: Date; // For timeline visualization
 }
 
 export interface GraphLink {
@@ -32,7 +34,7 @@ export interface GraphData {
 }
 
 // Define view types for navigation
-export type UTXOViewType = "table" | "visual" | "map" | "traceability" | "treemap";
+export type UTXOViewType = "table" | "visual" | "map" | "traceability" | "treemap" | "timeline";
 
 // Define a type for node selection callbacks
 export type NodeSelectionCallback = (nodeId: string, nodeType: "utxo" | "transaction" | "address", data: any) => void;
@@ -90,6 +92,7 @@ export interface TimelineNode {
   height: number;
   risk: "low" | "medium" | "high";
   metadata?: any;
+  utxos?: UTXO[]; // For grouping UTXOs under a transaction
 }
 
 export interface TimelineLink {

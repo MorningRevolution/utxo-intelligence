@@ -3,7 +3,6 @@ import React from "react";
 import { UTXO } from "@/types/utxo";
 import { UTXOTableBody } from "./UTXOTableBody";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import { UTXOViewType } from "@/types/utxo-graph";
 
 interface UTXOViewManagerProps {
@@ -69,28 +68,29 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
     }
   };
 
-  // Show table view only - visual views are on separate pages
   return (
-    <UTXOTableBody 
-      filteredUtxos={filteredUtxos}
-      walletData={walletData}
-      visibleColumns={visibleColumns}
-      sortConfig={sortConfig}
-      handleSort={handleSort}
-      editableUtxo={editableUtxo}
-      setEditableUtxo={setEditableUtxo}
-      datePickerOpen={datePickerOpen}
-      setDatePickerOpen={setDatePickerOpen}
-      confirmDeleteUtxo={confirmDeleteUtxo}
-      handleTagSelection={handleTagSelection}
-      handleAddToSimulation={handleAddToSimulation}
-      handleSenderAddressEdit={handleSenderAddressEdit}
-      handleReceiverAddressEdit={handleReceiverAddressEdit}
-      handleDateEdit={handleDateEdit}
-      handleBtcPriceEdit={handleBtcPriceEdit}
-      handleCostBasisEdit={handleCostBasisEdit}
-      handleNotesEdit={handleNotesEdit}
-      onRowClick={handleRowClick}
-    />
+    <div className="w-full">
+      <UTXOTableBody 
+        filteredUtxos={filteredUtxos}
+        walletData={walletData}
+        visibleColumns={visibleColumns}
+        sortConfig={sortConfig}
+        handleSort={handleSort}
+        editableUtxo={editableUtxo}
+        setEditableUtxo={setEditableUtxo}
+        datePickerOpen={datePickerOpen}
+        setDatePickerOpen={setDatePickerOpen}
+        confirmDeleteUtxo={confirmDeleteUtxo}
+        handleTagSelection={handleTagSelection}
+        handleAddToSimulation={handleAddToSimulation}
+        handleSenderAddressEdit={handleSenderAddressEdit}
+        handleReceiverAddressEdit={handleReceiverAddressEdit}
+        handleDateEdit={handleDateEdit}
+        handleBtcPriceEdit={handleBtcPriceEdit}
+        handleCostBasisEdit={handleCostBasisEdit}
+        handleNotesEdit={handleNotesEdit}
+        onRowClick={handleRowClick}
+      />
+    </div>
   );
 };

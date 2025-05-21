@@ -121,8 +121,9 @@ const UTXOMap: React.FC = () => {
             {activeView === "timeline" && (
               <>
                 <p className="text-sm text-muted-foreground mb-4">
-                  This visualization shows the flow of your UTXOs over time. Zoom in to explore addresses, tags, and potential privacy issues.
-                  Transactions are grouped by date and sized by BTC amount.
+                  This timeline view shows your transactions grouped chronologically by date.
+                  Boxes represent transactions, sized by BTC amount and color-coded by risk level.
+                  See the flow of your funds over time and identify patterns in your transaction history.
                 </p>
                 
                 <TimelineTraceabilityGraph

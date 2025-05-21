@@ -1,12 +1,10 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { UTXO } from "@/types/utxo";
 import { format, parseISO, differenceInDays, addDays } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { ZoomIn, ZoomOut, Maximize, Plus, Minus, Calendar, Info } from "lucide-react";
-import { motion } from "framer-motion";
+import { ZoomIn, ZoomOut, Maximize, Plus, Minus, Calendar, Info, ToggleLeft, ToggleRight } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -343,9 +341,16 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
     }
   };
   
-  // Format BTC amount
+  // Format BTC amount - new improved format that trims extra zeros
   const formatBTC = (amount: number) => {
-    return `${amount.toFixed(8)} BTC`;
+    // Remove trailing zeros but keep at least 2 decimal places
+    const formatted = amount.toFixed(8).replace(/\.?0+$/, '');
+    // If the number has no decimal part or fewer than 2 decimal places, ensure 2 decimal places
+    const parts = formatted.split('.');
+    if (!parts[1] || parts[1].length < 2) {
+      return `${parts[0]}.${(parts[1] || '').padEnd(2, '0')} BTC`;
+    }
+    return `${formatted} BTC`;
   };
   
   // Calculate transform for the SVG content
@@ -400,7 +405,7 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
             onClick={toggleAddressView}
             className="flex items-center gap-1"
           >
-            <Info className="h-4 w-4" />
+            {showAddresses ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
             <span>Show Connections</span>
           </Button>
         </div>
@@ -511,7 +516,7 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
                       fontSize="10"
                       opacity={isHighlighted ? 0.9 : 0.6}
                     >
-                      {link.amount.toFixed(4)}
+                      {formatBTC(link.amount)}
                     </text>
                   )}
                 </g>
@@ -556,7 +561,7 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
                           fontSize="18"
                           fontWeight="600"
                         >
-                          {tx.amount.toFixed(3)} BTC
+                          {formatBTC(tx.amount)}
                         </text>
                         
                         {/* Transaction ID */}
@@ -749,7 +754,7 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
                             </span>
                           </div>
                           <Badge className={getRiskBadgeStyle(link.riskLevel)}>
-                            {link.amount.toFixed(6)}
+                            {formatBTC(link.amount)}
                           </Badge>
                         </div>
                       );
