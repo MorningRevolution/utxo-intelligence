@@ -1,4 +1,6 @@
 
+import { UTXO } from "@/types/utxo";
+
 // Format BTC amount with options to trim trailing zeros and specify decimal places
 export const formatBTC = (amount: number, options?: { trimZeros?: boolean; minDecimals?: number; maxDecimals?: number }): string => {
   const { trimZeros = true, minDecimals = 2, maxDecimals = 8 } = options || {};

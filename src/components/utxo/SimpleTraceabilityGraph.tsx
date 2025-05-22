@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { UTXO } from "@/types/utxo";
 import { formatBTC, formatTxid, getRiskColor } from "@/utils/utxo-utils";
@@ -37,24 +36,42 @@ interface TransactionEdge {
 interface SimpleTraceabilityGraphProps {
   utxos: UTXO[];
   onSelectUtxo?: (utxo: UTXO | null) => void;
-  layout?: 'vertical' | 'radial';
+  layout?: 'vertical' | 'radial' | 'horizontal';
+  showConnections?: boolean;
+  animate?: boolean;
+  zoomLevel?: number;
 }
 
 export const SimpleTraceabilityGraph: React.FC<SimpleTraceabilityGraphProps> = ({
   utxos,
   onSelectUtxo,
-  layout = 'vertical'
+  layout = 'vertical',
+  showConnections = true,
+  animate = false,
+  zoomLevel = 1
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(zoomLevel);
   const [pan, setPan] = useState({ x: 50, y: 50 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [nodes, setNodes] = useState<TransactionNode[]>([]);
   const [edges, setEdges] = useState<TransactionEdge[]>([]);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  const [showConnections, setShowConnections] = useState(true);
+  const [showConnectionsState, setShowConnectionsState] = useState(showConnections);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+
+  // Update zoom level when prop changes
+  useEffect(() => {
+    if (zoomLevel) {
+      setZoom(zoomLevel);
+    }
+  }, [zoomLevel]);
+
+  // Update showConnections when prop changes
+  useEffect(() => {
+    setShowConnectionsState(showConnections);
+  }, [showConnections]);
 
   const svgWidth = 1000;
   const svgHeight = 800;
@@ -130,8 +147,10 @@ export const SimpleTraceabilityGraph: React.FC<SimpleTraceabilityGraphProps> = (
     // Assign positions to nodes based on layout
     if (layout === 'vertical') {
       calculateVerticalLayout(newNodes, newEdges);
-    } else {
+    } else if (layout === 'radial') {
       calculateRadialLayout(newNodes, newEdges);
+    } else {
+      calculateHorizontalLayout(newNodes, newEdges);
     }
 
     setNodes(newNodes);
@@ -227,6 +246,56 @@ export const SimpleTraceabilityGraph: React.FC<SimpleTraceabilityGraphProps> = (
     });
   };
 
+  // Calculate horizontal layout
+  const calculateHorizontalLayout = (nodes: TransactionNode[], edges: TransactionEdge[]) => {
+    // Group nodes by date into levels (months)
+    const months = new Map<string, TransactionNode[]>();
+    
+    nodes.forEach(node => {
+      const monthKey = `${node.date.getFullYear()}-${node.date.getMonth() + 1}`;
+      if (!months.has(monthKey)) {
+        months.set(monthKey, []);
+      }
+      months.get(monthKey)?.push(node);
+    });
+    
+    // Sort months chronologically
+    const sortedMonths = Array.from(months.entries())
+      .sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
+    
+    // Assign x, y coordinates to nodes
+    let level = 0;
+    sortedMonths.forEach(([_, monthNodes]) => {
+      const nodesInLevel = monthNodes.length;
+      
+      monthNodes.forEach((node, i) => {
+        // Calculate position within level
+        const segmentWidth = svgWidth / (nodesInLevel + 1);
+        node.x = (i + 1) * segmentWidth;
+        node.y = 100 + level * levelGap;
+      });
+      
+      level++;
+    });
+    
+    // Calculate curved paths for edges
+    edges.forEach(edge => {
+      const sourceNode = nodes.find(n => n.txid === edge.source);
+      const targetNode = nodes.find(n => n.txid === edge.target);
+      
+      if (sourceNode && targetNode && sourceNode.x !== undefined && sourceNode.y !== undefined && 
+          targetNode.x !== undefined && targetNode.y !== undefined) {
+        
+        // Simple curved path
+        const midY = (sourceNode.y + targetNode.y) / 2;
+        edge.path = `M ${sourceNode.x} ${sourceNode.y + nodeHeight/2} 
+                     C ${sourceNode.x} ${midY}, 
+                       ${targetNode.x} ${midY}, 
+                       ${targetNode.x} ${targetNode.y - nodeHeight/2}`;
+      }
+    });
+  };
+
   // Handle zoom in/out
   const handleZoom = (direction: 'in' | 'out') => {
     setZoom(prev => {
@@ -285,7 +354,7 @@ export const SimpleTraceabilityGraph: React.FC<SimpleTraceabilityGraphProps> = (
 
   // Toggle showing connections
   const toggleConnections = () => {
-    setShowConnections(prev => !prev);
+    setShowConnectionsState(prev => !prev);
   };
 
   // Calculate node size based on amount
@@ -352,10 +421,10 @@ export const SimpleTraceabilityGraph: React.FC<SimpleTraceabilityGraphProps> = (
             variant="outline"
             size="sm"
             onClick={() => toggleConnections()}
-            className={showConnections ? "bg-primary/20" : ""}
+            className={showConnectionsState ? "bg-primary/20" : ""}
           >
             <Network size={16} className="mr-1" />
-            {showConnections ? "Hide" : "Show"} Connections
+            {showConnectionsState ? "Hide" : "Show"} Connections
           </Button>
         </div>
         
@@ -393,7 +462,7 @@ export const SimpleTraceabilityGraph: React.FC<SimpleTraceabilityGraphProps> = (
         >
           <g transform={svgTransform}>
             {/* Draw edges if connections are enabled */}
-            {showConnections && edges.map((edge, i) => {
+            {showConnectionsState && edges.map((edge, i) => {
               const sourceActive = selectedNode === edge.source || hoveredNode === edge.source;
               const targetActive = selectedNode === edge.target || hoveredNode === edge.target;
               const isActive = sourceActive || targetActive;

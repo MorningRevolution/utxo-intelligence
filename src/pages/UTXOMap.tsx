@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -153,7 +152,6 @@ const UTXOMap: React.FC = () => {
               <TimelineTraceabilityGraph
                 utxos={walletData.utxos}
                 onSelectUtxo={handleUtxoSelect}
-                zoomLevel={zoomLevel}
                 showConnections={showConnections}
               />
             </div>
@@ -165,7 +163,7 @@ const UTXOMap: React.FC = () => {
                 <SimpleTraceabilityGraph
                   utxos={walletData.utxos}
                   onSelectUtxo={handleUtxoSelect}
-                  layout="horizontal"
+                  layout="vertical"
                   zoomLevel={zoomLevel}
                   showConnections={showConnections}
                   animate={true}
