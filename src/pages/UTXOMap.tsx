@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -5,10 +6,12 @@ import { useWallet } from "@/store/WalletContext";
 import { Table, BarChart, Grid, CalendarDays, Network, ZoomIn, ZoomOut, ArrowLeft } from "lucide-react";
 import { UTXO } from "@/types/utxo";
 import { toast } from "sonner";
-import { TimelineTraceabilityGraph } from "@/components/utxo/TimelineTraceabilityGraph";
-import { SimpleTraceabilityGraph } from "@/components/utxo/SimpleTraceabilityGraph";
+import { EnhancedTimelineView } from "@/components/utxo/EnhancedTimelineView";
+import { ResponsiveTraceabilityMatrix } from "@/components/utxo/ResponsiveTraceabilityMatrix";
 import { PrivacyTreemap } from "@/components/utxo/PrivacyTreemap";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatBTC } from "@/utils/utxo-utils";
+import { getRiskTextColor } from "@/utils/utxo-utils";
 
 const UTXOMap: React.FC = () => {
   const navigate = useNavigate();
@@ -18,7 +21,6 @@ const UTXOMap: React.FC = () => {
   const [activeView, setActiveView] = useState<"timeline" | "traceability" | "treemap">(
     (searchParams.get("view") as "timeline" | "traceability" | "treemap") || "timeline"
   );
-  const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [showConnections, setShowConnections] = useState<boolean>(true);
 
   useEffect(() => {
@@ -46,20 +48,9 @@ const UTXOMap: React.FC = () => {
     setSearchParams({ view });
   };
 
-  const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 0.2, 3));
-  };
-
-  const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 0.2, 0.3));
-  };
-
-  const handleResetView = () => {
-    setZoomLevel(1);
-  };
-
   const handleToggleConnections = () => {
     setShowConnections(prev => !prev);
+    toast.info(showConnections ? "Connections hidden" : "Connections visible");
   };
 
   if (!walletData) {
@@ -104,7 +95,7 @@ const UTXOMap: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="traceability" className="flex items-center gap-2">
             <Network className="h-4 w-4" />
-            <span>Traceability</span>
+            <span>Matrix</span>
           </TabsTrigger>
           <TabsTrigger value="treemap" className="flex items-center gap-2">
             <Grid className="h-4 w-4" />
@@ -117,42 +108,26 @@ const UTXOMap: React.FC = () => {
           <div className="flex flex-wrap justify-between items-center mb-4">
             <div className="text-sm text-muted-foreground">
               {activeView === "timeline" && "Timeline view shows your transactions chronologically, grouped by month."}
-              {activeView === "traceability" && "Traceability view shows relationships between your transactions."}
+              {activeView === "traceability" && "Matrix view shows relationships between addresses and transactions."}
               {activeView === "treemap" && "Treemap displays your UTXOs as proportionally sized tiles based on BTC amount."}
             </div>
             
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleToggleConnections}
-                className={showConnections ? "bg-primary/10" : ""}
-              >
-                {showConnections ? "Hide Connections" : "Show Connections"}
-              </Button>
-              
-              <Button variant="outline" size="icon" onClick={handleZoomOut} title="Zoom Out">
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              
-              <span className="text-xs px-2">{Math.round(zoomLevel * 100)}%</span>
-              
-              <Button variant="outline" size="icon" onClick={handleZoomIn} title="Zoom In">
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-              
-              <Button variant="outline" size="sm" onClick={handleResetView} className="ml-2">
-                Reset View
-              </Button>
-            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleToggleConnections}
+              className={showConnections ? "bg-primary/10" : ""}
+            >
+              {showConnections ? "Hide Connections" : "Show Connections"}
+            </Button>
           </div>
           
           <TabsContent value="timeline" className="animate-fade-in">
             <div className="h-[600px] overflow-hidden">
-              <TimelineTraceabilityGraph
+              <EnhancedTimelineView
                 utxos={walletData.utxos}
                 onSelectUtxo={handleUtxoSelect}
-                showConnections={showConnections}
+                selectedUtxo={selectedUtxo}
               />
             </div>
           </TabsContent>
@@ -160,13 +135,10 @@ const UTXOMap: React.FC = () => {
           <TabsContent value="traceability" className="animate-fade-in">
             <div className="h-[600px] overflow-hidden">
               {walletData.utxos.length > 0 ? (
-                <SimpleTraceabilityGraph
+                <ResponsiveTraceabilityMatrix
                   utxos={walletData.utxos}
                   onSelectUtxo={handleUtxoSelect}
-                  layout="vertical"
-                  zoomLevel={zoomLevel}
-                  showConnections={showConnections}
-                  animate={true}
+                  selectedUtxo={selectedUtxo}
                 />
               ) : (
                 <div className="h-full flex items-center justify-center bg-muted/20 rounded-md">
@@ -204,15 +176,11 @@ const UTXOMap: React.FC = () => {
           <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="p-2 bg-muted/30 rounded">
               <span className="text-sm font-medium">Amount:</span> 
-              <span className="ml-2 font-mono">{selectedUtxo.amount.toFixed(8)} BTC</span>
+              <span className="ml-2 font-mono">{formatBTC(selectedUtxo.amount, { trimZeros: true, minDecimals: 5 })}</span>
             </div>
             <div className="p-2 bg-muted/30 rounded">
               <span className="text-sm font-medium">Risk:</span>
-              <span className={`ml-2 ${
-                selectedUtxo.privacyRisk === 'high' ? 'text-red-500' : 
-                selectedUtxo.privacyRisk === 'medium' ? 'text-amber-500' : 
-                'text-green-500'
-              }`}>
+              <span className={`ml-2 ${getRiskTextColor(selectedUtxo.privacyRisk)}`}>
                 {selectedUtxo.privacyRisk.toUpperCase()}
               </span>
             </div>
@@ -220,6 +188,24 @@ const UTXOMap: React.FC = () => {
               <span className="text-sm font-medium">Wallet:</span>
               <span className="ml-2">{selectedUtxo.walletName || "Unknown"}</span>
             </div>
+            {selectedUtxo.tags.length > 0 && (
+              <div className="p-2 bg-muted/30 rounded">
+                <span className="text-sm font-medium">Tags:</span>
+                <span className="ml-2">{selectedUtxo.tags.join(", ")}</span>
+              </div>
+            )}
+            {selectedUtxo.acquisitionDate && (
+              <div className="p-2 bg-muted/30 rounded">
+                <span className="text-sm font-medium">Date:</span>
+                <span className="ml-2">{new Date(selectedUtxo.acquisitionDate).toLocaleDateString()}</span>
+              </div>
+            )}
+            {selectedUtxo.notes && (
+              <div className="p-2 bg-muted/30 rounded col-span-3">
+                <span className="text-sm font-medium">Notes:</span>
+                <div className="ml-2 mt-1 text-sm">{selectedUtxo.notes}</div>
+              </div>
+            )}
           </div>
         </div>
       )}
