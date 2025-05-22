@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { UTXO } from "@/types/utxo";
 import { format, parseISO, differenceInDays, addDays, addMonths, startOfMonth } from "date-fns";
@@ -25,6 +24,7 @@ import { toast } from "sonner";
 interface TimelineTraceabilityGraphProps {
   utxos: UTXO[];
   onSelectUtxo?: (utxo: UTXO | null) => void;
+  showConnections?: boolean; // Added this prop with an optional flag
 }
 
 // Interface for transaction node
@@ -63,7 +63,8 @@ interface TransactionLink {
 
 export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps> = ({ 
   utxos, 
-  onSelectUtxo 
+  onSelectUtxo,
+  showConnections: externalShowConnections // Accept the prop from parent
 }) => {
   // State for graph visualization
   const [transactions, setTransactions] = useState<TransactionNode[]>([]);
@@ -76,7 +77,11 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionNode | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
-  const [showConnections, setShowConnections] = useState(false);
+  
+  // Update the initialization of showConnections to use the prop if provided
+  const [showConnections, setShowConnections] = useState<boolean>(
+    externalShowConnections !== undefined ? externalShowConnections : false
+  );
   
   // Reference to the graph container
   const containerRef = useRef<HTMLDivElement>(null);
@@ -310,9 +315,13 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
     setPosition({ x: 0, y: 0 });
   };
   
+  // Update the toggleConnectionsView function to respect external control when available
   const toggleConnectionsView = () => {
-    setShowConnections(prev => !prev);
-    toast.info(showConnections ? "Address connections hidden" : "Address connections visible");
+    if (externalShowConnections === undefined) {
+      // Only toggle internally if not controlled externally
+      setShowConnections(prev => !prev);
+      toast.info(showConnections ? "Address connections hidden" : "Address connections visible");
+    }
   };
   
   // Handle panning
