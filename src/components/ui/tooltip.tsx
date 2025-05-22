@@ -36,11 +36,15 @@ const Tooltip = ({
   content?: React.ReactNode; // Making content optional
   className?: string;
 } & React.ComponentPropsWithoutRef<typeof TooltipRoot>) => {
+  // Ensure we're always passing a single child to TooltipTrigger when using asChild
+  // by wrapping the children in a Fragment when necessary
+  const triggerChildren = React.isValidElement(children) ? children : <span>{children}</span>;
+  
   return (
     <TooltipProvider>
       <TooltipRoot {...props}>
-        <TooltipTrigger asChild>{children}</TooltipTrigger>
-        {content && ( // Only render TooltipContent if content is provided
+        <TooltipTrigger asChild>{triggerChildren}</TooltipTrigger>
+        {content && (
           <TooltipContent className={className}>
             {content}
           </TooltipContent>
