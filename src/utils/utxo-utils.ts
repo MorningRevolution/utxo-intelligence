@@ -247,3 +247,68 @@ export const createDownloadableCSV = (data: any[]) => {
   const blob = new Blob([csvString], { type: 'text/csv' });
   return URL.createObjectURL(blob);
 };
+
+// Calculate the size of a node based on BTC amount
+export const calculateNodeSize = (amount: number, minSize: number = 40, maxSize: number = 120) => {
+  // Use logarithmic scale to prevent extremely large or small nodes
+  const logBase = 10;
+  const logMin = Math.log(0.001) / Math.log(logBase); // log_10(0.001) for small amounts
+  const logMax = Math.log(100) / Math.log(logBase);   // log_10(100) for large amounts
+  const logAmount = Math.log(Math.max(0.001, amount)) / Math.log(logBase);
+  
+  // Map the logarithmic value to the desired size range
+  const normalized = (logAmount - logMin) / (logMax - logMin);
+  return minSize + normalized * (maxSize - minSize);
+};
+
+// Group UTXOs by month for timeline visualization
+export const groupUtxosByMonth = (utxos: UTXO[]) => {
+  const groups: Record<string, UTXO[]> = {};
+  
+  utxos.forEach(utxo => {
+    const date = utxo.acquisitionDate ? new Date(utxo.acquisitionDate) : new Date();
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    
+    if (!groups[monthKey]) {
+      groups[monthKey] = [];
+    }
+    
+    groups[monthKey].push(utxo);
+  });
+  
+  // Sort keys chronologically
+  const sortedKeys = Object.keys(groups).sort();
+  
+  return { 
+    groups,
+    sortedKeys
+  };
+};
+
+// Find related UTXOs (inputs/outputs) for a given UTXO
+export const findRelatedUtxos = (utxo: UTXO, allUtxos: UTXO[]): { inputs: UTXO[], outputs: UTXO[] } => {
+  // This is a simplified implementation - in a real app, you would use transaction data
+  // to determine actual inputs and outputs
+  
+  const sameAddressUtxos = allUtxos.filter(u => 
+    u.txid !== utxo.txid && 
+    (u.address === utxo.address || 
+     (utxo.senderAddress && u.receiverAddress === utxo.senderAddress) || 
+     (utxo.receiverAddress && u.senderAddress === utxo.receiverAddress))
+  );
+  
+  // Sort by date to determine inputs vs outputs
+  const utxoDate = utxo.acquisitionDate ? new Date(utxo.acquisitionDate) : new Date();
+  
+  const inputs = sameAddressUtxos.filter(u => {
+    const uDate = u.acquisitionDate ? new Date(u.acquisitionDate) : new Date();
+    return uDate < utxoDate;
+  });
+  
+  const outputs = sameAddressUtxos.filter(u => {
+    const uDate = u.acquisitionDate ? new Date(u.acquisitionDate) : new Date();
+    return uDate > utxoDate;
+  });
+  
+  return { inputs, outputs };
+};

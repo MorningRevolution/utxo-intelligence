@@ -69,7 +69,7 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
   return (
     <div className="w-full">
       {view === 'table' && (
-        <div className="max-w-full overflow-x-auto">
+        <div className="w-full overflow-y-auto">
           <UTXOTableBody 
             filteredUtxos={filteredUtxos}
             walletData={walletData}
@@ -94,12 +94,20 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
         </div>
       )}
       {view === 'visual' && (
-        <div className="w-full h-[600px]">
-          <SimpleTraceabilityGraph 
-            utxos={filteredUtxos} 
-            onSelectUtxo={handleVisualSelect} 
-            layout="vertical"
-          />
+        <div className="w-full h-[600px] relative">
+          {filteredUtxos.length > 0 ? (
+            <SimpleTraceabilityGraph 
+              utxos={filteredUtxos} 
+              onSelectUtxo={handleVisualSelect} 
+              layout="vertical"
+              showConnections={true}
+              animate={true}
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-muted/20 rounded-md">
+              <p className="text-muted-foreground text-lg">No UTXOs to display. Try adjusting your filters.</p>
+            </div>
+          )}
         </div>
       )}
     </div>

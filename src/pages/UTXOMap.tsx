@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/store/WalletContext";
-import { Table, BarChart, Grid, CalendarDays, Network } from "lucide-react";
+import { Table, BarChart, Grid, CalendarDays, Network, ZoomIn, ZoomOut, ArrowLeft } from "lucide-react";
 import { UTXO } from "@/types/utxo";
 import { toast } from "sonner";
 import { TimelineTraceabilityGraph } from "@/components/utxo/TimelineTraceabilityGraph";
@@ -13,12 +13,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const UTXOMap: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { walletData, hasWallet } = useWallet();
   const [selectedUtxo, setSelectedUtxo] = useState<UTXO | null>(null);
-  const [activeView, setActiveView] = useState<"timeline" | "treemap" | "traceability">(
-    (searchParams.get("view") as "timeline" | "treemap" | "traceability") || "timeline"
+  const [activeView, setActiveView] = useState<"timeline" | "traceability" | "treemap">(
+    (searchParams.get("view") as "timeline" | "traceability" | "treemap") || "timeline"
   );
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [showConnections, setShowConnections] = useState<boolean>(true);
 
   useEffect(() => {
     if (!hasWallet) {
@@ -39,12 +41,26 @@ const UTXOMap: React.FC = () => {
   };
 
   // Handle view change with URL update
-  const handleViewChange = (view: "timeline" | "treemap" | "traceability") => {
+  const handleViewChange = (view: "timeline" | "traceability" | "treemap") => {
     setActiveView(view);
     // Update URL to reflect the current view
-    const url = new URL(window.location.href);
-    url.searchParams.set("view", view);
-    window.history.pushState({}, "", url);
+    setSearchParams({ view });
+  };
+
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 0.2, 3));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 0.2, 0.3));
+  };
+
+  const handleResetView = () => {
+    setZoomLevel(1);
+  };
+
+  const handleToggleConnections = () => {
+    setShowConnections(prev => !prev);
   };
 
   if (!walletData) {
@@ -79,7 +95,7 @@ const UTXOMap: React.FC = () => {
       <Tabs 
         defaultValue="timeline" 
         value={activeView}
-        onValueChange={(value) => handleViewChange(value as "timeline" | "treemap" | "traceability")}
+        onValueChange={(value) => handleViewChange(value as "timeline" | "traceability" | "treemap")}
         className="w-full"
       >
         <TabsList className="w-full max-w-md mx-auto grid grid-cols-3 mb-6">
@@ -98,60 +114,114 @@ const UTXOMap: React.FC = () => {
         </TabsList>
 
         <div className="bg-card rounded-lg shadow-lg p-2 md:p-4 mb-8">
-          <TabsContent value="timeline">
-            <p className="text-sm text-muted-foreground mb-4">
-              This timeline view shows your transactions chronologically, grouped by month.
-              Boxes represent transactions, sized by BTC amount and color-coded by risk level.
-              Toggle connections to see the flow of your funds between transactions over time.
-            </p>
+          {/* Visualization Controls */}
+          <div className="flex flex-wrap justify-between items-center mb-4">
+            <div className="text-sm text-muted-foreground">
+              {activeView === "timeline" && "Timeline view shows your transactions chronologically, grouped by month."}
+              {activeView === "traceability" && "Traceability view shows relationships between your transactions."}
+              {activeView === "treemap" && "Treemap displays your UTXOs as proportionally sized tiles based on BTC amount."}
+            </div>
             
-            <div className="h-[600px]">
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleToggleConnections}
+                className={showConnections ? "bg-primary/10" : ""}
+              >
+                {showConnections ? "Hide Connections" : "Show Connections"}
+              </Button>
+              
+              <Button variant="outline" size="icon" onClick={handleZoomOut} title="Zoom Out">
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              
+              <span className="text-xs px-2">{Math.round(zoomLevel * 100)}%</span>
+              
+              <Button variant="outline" size="icon" onClick={handleZoomIn} title="Zoom In">
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+              
+              <Button variant="outline" size="sm" onClick={handleResetView} className="ml-2">
+                Reset View
+              </Button>
+            </div>
+          </div>
+          
+          <TabsContent value="timeline" className="animate-fade-in">
+            <div className="h-[600px] overflow-hidden">
               <TimelineTraceabilityGraph
                 utxos={walletData.utxos}
                 onSelectUtxo={handleUtxoSelect}
+                zoomLevel={zoomLevel}
+                showConnections={showConnections}
               />
             </div>
           </TabsContent>
           
-          <TabsContent value="traceability">
-            <p className="text-sm text-muted-foreground mb-4">
-              This traceability graph shows relationships between your transactions.
-              Each node represents a transaction, sized by BTC amount and color-coded by risk level.
-              Use zoom and pan to explore the graph. Toggle connections to see relationships between transactions.
-            </p>
-            
-            <div className="h-[600px]">
-              <SimpleTraceabilityGraph
-                utxos={walletData.utxos}
-                onSelectUtxo={handleUtxoSelect}
-                layout="vertical"
-              />
+          <TabsContent value="traceability" className="animate-fade-in">
+            <div className="h-[600px] overflow-hidden">
+              {walletData.utxos.length > 0 ? (
+                <SimpleTraceabilityGraph
+                  utxos={walletData.utxos}
+                  onSelectUtxo={handleUtxoSelect}
+                  layout="horizontal"
+                  zoomLevel={zoomLevel}
+                  showConnections={showConnections}
+                  animate={true}
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center bg-muted/20 rounded-md">
+                  <p className="text-muted-foreground text-lg">No UTXOs available to display traceability.</p>
+                </div>
+              )}
             </div>
           </TabsContent>
           
-          <TabsContent value="treemap">
-            <p className="text-sm text-muted-foreground mb-4">
-              This visualization displays your UTXOs as proportionally sized tiles based on BTC amount and colored by privacy risk.
-              Use zoom and pan controls to explore your UTXOs in detail.
-            </p>
-            
-            <div className="h-[600px]">
-              <PrivacyTreemap
-                utxos={walletData.utxos}
-                onSelectUtxo={handleUtxoSelect}
-              />
+          <TabsContent value="treemap" className="animate-fade-in">
+            <div className="h-[600px] overflow-hidden">
+              {walletData.utxos.length > 0 ? (
+                <PrivacyTreemap
+                  utxos={walletData.utxos}
+                  onSelectUtxo={handleUtxoSelect}
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center bg-muted/20 rounded-md">
+                  <p className="text-muted-foreground text-lg">No UTXOs available to display in treemap.</p>
+                </div>
+              )}
             </div>
           </TabsContent>
         </div>
       </Tabs>
       
-      {/* Display selected UTXO information if needed */}
+      {/* Display selected UTXO information */}
       {selectedUtxo && (
         <div className="bg-card rounded-lg shadow-lg p-4 mb-8 animate-fade-in">
           <h2 className="text-lg font-bold mb-2">Selected UTXO</h2>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-sm">{selectedUtxo.txid}:{selectedUtxo.vout}</span>
+            <span className="font-mono text-sm break-all">{selectedUtxo.txid}:{selectedUtxo.vout}</span>
             <Button variant="outline" size="sm" onClick={() => setSelectedUtxo(null)}>Clear Selection</Button>
+          </div>
+          <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="p-2 bg-muted/30 rounded">
+              <span className="text-sm font-medium">Amount:</span> 
+              <span className="ml-2 font-mono">{selectedUtxo.amount.toFixed(8)} BTC</span>
+            </div>
+            <div className="p-2 bg-muted/30 rounded">
+              <span className="text-sm font-medium">Risk:</span>
+              <span className={`ml-2 ${
+                selectedUtxo.privacyRisk === 'high' ? 'text-red-500' : 
+                selectedUtxo.privacyRisk === 'medium' ? 'text-amber-500' : 
+                'text-green-500'
+              }`}>
+                {selectedUtxo.privacyRisk.toUpperCase()}
+              </span>
+            </div>
+            <div className="p-2 bg-muted/30 rounded">
+              <span className="text-sm font-medium">Wallet:</span>
+              <span className="ml-2">{selectedUtxo.walletName || "Unknown"}</span>
+            </div>
           </div>
         </div>
       )}
