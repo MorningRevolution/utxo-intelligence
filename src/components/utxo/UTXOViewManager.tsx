@@ -6,6 +6,8 @@ import { UTXOViewType } from "@/types/utxo-graph";
 import { SimpleTraceabilityGraph } from "./SimpleTraceabilityGraph";
 import { ResponsiveTraceabilityMatrix } from "./ResponsiveTraceabilityMatrix";
 import { EnhancedTimelineView } from "./EnhancedTimelineView";
+import { Tooltip } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 
 interface UTXOViewManagerProps {
   view: UTXOViewType;
@@ -68,8 +70,27 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
     }
   };
 
+  // View-specific tooltips to explain the visualization
+  const getViewTooltip = () => {
+    switch(view) {
+      case 'visual':
+        return "Matrix view shows relationships between transactions and addresses. Hover over nodes for details.";
+      case 'timeline':
+        return "Timeline view displays transactions chronologically by month. Size represents BTC amount.";
+      default:
+        return "Table view of all UTXOs. Click a row to select.";
+    }
+  };
+
   return (
     <div className="w-full">
+      <div className="mb-3 flex items-center">
+        <Tooltip content={getViewTooltip()}>
+          <Info className="h-4 w-4 text-muted-foreground mr-2" />
+        </Tooltip>
+        <p className="text-sm text-muted-foreground">{filteredUtxos.length} UTXOs shown</p>
+      </div>
+      
       {view === 'table' && (
         <div className="w-full">
           <UTXOTableBody 
@@ -96,7 +117,7 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
         </div>
       )}
       {view === 'visual' && (
-        <div className="w-full h-[600px] relative">
+        <div className="w-full h-[600px] relative overflow-hidden rounded-lg border">
           {filteredUtxos.length > 0 ? (
             <ResponsiveTraceabilityMatrix
               utxos={filteredUtxos} 
@@ -111,7 +132,7 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
         </div>
       )}
       {view === 'timeline' && (
-        <div className="w-full h-[600px] relative">
+        <div className="w-full h-[600px] relative overflow-hidden rounded-lg border">
           {filteredUtxos.length > 0 ? (
             <EnhancedTimelineView
               utxos={filteredUtxos}

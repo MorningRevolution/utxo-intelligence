@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/store/WalletContext";
-import { Table, BarChart, Grid, CalendarDays, Network, ZoomIn, ZoomOut, ArrowLeft } from "lucide-react";
+import { Table, BarChart, Grid, CalendarDays, Network, ZoomIn, ZoomOut, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { UTXO } from "@/types/utxo";
 import { toast } from "sonner";
 import { EnhancedTimelineView } from "@/components/utxo/EnhancedTimelineView";
@@ -12,6 +12,7 @@ import { PrivacyTreemap } from "@/components/utxo/PrivacyTreemap";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBTC } from "@/utils/utxo-utils";
 import { getRiskTextColor } from "@/utils/utxo-utils";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const UTXOMap: React.FC = () => {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ const UTXOMap: React.FC = () => {
     (searchParams.get("view") as "timeline" | "traceability" | "treemap") || "timeline"
   );
   const [showConnections, setShowConnections] = useState<boolean>(true);
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
 
   useEffect(() => {
     if (!hasWallet) {
@@ -53,6 +55,14 @@ const UTXOMap: React.FC = () => {
     toast.info(showConnections ? "Connections hidden" : "Connections visible");
   };
 
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 0.25, 2.5));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
+  };
+
   if (!walletData) {
     return (
       <div className="container px-4 md:px-8 py-6">
@@ -77,7 +87,8 @@ const UTXOMap: React.FC = () => {
             className="flex items-center gap-1"
           >
             <Table className="h-4 w-4" />
-            <span>View UTXO Table</span>
+            <span className="hidden sm:inline">View UTXO Table</span>
+            <span className="sm:hidden">Table</span>
           </Button>
         </div>
       </div>
@@ -91,15 +102,15 @@ const UTXOMap: React.FC = () => {
         <TabsList className="w-full max-w-md mx-auto grid grid-cols-3 mb-6">
           <TabsTrigger value="timeline" className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4" />
-            <span>Timeline</span>
+            <span className="hidden sm:inline">Timeline</span>
           </TabsTrigger>
           <TabsTrigger value="traceability" className="flex items-center gap-2">
             <Network className="h-4 w-4" />
-            <span>Matrix</span>
+            <span className="hidden sm:inline">Matrix</span>
           </TabsTrigger>
           <TabsTrigger value="treemap" className="flex items-center gap-2">
             <Grid className="h-4 w-4" />
-            <span>Treemap</span>
+            <span className="hidden sm:inline">Treemap</span>
           </TabsTrigger>
         </TabsList>
 
@@ -112,14 +123,50 @@ const UTXOMap: React.FC = () => {
               {activeView === "treemap" && "Treemap displays your UTXOs as proportionally sized tiles based on BTC amount."}
             </div>
             
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleToggleConnections}
-              className={showConnections ? "bg-primary/10" : ""}
-            >
-              {showConnections ? "Hide Connections" : "Show Connections"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Tooltip content="Zoom out">
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={handleZoomOut}
+                  disabled={zoomLevel <= 0.5}
+                  className="h-8 w-8"
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+              
+              <span className="text-xs font-mono bg-muted px-2 py-1 rounded">
+                {Math.round(zoomLevel * 100)}%
+              </span>
+              
+              <Tooltip content="Zoom in">
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={handleZoomIn}
+                  disabled={zoomLevel >= 2.5}
+                  className="h-8 w-8"
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+
+              <Tooltip content={showConnections ? "Hide connections" : "Show connections"}>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={handleToggleConnections}
+                  className={`h-8 w-8 ${showConnections ? "bg-primary/10" : ""}`}
+                >
+                  {showConnections ? (
+                    <Eye className="h-4 w-4" />
+                  ) : (
+                    <EyeOff className="h-4 w-4" />
+                  )}
+                </Button>
+              </Tooltip>
+            </div>
           </div>
           
           <TabsContent value="timeline" className="animate-fade-in">
@@ -128,6 +175,8 @@ const UTXOMap: React.FC = () => {
                 utxos={walletData.utxos}
                 onSelectUtxo={handleUtxoSelect}
                 selectedUtxo={selectedUtxo}
+                showConnections={showConnections}
+                zoomLevel={zoomLevel}
               />
             </div>
           </TabsContent>
@@ -139,6 +188,8 @@ const UTXOMap: React.FC = () => {
                   utxos={walletData.utxos}
                   onSelectUtxo={handleUtxoSelect}
                   selectedUtxo={selectedUtxo}
+                  showConnections={showConnections}
+                  zoomLevel={zoomLevel}
                 />
               ) : (
                 <div className="h-full flex items-center justify-center bg-muted/20 rounded-md">
@@ -154,6 +205,7 @@ const UTXOMap: React.FC = () => {
                 <PrivacyTreemap
                   utxos={walletData.utxos}
                   onSelectUtxo={handleUtxoSelect}
+                  zoomLevel={zoomLevel}
                 />
               ) : (
                 <div className="h-full flex items-center justify-center bg-muted/20 rounded-md">

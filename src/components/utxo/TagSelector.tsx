@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Check, Plus, Tag as TagIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,12 +14,13 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface TagSelectorProps {
   utxoId: string;
   onSelect: (tagId: string, remove?: boolean) => void;
   utxoTags: string[];
-  selectedTags?: string[]; // Added this prop to resolve the error
+  selectedTags?: string[];
   trigger?: React.ReactNode;
 }
 
@@ -26,7 +28,7 @@ export const TagSelector = ({
   utxoId, 
   onSelect, 
   utxoTags, 
-  selectedTags = [], // Added with a default empty array
+  selectedTags = [],
   trigger 
 }: TagSelectorProps) => {
   const { tags, addTag, walletData } = useWallet();
@@ -114,9 +116,9 @@ export const TagSelector = ({
   };
 
   const defaultTrigger = (
-    <div className="flex items-center cursor-pointer" tabIndex={0} data-testid="tag-selector-default-trigger">
-      <TagIcon className="h-4 w-4 mr-1" />
-      <span>Manage Tags</span>
+    <div className="flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-sm transition-colors hover:bg-primary/20" tabIndex={0} data-testid="tag-selector-default-trigger">
+      <TagIcon className="h-3 w-3" />
+      <span>Tags</span>
     </div>
   );
 
@@ -159,10 +161,10 @@ export const TagSelector = ({
           
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-1 gap-2">
-              <h4 className="font-medium text-foreground">Assign Tags</h4>
+              <h4 className="font-medium text-foreground text-sm">Assign Tags</h4>
               
-              <ScrollArea className="h-[180px] pr-4">
-                <div className="space-y-1">
+              <ScrollArea className="h-[180px] pr-4 border rounded-md">
+                <div className="space-y-1 p-2">
                   {tags.map((tag) => {
                     const isTagApplied = walletData?.utxos.find(u => u.txid === utxoId)?.tags.some(tagName => {
                       const existingTag = tags.find(t => t.name === tagName);
@@ -173,7 +175,7 @@ export const TagSelector = ({
                       <div 
                         key={tag.id} 
                         className={cn(
-                          "flex items-center justify-between p-2 rounded-md cursor-pointer hover:bg-muted/50",
+                          "flex items-center justify-between p-2 rounded-md cursor-pointer hover:bg-muted/50 transition-colors",
                           isTagApplied && "bg-muted"
                         )}
                         onClick={(e) => handleTagSelect(e, tag.id)}
@@ -200,7 +202,7 @@ export const TagSelector = ({
                   })}
                   
                   {tags.length === 0 && (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground p-2">
                       No tags available. Create your first tag below.
                     </p>
                   )}
@@ -209,7 +211,7 @@ export const TagSelector = ({
             </div>
             
             <div className="border-t border-border pt-4">
-              <h4 className="font-medium text-foreground mb-2">Create New Tag</h4>
+              <h4 className="font-medium text-foreground text-sm mb-2">Create New Tag</h4>
               <div className="flex flex-col gap-2">
                 <Input
                   placeholder="Tag name"
@@ -231,27 +233,28 @@ export const TagSelector = ({
                       "#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444",
                       "#6366f1", "#ec4899", "#f97316", "#06b6d4", "#14b8a6",
                     ].map((color) => (
-                      <div 
-                        key={color} 
-                        className={cn(
-                          "w-6 h-6 rounded-full cursor-pointer border-2",
-                          newTagColor === color ? "border-primary" : "border-transparent"
-                        )}
-                        style={{ backgroundColor: color }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setNewTagColor(color);
-                        }}
-                        data-testid={`tag-color-${color.substring(1)}`}
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
+                      <Tooltip key={color} content={color}>
+                        <div 
+                          className={cn(
+                            "w-6 h-6 rounded-full cursor-pointer border-2 transition-transform hover:scale-110",
+                            newTagColor === color ? "border-primary" : "border-transparent"
+                          )}
+                          style={{ backgroundColor: color }}
+                          onClick={(e) => {
                             e.stopPropagation();
                             setNewTagColor(color);
-                          }
-                        }}
-                      />
+                          }}
+                          data-testid={`tag-color-${color.substring(1)}`}
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setNewTagColor(color);
+                            }
+                          }}
+                        />
+                      </Tooltip>
                     ))}
                   </div>
                   

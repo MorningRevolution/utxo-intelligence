@@ -1,4 +1,3 @@
-
 import { UTXO } from "@/types/utxo";
 
 // Format BTC amount with options to trim trailing zeros and specify decimal places
@@ -38,31 +37,31 @@ export const calculateFiatValue = (btcAmount: number, btcPrice: number | null): 
   return btcAmount * btcPrice;
 };
 
-// Get badge style for risk level
+// Get badge style for risk level with modern color palette
 export const getRiskBadgeStyle = (risk: 'low' | 'medium' | 'high') => {
   switch (risk) {
     case 'high':
-      return 'bg-red-500/10 text-red-500 hover:bg-red-500/20';
+      return 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20';
     case 'medium':
       return 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20';
     case 'low':
-      return 'bg-green-500/10 text-green-500 hover:bg-green-500/20';
+      return 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20';
     default:
-      return 'bg-primary/10 text-primary hover:bg-primary/20';
+      return 'bg-slate-500/10 text-slate-500 hover:bg-slate-500/20';
   }
 };
 
-// Get color for risk level
+// Get color for risk level with modern color palette
 export const getRiskColor = (risk: 'low' | 'medium' | 'high') => {
   switch (risk) {
     case 'high':
-      return '#ea384c'; // Red
+      return '#f43f5e'; // rose-500
     case 'medium':
-      return '#f97316'; // Orange
+      return '#f59e0b'; // amber-500
     case 'low':
-      return '#10b981'; // Green
+      return '#10b981'; // emerald-500
     default:
-      return '#8E9196'; // Gray
+      return '#64748b'; // slate-500
   }
 };
 
@@ -70,13 +69,13 @@ export const getRiskColor = (risk: 'low' | 'medium' | 'high') => {
 export const getRiskTextColor = (risk: 'low' | 'medium' | 'high') => {
   switch (risk) {
     case 'high':
-      return 'text-red-500';
+      return 'text-rose-500';
     case 'medium':
       return 'text-amber-500';
     case 'low':
-      return 'text-green-500';
+      return 'text-emerald-500';
     default:
-      return 'text-gray-500';
+      return 'text-slate-500';
   }
 };
 
@@ -250,20 +249,20 @@ export const createDownloadableCSV = (data: any[]) => {
   return URL.createObjectURL(blob);
 };
 
-// Calculate the size of a node based on BTC amount
+// Calculate the size of a node based on BTC amount with enhanced logarithmic scaling
 export const calculateNodeSize = (amount: number, minSize: number = 40, maxSize: number = 120) => {
-  // Use logarithmic scale to prevent extremely large or small nodes
+  // Improved logarithmic scale for better visual representation
   const logBase = 10;
-  const logMin = Math.log(0.001) / Math.log(logBase); // log_10(0.001) for small amounts
-  const logMax = Math.log(100) / Math.log(logBase);   // log_10(100) for large amounts
-  const logAmount = Math.log(Math.max(0.001, amount)) / Math.log(logBase);
+  const logMin = Math.log(0.0001) / Math.log(logBase); // Support smaller amounts
+  const logMax = Math.log(100) / Math.log(logBase);   
+  const logAmount = Math.log(Math.max(0.0001, amount)) / Math.log(logBase);
   
-  // Map the logarithmic value to the desired size range
-  const normalized = (logAmount - logMin) / (logMax - logMin);
+  // Map the logarithmic value to the desired size range with a smoother curve
+  const normalized = Math.pow((logAmount - logMin) / (logMax - logMin), 0.8); // Slight power curve for better scaling
   return minSize + normalized * (maxSize - minSize);
 };
 
-// Group UTXOs by month for timeline visualization
+// Group UTXOs by month for timeline visualization with improved spacing
 export const groupUtxosByMonth = (utxos: UTXO[]) => {
   const groups: Record<string, UTXO[]> = {};
   
@@ -287,7 +286,7 @@ export const groupUtxosByMonth = (utxos: UTXO[]) => {
   };
 };
 
-// Find related UTXOs (inputs/outputs) for a given UTXO
+// Find related UTXOs with improved connection logic
 export const findRelatedUtxos = (utxo: UTXO, allUtxos: UTXO[]): { inputs: UTXO[], outputs: UTXO[] } => {
   // This is a simplified implementation - in a real app, you would use transaction data
   // to determine actual inputs and outputs
@@ -313,4 +312,233 @@ export const findRelatedUtxos = (utxo: UTXO, allUtxos: UTXO[]): { inputs: UTXO[]
   });
   
   return { inputs, outputs };
+};
+
+// New function for calculating curved connection paths between nodes
+export const calculateCurvedPath = (
+  x1: number, 
+  y1: number, 
+  x2: number, 
+  y2: number, 
+  curvature: number = 0.4
+): string => {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  
+  // Adjust curvature based on distance
+  const adjustedCurvature = Math.min(0.9, curvature * (1 + distance / 500));
+  
+  // Calculate control points for the curve
+  const mx = x1 + dx * 0.5;
+  const my = y1 + dy * 0.5;
+  
+  // Determine if curve should go clockwise or counter-clockwise
+  const sign = y2 > y1 ? 1 : -1;
+  
+  // Calculate control point offset
+  const controlX = mx - adjustedCurvature * dy * sign;
+  const controlY = my + adjustedCurvature * dx * sign;
+  
+  // Generate SVG path for a quadratic bezier curve
+  return `M${x1},${y1} Q${controlX},${controlY} ${x2},${y2}`;
+};
+
+// New helper for consistent UTXO size calculation across visualizations
+export const getUtxoSizeScale = (
+  utxos: UTXO[],
+  minSize: number = 24, 
+  maxSize: number = 100,
+  logarithmic: boolean = true
+) => {
+  // Find min/max BTC values
+  let minBtc = Math.min(...utxos.map(u => u.amount));
+  let maxBtc = Math.max(...utxos.map(u => u.amount));
+  
+  // Prevent division by zero
+  if (minBtc === maxBtc) {
+    return () => (minSize + maxSize) / 2;
+  }
+  
+  return (amount: number) => {
+    if (logarithmic) {
+      // Logarithmic scaling for better distribution
+      const logMin = Math.log(Math.max(0.0001, minBtc));
+      const logMax = Math.log(maxBtc);
+      const logVal = Math.log(Math.max(0.0001, amount));
+      
+      const normalized = (logVal - logMin) / (logMax - logMin);
+      return minSize + normalized * (maxSize - minSize);
+    } else {
+      // Linear scaling
+      const normalized = (amount - minBtc) / (maxBtc - minBtc);
+      return minSize + normalized * (maxSize - minSize);
+    }
+  };
+};
+
+// New function to generate a tooltip content for UTXO visualization
+export const getUtxoTooltipContent = (utxo: UTXO): string => {
+  // Format date if available
+  const dateStr = utxo.acquisitionDate 
+    ? new Date(utxo.acquisitionDate).toLocaleDateString() 
+    : 'Unknown date';
+  
+  // Format amount
+  const amountStr = formatBTC(utxo.amount, { trimZeros: true });
+  
+  // Create tooltip content with all relevant data
+  return `
+    <div class="p-2">
+      <div class="font-bold">${amountStr}</div>
+      <div class="text-xs opacity-80">${utxo.txid.substring(0, 8)}...${utxo.vout}</div>
+      <div class="text-xs">${dateStr}</div>
+      ${utxo.tags.length ? `<div class="text-xs mt-1">Tags: ${utxo.tags.join(', ')}</div>` : ''}
+      ${utxo.walletName ? `<div class="text-xs">Wallet: ${utxo.walletName}</div>` : ''}
+      <div class="text-xs font-medium mt-1">Risk: 
+        <span class="${getRiskTextColor(utxo.privacyRisk)}">
+          ${utxo.privacyRisk.toUpperCase()}
+        </span>
+      </div>
+    </div>
+  `;
+};
+
+// Calculate optimal spacing for timeline visualization
+export const calculateTimelineSpacing = (
+  utxos: UTXO[], 
+  containerWidth: number,
+  containerHeight: number
+): {
+  xScale: (date: Date) => number,
+  getTxHeight: (amount: number) => number,
+  monthWidth: number
+} => {
+  // Get the date range
+  const dates = utxos
+    .filter(u => u.acquisitionDate)
+    .map(u => new Date(u.acquisitionDate!));
+  
+  if (dates.length === 0) return { 
+    xScale: () => 0, 
+    getTxHeight: () => 40,
+    monthWidth: 200
+  };
+  
+  // Sort dates and find min/max
+  dates.sort((a, b) => a.getTime() - b.getTime());
+  const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
+  const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
+  
+  // Add padding of 1 month on each side
+  minDate.setMonth(minDate.getMonth() - 1);
+  maxDate.setMonth(maxDate.getMonth() + 1);
+  
+  // Calculate total months between min and max dates
+  const totalMonths = 
+    (maxDate.getFullYear() - minDate.getFullYear()) * 12 + 
+    (maxDate.getMonth() - minDate.getMonth());
+  
+  // Calculate month width with padding
+  const monthWidth = Math.max(200, containerWidth / Math.min(totalMonths, 12));
+  
+  // Create scale function to map dates to x positions
+  const xScale = (date: Date) => {
+    const monthsDiff = 
+      (date.getFullYear() - minDate.getFullYear()) * 12 + 
+      (date.getMonth() - minDate.getMonth());
+    
+    return monthsDiff * monthWidth + 100; // Add left padding
+  };
+  
+  // Create height scale based on BTC amount
+  const getTxHeight = (amount: number) => {
+    const minSize = 30;
+    const maxSize = 100;
+    
+    // Use logarithmic scale
+    const normalized = Math.log10(1 + amount * 10) / Math.log10(100);
+    return minSize + normalized * (maxSize - minSize);
+  };
+  
+  return { xScale, getTxHeight, monthWidth };
+};
+
+// Helper for modern matrix view layout
+export const generateMatrixLayout = (
+  utxos: UTXO[],
+  width: number,
+  height: number
+) => {
+  // Extract all unique addresses
+  const addresses = new Set<string>();
+  utxos.forEach(utxo => {
+    if (utxo.address) addresses.add(utxo.address);
+    if (utxo.senderAddress) addresses.add(utxo.senderAddress);
+    if (utxo.receiverAddress) addresses.add(utxo.receiverAddress);
+  });
+  
+  // Group transactions by address
+  const addressGroups: Record<string, UTXO[]> = {};
+  addresses.forEach(address => {
+    addressGroups[address] = utxos.filter(utxo => 
+      utxo.address === address || 
+      utxo.senderAddress === address || 
+      utxo.receiverAddress === address
+    );
+  });
+  
+  // Calculate importance score for each address (by number of connections and total BTC)
+  const addressImportance: Record<string, number> = {};
+  Object.entries(addressGroups).forEach(([address, utxos]) => {
+    const totalAmount = utxos.reduce((sum, u) => sum + u.amount, 0);
+    addressImportance[address] = utxos.length * totalAmount;
+  });
+  
+  // Sort addresses by importance
+  const sortedAddresses = Array.from(addresses).sort((a, b) => 
+    addressImportance[b] - addressImportance[a]
+  );
+  
+  // Calculate node positions
+  const nodePositions: Record<string, {x: number, y: number, size: number}> = {};
+  const txPositions: Record<string, {x: number, y: number, size: number}> = {};
+  
+  // Position addresses on the left side
+  const addressCount = sortedAddresses.length;
+  const addressSpacing = Math.min(50, height / (addressCount + 1));
+  
+  sortedAddresses.forEach((address, index) => {
+    nodePositions[`addr-${address}`] = {
+      x: 100,
+      y: (index + 1) * addressSpacing,
+      size: 8 + Math.sqrt(addressImportance[address]) * 2
+    };
+  });
+  
+  // Position transactions on the right side
+  const txIds = new Set<string>();
+  utxos.forEach(utxo => txIds.add(utxo.txid));
+  
+  const txCount = txIds.size;
+  const txSpacing = Math.min(50, height / (txCount + 1));
+  
+  Array.from(txIds).forEach((txid, index) => {
+    // Get all UTXOs for this transaction
+    const txUtxos = utxos.filter(u => u.txid === txid);
+    const totalAmount = txUtxos.reduce((sum, u) => sum + u.amount, 0);
+    
+    txPositions[`tx-${txid}`] = {
+      x: width - 100,
+      y: (index + 1) * txSpacing,
+      size: 10 + Math.sqrt(totalAmount) * 3
+    };
+  });
+  
+  return {
+    nodePositions,
+    txPositions,
+    sortedAddresses,
+    txIds: Array.from(txIds)
+  };
 };
