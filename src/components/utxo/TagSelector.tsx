@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Check, Plus, Tag as TagIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +18,7 @@ interface TagSelectorProps {
   utxoId: string;
   onSelect: (tagId: string, remove?: boolean) => void;
   utxoTags: string[];
+  selectedTags?: string[]; // Added this prop to resolve the error
   trigger?: React.ReactNode;
 }
 
@@ -26,6 +26,7 @@ export const TagSelector = ({
   utxoId, 
   onSelect, 
   utxoTags, 
+  selectedTags = [], // Added with a default empty array
   trigger 
 }: TagSelectorProps) => {
   const { tags, addTag, walletData } = useWallet();

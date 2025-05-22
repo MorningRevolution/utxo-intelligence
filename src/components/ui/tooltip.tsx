@@ -33,16 +33,18 @@ const Tooltip = ({
   ...props 
 }: { 
   children: React.ReactNode; 
-  content: React.ReactNode;
+  content?: React.ReactNode; // Making content optional
   className?: string;
 } & React.ComponentPropsWithoutRef<typeof TooltipRoot>) => {
   return (
     <TooltipProvider>
       <TooltipRoot {...props}>
         <TooltipTrigger asChild>{children}</TooltipTrigger>
-        <TooltipContent className={className}>
-          {content}
-        </TooltipContent>
+        {content && ( // Only render TooltipContent if content is provided
+          <TooltipContent className={className}>
+            {content}
+          </TooltipContent>
+        )}
       </TooltipRoot>
     </TooltipProvider>
   );

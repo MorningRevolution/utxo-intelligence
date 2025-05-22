@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { formatBTC, formatFiat, getRiskBadgeStyle, formatTxid } from "@/utils/utxo-utils";
 import { UTXO } from "@/types/utxo";
@@ -381,7 +380,8 @@ export const UTXOTableBody: React.FC<UTXOTableBodyProps> = ({
                       
                       {editableUtxo === utxo.txid && (
                         <TagSelector 
-                          selectedTags={utxo.tags}
+                          utxoId={utxo.txid}
+                          utxoTags={utxo.tags}
                           onSelect={(tagId) => handleTagSelection(utxo.txid, tagId)}
                         />
                       )}
