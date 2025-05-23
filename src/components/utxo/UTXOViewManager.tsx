@@ -6,6 +6,7 @@ import { UTXOViewType } from "@/types/utxo-graph";
 import { SimpleTraceabilityGraph } from "./SimpleTraceabilityGraph";
 import { ResponsiveTraceabilityMatrix } from "./ResponsiveTraceabilityMatrix";
 import { EnhancedTimelineView } from "./EnhancedTimelineView";
+import { PrivacyTreemap } from "./PrivacyTreemap";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
 
@@ -73,6 +74,8 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
   // View-specific tooltips to explain the visualization
   const getViewTooltip = () => {
     switch(view) {
+      case 'treemap':
+        return "Treemap view displays UTXOs by size, grouped by privacy risk level.";
       case 'visual':
         return "Matrix view shows relationships between transactions and addresses. Hover over nodes for details.";
       case 'timeline':
@@ -130,8 +133,8 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
               utxos={filteredUtxos} 
               onSelectUtxo={handleVisualSelect}
               selectedUtxo={selectedVisualUtxo}
-              showConnections={true}
-              zoomLevel={1}
+              initialShowConnections={true}
+              initialZoomLevel={1}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-muted/20 rounded-md">
@@ -147,8 +150,23 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
               utxos={filteredUtxos}
               onSelectUtxo={handleVisualSelect}
               selectedUtxo={selectedVisualUtxo}
-              showConnections={true}
-              zoomLevel={1}
+              initialShowConnections={true}
+              initialZoomLevel={1}
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-muted/20 rounded-md">
+              <p className="text-muted-foreground text-lg">No UTXOs to display. Try adjusting your filters.</p>
+            </div>
+          )}
+        </div>
+      )}
+      {view === 'treemap' && (
+        <div className="w-full h-[600px] relative overflow-hidden rounded-lg border">
+          {filteredUtxos.length > 0 ? (
+            <PrivacyTreemap
+              utxos={filteredUtxos}
+              onSelectUtxo={handleVisualSelect}
+              initialZoomLevel={1}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-muted/20 rounded-md">

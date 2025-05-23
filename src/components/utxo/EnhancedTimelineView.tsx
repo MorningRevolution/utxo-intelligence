@@ -1,24 +1,32 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { UTXO } from "@/types/utxo";
 import { ZoomIn, ZoomOut, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getRiskColor, formatBTC, calculateTimelineSpacing, groupUtxosByMonth, calculateCurvedPath } from "@/utils/utxo-utils";
 import { toast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { format } from "date-fns";
 
 interface EnhancedTimelineViewProps {
   utxos: UTXO[];
   onSelectUtxo?: (utxo: UTXO | null) => void;
   selectedUtxo?: UTXO | null;
-  showConnections?: boolean;
-  zoomLevel?: number;
+  initialShowConnections?: boolean;
+  initialZoomLevel?: number;
 }
 
 export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
   utxos,
   onSelectUtxo,
   selectedUtxo,
-  showConnections: initialShowConnections = true,
-  zoomLevel: initialZoomLevel = 1
+  initialShowConnections = true,
+  initialZoomLevel = 1
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -254,6 +262,17 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
     return date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
   };
 
+  // Helper function to format transaction dates
+  const formatTxDate = (dateStr?: string) => {
+    if (!dateStr) return "Unknown";
+    try {
+      const date = new Date(dateStr);
+      return format(date, "MMM d, yyyy");
+    } catch (e) {
+      return "Invalid Date";
+    }
+  };
+
   return (
     <div className="relative h-full w-full overflow-hidden">
       {/* Visualization controls */}
@@ -292,7 +311,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
       {/* Timeline visualization */}
       <div 
         ref={containerRef}
-        className="h-full w-full cursor-grab active:cursor-grabbing"
+        className="h-full w-full cursor-grab active:cursor-grabbing bg-muted/10"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -310,6 +329,24 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
             transition: isDragging ? 'none' : 'transform 0.1s ease'
           }}
         >
+          <defs>
+            <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.3" />
+            </filter>
+            
+            <marker
+              id="arrowhead"
+              markerWidth="6"
+              markerHeight="4"
+              refX="6"
+              refY="2"
+              orient="auto"
+              fill="currentColor"
+            >
+              <path d="M0,0 L6,2 L0,4 Z" />
+            </marker>
+          </defs>
+          
           {/* Month separators and labels */}
           {monthGroups.sortedKeys.map((monthKey, index) => {
             const x = index * 200;
@@ -332,6 +369,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
                   y={30} 
                   textAnchor="middle" 
                   className="fill-foreground text-sm font-medium"
+                  style={{ filter: "drop-shadow(0px 1px 1px rgba(0,0,0,0.2))" }}
                 >
                   {formatMonthLabel(monthKey)}
                 </text>
@@ -344,80 +382,103 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
                   
                   // Calculate position within month column
                   const nodeX = x + 100; // Center of month column
-                  const nodeY = 100 + (utxoIndex * 60) % 400; // Distribute vertically
+                  const nodeY = 100 + (utxoIndex * 60) % 400; // Distribute vertically with wrapping
                   
                   return (
-                    <g 
-                      key={`utxo-${utxo.txid}-${utxo.vout}`}
-                      transform={`translate(${nodeX}, ${nodeY})`}
-                      onClick={() => handleUtxoClick(utxo)}
-                      onMouseEnter={() => handleUtxoMouseEnter(utxo)}
-                      onMouseLeave={handleUtxoMouseLeave}
-                      className="cursor-pointer"
-                    >
-                      {/* UTXO node circle */}
-                      <circle
-                        r={nodeSize / 2}
-                        fill={getNodeColor(utxo.privacyRisk, isSelected, isHovered)}
-                        stroke={isSelected ? "white" : "transparent"}
-                        strokeWidth={isSelected ? 2 : 0}
-                        className="transition-all duration-200"
-                      />
-                      
-                      {/* UTXO amount label */}
-                      <text
-                        y={4}
-                        textAnchor="middle"
-                        className="fill-white text-xs font-medium"
-                        style={{ pointerEvents: 'none' }}
-                      >
-                        {formatBTC(utxo.amount, { trimZeros: true, maxDecimals: 4 })}
-                      </text>
-                      
-                      {/* UTXO txid label (only show when selected or hovered) */}
-                      {(isSelected || isHovered) && (
-                        <text
-                          y={nodeSize / 2 + 16}
-                          textAnchor="middle"
-                          className="fill-muted-foreground text-xs"
-                          style={{ pointerEvents: 'none' }}
-                        >
-                          {`${utxo.txid.substring(0, 6)}...${utxo.vout}`}
-                        </text>
-                      )}
-                    </g>
+                    <TooltipProvider key={`utxo-${utxo.txid}-${utxo.vout}`}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <g 
+                            transform={`translate(${nodeX}, ${nodeY})`}
+                            onClick={() => handleUtxoClick(utxo)}
+                            onMouseEnter={() => handleUtxoMouseEnter(utxo)}
+                            onMouseLeave={handleUtxoMouseLeave}
+                            className="cursor-pointer"
+                          >
+                            {/* UTXO node circle with drop shadow */}
+                            <circle
+                              r={nodeSize / 2}
+                              fill={getNodeColor(utxo.privacyRisk, isSelected, isHovered)}
+                              stroke={isSelected ? "white" : "rgba(255,255,255,0.5)"}
+                              strokeWidth={isSelected ? 2 : 1}
+                              className="transition-all duration-200"
+                              style={{ filter: "url(#dropShadow)" }}
+                            />
+                            
+                            {/* UTXO amount label */}
+                            <text
+                              y={4}
+                              textAnchor="middle"
+                              className="fill-white text-xs font-medium"
+                              style={{ 
+                                pointerEvents: 'none',
+                                textShadow: "0px 1px 2px rgba(0,0,0,0.5)",
+                              }}
+                            >
+                              {formatBTC(utxo.amount, { trimZeros: true, maxDecimals: 4 })}
+                            </text>
+                            
+                            {/* UTXO txid label (only show when selected or hovered) */}
+                            {(isSelected || isHovered) && (
+                              <text
+                                y={nodeSize / 2 + 16}
+                                textAnchor="middle"
+                                className="fill-background text-xs font-medium"
+                                style={{ 
+                                  pointerEvents: 'none',
+                                  textShadow: "0px 0px 3px rgba(255,255,255,0.9)",
+                                }}
+                              >
+                                {`${utxo.txid.substring(0, 6)}...${utxo.vout}`}
+                              </text>
+                            )}
+                          </g>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs z-50">
+                          <div className="space-y-1">
+                            <p className="font-medium">
+                              {formatBTC(utxo.amount)} 
+                              <span className="text-muted-foreground ml-1 text-xs">(vout: {utxo.vout})</span>
+                            </p>
+                            <p className="text-xs text-muted-foreground break-all">{utxo.txid}</p>
+                            <div className="text-xs pt-1">
+                              <p><span className="font-medium">Date:</span> {formatTxDate(utxo.acquisitionDate)}</p>
+                              {utxo.walletName && <p><span className="font-medium">Wallet:</span> {utxo.walletName}</p>}
+                              {utxo.notes && <p><span className="font-medium">Notes:</span> {utxo.notes}</p>}
+                            </div>
+                            <div className="pt-1">
+                              <span className={`text-xs rounded px-1.5 py-0.5 font-medium ${
+                                utxo.privacyRisk === 'high' ? 'bg-red-100 text-red-800' : 
+                                utxo.privacyRisk === 'medium' ? 'bg-amber-100 text-amber-800' : 
+                                'bg-green-100 text-green-800'
+                              }`}>
+                                {utxo.privacyRisk.toUpperCase()} RISK
+                              </span>
+                            </div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   );
                 })}
               </g>
             );
           })}
           
-          {/* Connection lines between related UTXOs */}
+          {/* Connection lines between related UTXOs - rendered on top for better visibility */}
           {showConnections && connections.map((conn, index) => (
             <path
               key={`conn-${index}`}
               d={conn.path}
               stroke={getRiskColor(conn.risk)}
-              strokeWidth={conn.source === hoveredUtxo || conn.target === hoveredUtxo ? 2 : 1}
-              strokeOpacity={conn.source === hoveredUtxo || conn.target === hoveredUtxo ? 0.8 : 0.4}
+              strokeWidth={conn.source === hoveredUtxo || conn.target === hoveredUtxo ? 3 : 1.5}
+              strokeOpacity={conn.source === hoveredUtxo || conn.target === hoveredUtxo ? 0.9 : 0.5}
               fill="none"
               markerEnd="url(#arrowhead)"
+              style={{ pointerEvents: "none" }}
+              className="transition-opacity duration-200"
             />
           ))}
-          
-          {/* Arrow marker definition */}
-          <defs>
-            <marker
-              id="arrowhead"
-              markerWidth="6"
-              markerHeight="4"
-              refX="5"
-              refY="2"
-              orient="auto"
-            >
-              <path d="M0,0 L6,2 L0,4 Z" fill="currentColor" />
-            </marker>
-          </defs>
         </svg>
       </div>
       

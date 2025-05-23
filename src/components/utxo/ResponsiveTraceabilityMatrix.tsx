@@ -1,26 +1,31 @@
-
 import React, { useState, useEffect, useRef } from "react";
-import { toast } from "sonner";
-import { ZoomIn, ZoomOut, ArrowLeft } from "lucide-react";
 import { UTXO } from "@/types/utxo";
 import { MatrixNode, MatrixConnection } from "@/types/utxo-graph";
-import { formatBTC, formatTxid, getRiskColor } from "@/utils/utxo-utils";
+import { ZoomIn, ZoomOut, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getRiskColor, formatBTC } from "@/utils/utxo-utils";
+import { toast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ResponsiveTraceabilityMatrixProps {
   utxos: UTXO[];
   onSelectUtxo?: (utxo: UTXO | null) => void;
   selectedUtxo?: UTXO | null;
-  showConnections?: boolean;
-  zoomLevel?: number;
+  initialShowConnections?: boolean;
+  initialZoomLevel?: number;
 }
 
 export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrixProps> = ({
   utxos,
   onSelectUtxo,
   selectedUtxo,
-  showConnections: initialShowConnections = true,
-  zoomLevel: initialZoomLevel = 1
+  initialShowConnections = true,
+  initialZoomLevel = 1
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [nodes, setNodes] = useState<MatrixNode[]>([]);
@@ -28,10 +33,10 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [showConnections, setShowConnections] = useState(initialShowConnections);
+  const [showConnectionsState, setShowConnectionsState] = useState(initialShowConnections);
+  const [zoomLevel, setZoomLevel] = useState(initialZoomLevel);
   const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(new Set());
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
-  const [zoomLevel, setZoomLevel] = useState(initialZoomLevel);
   
   // Process UTXOs into a Sankey-style matrix layout
   useEffect(() => {
@@ -90,7 +95,8 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
     // Create input nodes (sender addresses)
     inputAddresses.forEach(([address, data], idx) => {
       const totalAmount = data.inputs.reduce((sum, u) => sum + u.amount, 0);
-      const height = Math.max(nodeHeight, Math.min(100, 40 + Math.log10(1 + totalAmount) * 20));
+      // Dynamic height based on BTC amount with logarithmic scale
+      const height = Math.max(nodeHeight, Math.min(120, 40 + Math.log10(1 + totalAmount) * 25));
       
       matrixNodes.push({
         id: `input-${address}`,
@@ -116,10 +122,11 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
     
     yPos = 20;
     
-    // Create transaction nodes
+    // Create transaction nodes with dynamic height based on total BTC
     transactions.forEach(([txid, txUtxos]) => {
       const totalAmount = txUtxos.reduce((sum, u) => sum + u.amount, 0);
-      const height = Math.max(nodeHeight, Math.min(100, 40 + Math.log10(1 + totalAmount) * 20));
+      // Enhanced dynamic height based on BTC amount with logarithmic scale
+      const height = Math.max(nodeHeight, Math.min(150, 40 + Math.log10(1 + totalAmount) * 30));
       
       matrixNodes.push({
         id: `tx-${txid}`,
@@ -146,10 +153,11 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
     
     yPos = 20;
     
-    // Create output nodes (receiver addresses)
+    // Create output nodes with dynamic height based on total BTC
     outputAddresses.forEach(([address, data]) => {
       const totalAmount = data.outputs.reduce((sum, u) => sum + u.amount, 0);
-      const height = Math.max(nodeHeight, Math.min(100, 40 + Math.log10(1 + totalAmount) * 20));
+      // Dynamic height based on BTC amount with logarithmic scale
+      const height = Math.max(nodeHeight, Math.min(120, 40 + Math.log10(1 + totalAmount) * 25));
       
       matrixNodes.push({
         id: `output-${address}`,
@@ -180,13 +188,18 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
         const txUtxos = data.inputs.filter(u => u.txid === txid);
         const totalAmount = txUtxos.reduce((sum, u) => sum + u.amount, 0);
         
-        // Create bezier curve path
+        // Create bezier curve path - improved to reduce overlaps
         const sourceX = inputNode.x + inputNode.width;
         const sourceY = inputNode.y + inputNode.height / 2;
         const targetX = txNode.x;
         const targetY = txNode.y + txNode.height / 2;
         
-        const path = generateCurvePath(sourceX, sourceY, targetX, targetY);
+        // Adjust control points based on vertical distance to create smoother curves
+        const verticalDistance = Math.abs(sourceY - targetY);
+        const horizontalDistance = targetX - sourceX;
+        const curveStrength = Math.min(0.5, Math.max(0.2, verticalDistance / 200));
+        
+        const path = generateCurvePath(sourceX, sourceY, targetX, targetY, curveStrength);
         
         // Find highest risk level among UTXOs
         let highestRisk: 'low' | 'medium' | 'high' = 'low';
@@ -229,13 +242,18 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
         
         const totalAmount = addressUtxos.reduce((sum, u) => sum + u.amount, 0);
         
-        // Create bezier curve path
+        // Create bezier curve path - improved to reduce overlaps
         const sourceX = txNode.x + txNode.width;
         const sourceY = txNode.y + txNode.height / 2;
         const targetX = outputNode.x;
         const targetY = outputNode.y + outputNode.height / 2;
         
-        const path = generateCurvePath(sourceX, sourceY, targetX, targetY);
+        // Adjust control points based on vertical distance to create smoother curves
+        const verticalDistance = Math.abs(sourceY - targetY);
+        const horizontalDistance = targetX - sourceX;
+        const curveStrength = Math.min(0.5, Math.max(0.2, verticalDistance / 200));
+        
+        const path = generateCurvePath(sourceX, sourceY, targetX, targetY, curveStrength);
         
         // Find highest risk level among UTXOs
         let highestRisk: 'low' | 'medium' | 'high' = 'low';
@@ -257,20 +275,15 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
     
     setNodes(matrixNodes);
     setConnections(matrixConnections);
-    
-    // Reset view when data changes
-    if (matrixNodes.length > 0) {
-      setPosition({ x: 0, y: 0 });
-      setZoomLevel(1);
-    }
   }, [utxos]);
   
   // Generate a smooth curved path between two points
-  const generateCurvePath = (x1: number, y1: number, x2: number, y2: number) => {
+  const generateCurvePath = (x1: number, y1: number, x2: number, y2: number, curveStrength = 0.3) => {
     const dx = x2 - x1;
-    const midX = x1 + dx * 0.5;
+    const cp1x = x1 + dx * curveStrength;
+    const cp2x = x2 - dx * curveStrength;
     
-    return `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
+    return `M ${x1} ${y1} C ${cp1x} ${y1}, ${cp2x} ${y2}, ${x2} ${y2}`;
   };
   
   // Handle mouse events for pan and zoom
@@ -319,8 +332,8 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
   };
   
   const toggleConnections = () => {
-    setShowConnections(prev => !prev);
-    toast.info(showConnections ? "Connections hidden" : "Connections visible");
+    setShowConnectionsState(prev => !prev);
+    toast.info(showConnectionsState ? "Connections hidden" : "Connections visible");
   };
   
   // Handle node selection
@@ -329,7 +342,7 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
     
     // For input/output nodes, we don't have a specific UTXO to select
     if (node.type === 'transaction') {
-      const txData = node.data;
+      const txData = node.data as { txid: string; utxos: UTXO[] };
       if (txData.utxos.length > 0) {
         // Select the first UTXO from this transaction
         if (selectedUtxo && 
@@ -375,6 +388,26 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
   const isConnectionHighlighted = (conn: MatrixConnection) => {
     return hoveredNode !== null && 
            (conn.source === hoveredNode || conn.target === hoveredNode);
+  };
+  
+  // Format transaction ID for display
+  const formatTxid = (txid: string, length = 8) => {
+    if (txid.length <= length * 2) return txid;
+    return `${txid.substring(0, length)}...${txid.substring(txid.length - length)}`;
+  };
+  
+  // Format BTC amount for display
+  const formatBtcAmount = (amount: number) => {
+    // If less than 0.001, show with more decimals
+    if (amount < 0.001) {
+      return amount.toFixed(8).replace(/\.?0+$/, '');
+    }
+    // If less than 0.1, show with fewer decimals
+    if (amount < 0.1) {
+      return amount.toFixed(5).replace(/\.?0+$/, '');
+    }
+    // Otherwise show with 4 decimals max
+    return amount.toFixed(4).replace(/\.?0+$/, '');
   };
   
   // Get node color based on type and risk
@@ -449,9 +482,13 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
           variant="outline"
           size="sm"
           onClick={toggleConnections}
-          className={showConnections ? "bg-primary/10" : ""}
+          className={showConnectionsState ? "bg-primary/10" : ""}
         >
-          {showConnections ? "Hide Connections" : "Show Connections"}
+          {showConnectionsState ? (
+            <><Eye className="h-4 w-4 mr-1" /> Hide Connections</>
+          ) : (
+            <><EyeOff className="h-4 w-4 mr-1" /> Show Connections</>
+          )}
         </Button>
         
         <Button variant="outline" size="icon" onClick={handleZoomOut} title="Zoom Out">
@@ -506,8 +543,36 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
             transition: isDragging ? 'none' : 'transform 0.1s ease'
           }}
         >
-          {/* Connection lines */}
-          {showConnections && connections.map((conn, index) => (
+          <defs>
+            <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.3" />
+            </filter>
+            
+            <marker
+              id="arrowhead"
+              markerWidth="6"
+              markerHeight="4"
+              refX="6"
+              refY="2"
+              orient="auto"
+            >
+              <path d="M0,0 L6,2 L0,4 Z" fill="currentColor" />
+            </marker>
+            
+            <marker
+              id="arrowhead-highlighted"
+              markerWidth="8"
+              markerHeight="6"
+              refX="8"
+              refY="3"
+              orient="auto"
+            >
+              <path d="M0,0 L8,3 L0,6 Z" fill="currentColor" />
+            </marker>
+          </defs>
+          
+          {/* Connection lines - render beneath nodes */}
+          {showConnectionsState && connections.map((conn, index) => (
             <path
               key={`conn-${index}`}
               d={conn.path}
@@ -516,101 +581,135 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
               strokeOpacity={isConnectionHighlighted(conn) ? 1 : 0.7}
               fill="none"
               markerEnd={isConnectionHighlighted(conn) ? "url(#arrowhead-highlighted)" : "url(#arrowhead)"}
-              className={`transition-all duration-200 ${isConnectionHighlighted(conn) ? 'z-10' : 'z-0'}`}
+              className={`transition-all duration-200`}
             />
           ))}
           
           {/* Matrix nodes */}
           {nodes.map((node) => {
             const isHighlight = isHighlighted(node.id);
-            const isSelected = selectedUtxo && node.type === 'transaction' && 
+            const isNodeSelected = selectedUtxo && node.type === 'transaction' && 
                               (node.data as { txid: string }).txid === selectedUtxo.txid;
-            const label = getNodeLabel(node);
-                              
+            
+            const nodeColor = getNodeColor(node);
+            const nodeLabel = getNodeLabel(node);
+            const isAddressNode = node.type === 'input' || node.type === 'output';
+            
             return (
-              <g 
-                key={node.id} 
-                transform={`translate(${node.x}, ${node.y})`}
-                onClick={() => handleNodeClick(node)}
-                onMouseEnter={() => handleNodeMouseEnter(node.id)}
-                onMouseLeave={handleNodeMouseLeave}
-                className="cursor-pointer"
-                style={{ transition: 'all 0.2s ease' }}
-              >
-                {/* Node background */}
-                <rect
-                  width={node.width}
-                  height={node.height}
-                  rx={5}
-                  fill={getNodeColor(node)}
-                  fillOpacity={isHighlight || isSelected ? 1 : 0.8}
-                  stroke={isSelected ? '#ffffff' : isHighlight ? '#ffffff' : 'transparent'}
-                  strokeWidth={isSelected || isHighlight ? 2 : 0}
-                  className={`transition-all duration-200 ${isSelected || isHighlight ? 'shadow-lg' : ''}`}
-                />
-                
-                {/* Node title */}
-                <text
-                  x={10}
-                  y={16}
-                  className="fill-white text-xs font-bold"
-                >
-                  {label.title}
-                </text>
-                
-                {/* Node subtitle */}
-                <text
-                  x={10}
-                  y={32}
-                  className="fill-white text-xs opacity-80"
-                >
-                  {label.subtitle}
-                </text>
-                
-                {/* Node amount */}
-                <text
-                  x={node.width - 10}
-                  y={node.height - 12}
-                  textAnchor="end"
-                  className="fill-white text-xs font-medium"
-                >
-                  {label.amount}
-                </text>
-              </g>
+              <TooltipProvider key={node.id}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <g
+                      transform={`translate(${node.x}, ${node.y})`}
+                      onClick={() => handleNodeClick(node)}
+                      onMouseEnter={() => handleNodeMouseEnter(node.id)}
+                      onMouseLeave={handleNodeMouseLeave}
+                      className="cursor-pointer transition-opacity duration-200"
+                      style={{ 
+                        opacity: hoveredNode && !isHighlight ? 0.6 : 1,
+                        filter: isHighlight ? 'url(#dropShadow)' : 'none'
+                      }}
+                    >
+                      {/* Node background */}
+                      <rect
+                        width={node.width}
+                        height={node.height}
+                        rx={6}
+                        fill={nodeColor}
+                        stroke={isHighlight ? "#ffffff" : "rgba(255,255,255,0.2)"}
+                        strokeWidth={isHighlight ? 2 : 1}
+                        className="transition-all duration-200"
+                      />
+                      
+                      {/* Node title - address or transaction ID */}
+                      <text
+                        x={node.width / 2}
+                        y={20}
+                        textAnchor="middle"
+                        className={`text-sm font-medium ${isAddressNode ? 'fill-slate-800' : 'fill-white'}`}
+                      >
+                        {nodeLabel.title}
+                      </text>
+                      
+                      {/* Node subtitle - number of UTXOs */}
+                      <text
+                        x={node.width / 2}
+                        y={40}
+                        textAnchor="middle"
+                        className={`text-xs ${isAddressNode ? 'fill-slate-700' : 'fill-white/80'}`}
+                      >
+                        {nodeLabel.subtitle}
+                      </text>
+                      
+                      {/* BTC amount */}
+                      <text
+                        x={node.width / 2}
+                        y={node.height - 15}
+                        textAnchor="middle"
+                        className={`text-sm font-bold ${isAddressNode ? 'fill-slate-900' : 'fill-white'}`}
+                      >
+                        {nodeLabel.amount}
+                      </text>
+                      
+                      {/* Selected indicator */}
+                      {isNodeSelected && (
+                        <rect
+                          x={node.width - 15}
+                          y={5}
+                          width={10}
+                          height={10}
+                          rx={5}
+                          fill="white"
+                        />
+                      )}
+                    </g>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-sm">
+                    <div className="space-y-1">
+                      {node.type === 'transaction' ? (
+                        <>
+                          <p className="font-bold">Transaction</p>
+                          <p className="text-xs text-muted-foreground break-all">
+                            {(node.data as { txid: string }).txid}
+                          </p>
+                          <div className="border-t my-1 pt-1">
+                            <p>
+                              <span className="font-medium">Total BTC:</span> {nodeLabel.amount}
+                            </p>
+                            <p>
+                              <span className="font-medium">UTXOs:</span> {(node.data as { utxos: UTXO[] }).utxos.length}
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-bold">{node.type === 'input' ? 'Sending' : 'Receiving'} Address</p>
+                          <p className="text-xs text-muted-foreground break-all">
+                            {(node.data as { txid: string }).txid}
+                          </p>
+                          <div className="border-t my-1 pt-1">
+                            <p>
+                              <span className="font-medium">Total BTC:</span> {nodeLabel.amount}
+                            </p>
+                            <p>
+                              <span className="font-medium">UTXOs:</span> {(node.data as { utxos: UTXO[] }).utxos.length}
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             );
           })}
-          
-          {/* Arrow markers for connections */}
-          <defs>
-            <marker
-              id="arrowhead"
-              markerWidth="6"
-              markerHeight="4"
-              refX="5"
-              refY="2"
-              orient="auto"
-            >
-              <path d="M0,0 L6,2 L0,4 Z" fill="rgba(107, 114, 128, 0.8)" />
-            </marker>
-            
-            <marker
-              id="arrowhead-highlighted"
-              markerWidth="8"
-              markerHeight="6"
-              refX="7"
-              refY="3"
-              orient="auto"
-            >
-              <path d="M0,0 L8,3 L0,6 Z" fill="#ffffff" />
-            </marker>
-          </defs>
         </svg>
       </div>
       
       {/* Empty state */}
-      {nodes.length === 0 && (
+      {utxos.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted/20">
-          <p className="text-muted-foreground text-lg">No UTXO data available for visualization.</p>
+          <p className="text-muted-foreground text-lg">No UTXO data available for matrix visualization.</p>
         </div>
       )}
     </div>
