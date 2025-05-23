@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { UTXO } from "@/types/utxo";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -164,6 +165,13 @@ export const UTXOTableBody: React.FC<UTXOTableBodyProps> = ({
         <ChevronDown className="h-4 w-4" />;
     }
     return null;
+  };
+
+  // Create a wrapper function for tag selection to match the expected signature
+  const createTagSelectorHandler = (utxoId: string) => {
+    return (tagId: string, remove?: boolean) => {
+      handleTagSelection(utxoId, tagId, remove);
+    };
   };
 
   return (
@@ -496,7 +504,7 @@ export const UTXOTableBody: React.FC<UTXOTableBodyProps> = ({
                     <TableCell>
                       <TagSelector
                         utxoId={`${utxo.txid}-${utxo.vout}`}
-                        onSelect={handleTagSelection}
+                        onSelect={createTagSelectorHandler(`${utxo.txid}-${utxo.vout}`)}
                         utxoTags={utxo.tags}
                         selectedTags={utxo.tags}
                         availableTags={walletData.tags}
@@ -579,7 +587,7 @@ export const UTXOTableBody: React.FC<UTXOTableBodyProps> = ({
                 <TableCell colSpan={12} className="text-center py-8">
                   <div className="text-muted-foreground">No UTXOs found matching the current filters.</div>
                 </TableCell>
-              </TableRow>
+              )}
             )}
           </TableBody>
         </Table>

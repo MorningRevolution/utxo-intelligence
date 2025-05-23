@@ -1,3 +1,4 @@
+
 import { UTXO } from "./utxo";
 
 export interface GraphNode {
@@ -168,23 +169,25 @@ export interface MatrixConnection {
   riskLevel: 'low' | 'medium' | 'high';
 }
 
-// Define new interfaces for the visualization components
+// Define new interfaces for the visualization components with proper props
 export interface EnhancedTimelineViewProps {
   utxos: UTXO[];
   onSelectUtxo?: (utxo: UTXO | null) => void;
   selectedUtxo?: UTXO | null;
-  initialShowConnections?: boolean;
-  initialZoomLevel?: number;
-  showConnections?: boolean; // Added prop
-  zoomLevel?: number; // Added prop
+  showConnections?: boolean;
+  zoomLevel?: number;
 }
 
 export interface ResponsiveTraceabilityMatrixProps {
   utxos: UTXO[];
   onSelectUtxo?: (utxo: UTXO | null) => void;
   selectedUtxo?: UTXO | null;
-  initialShowConnections?: boolean;
-  initialZoomLevel?: number;
-  showConnections?: boolean; // Added prop
-  zoomLevel?: number; // Added prop
+  showConnections?: boolean;
+  zoomLevel?: number;
+}
+
+export interface PrivacyTreemapProps {
+  utxos: UTXO[];
+  onSelectUtxo?: (utxo: UTXO | null) => void;
+  zoomLevel?: number;
 }

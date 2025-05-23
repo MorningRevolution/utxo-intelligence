@@ -1,6 +1,6 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { UTXO } from "@/types/utxo";
+import { EnhancedTimelineViewProps } from "@/types/utxo-graph";
 import { ZoomIn, ZoomOut, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getRiskColor, formatBTC, calculateTimelineSpacing, groupUtxosByMonth, calculateCurvedPath } from "@/utils/utxo-utils";
@@ -13,31 +13,32 @@ import {
 } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 
-interface EnhancedTimelineViewProps {
-  utxos: UTXO[];
-  onSelectUtxo?: (utxo: UTXO | null) => void;
-  selectedUtxo?: UTXO | null;
-  initialShowConnections?: boolean;
-  initialZoomLevel?: number;
-}
-
 export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
   utxos,
   onSelectUtxo,
   selectedUtxo,
-  initialShowConnections = true,
-  initialZoomLevel = 1
+  showConnections = true,
+  zoomLevel = 1
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [showConnections, setShowConnections] = useState(initialShowConnections);
-  const [zoomLevel, setZoomLevel] = useState(initialZoomLevel);
+  const [internalShowConnections, setInternalShowConnections] = useState(showConnections);
+  const [internalZoomLevel, setInternalZoomLevel] = useState(zoomLevel);
   const [hoveredUtxo, setHoveredUtxo] = useState<UTXO | null>(null);
   const [dimensions, setDimensions] = useState({ width: 1000, height: 600 });
   const [monthGroups, setMonthGroups] = useState<{ groups: Record<string, UTXO[]>, sortedKeys: string[] }>({ groups: {}, sortedKeys: [] });
   const [connections, setConnections] = useState<{ path: string, source: UTXO, target: UTXO, risk: 'low' | 'medium' | 'high' }[]>([]);
+
+  // Update internal state when props change
+  useEffect(() => {
+    setInternalShowConnections(showConnections);
+  }, [showConnections]);
+
+  useEffect(() => {
+    setInternalZoomLevel(zoomLevel);
+  }, [zoomLevel]);
 
   // Calculate dimensions and group UTXOs by month
   useEffect(() => {
@@ -57,7 +58,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
     setMonthGroups(groups);
     
     // Calculate connections between related UTXOs
-    if (showConnections) {
+    if (internalShowConnections) {
       const newConnections: { path: string, source: UTXO, target: UTXO, risk: 'low' | 'medium' | 'high' }[] = [];
       
       // Simple algorithm to find potential connections based on addresses
@@ -124,7 +125,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
         resizeObserver.unobserve(containerRef.current);
       }
     };
-  }, [utxos, showConnections]);
+  }, [utxos, internalShowConnections]);
   
   // Calculate node positions and connection paths
   useEffect(() => {
@@ -138,7 +139,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
     );
     
     // Update connection paths based on node positions
-    if (showConnections) {
+    if (internalShowConnections) {
       const updatedConnections = connections.map(conn => {
         const sourceDate = conn.source.acquisitionDate ? new Date(conn.source.acquisitionDate) : new Date();
         const targetDate = conn.target.acquisitionDate ? new Date(conn.target.acquisitionDate) : new Date();
@@ -162,7 +163,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
       
       setConnections(updatedConnections);
     }
-  }, [dimensions, monthGroups, showConnections, connections, utxos]);
+  }, [dimensions, monthGroups, internalShowConnections, connections, utxos]);
 
   // Handle mouse events for pan and zoom
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -191,27 +192,27 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
     e.preventDefault();
     // Adjust zoom with mouse wheel
     const delta = -Math.sign(e.deltaY) * 0.1;
-    const newZoom = Math.min(3, Math.max(0.5, zoomLevel + delta));
-    setZoomLevel(newZoom);
+    const newZoom = Math.min(3, Math.max(0.5, internalZoomLevel + delta));
+    setInternalZoomLevel(newZoom);
   };
 
   // Handle zoom controls
   const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(3, prev + 0.2));
+    setInternalZoomLevel(prev => Math.min(3, prev + 0.2));
   };
 
   const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(0.5, prev - 0.2));
+    setInternalZoomLevel(prev => Math.max(0.5, prev - 0.2));
   };
 
   const handleResetView = () => {
-    setZoomLevel(1);
+    setInternalZoomLevel(1);
     setPosition({ x: 0, y: 0 });
   };
   
   const toggleConnections = () => {
-    setShowConnections(prev => !prev);
-    toast.info(showConnections ? "Connections hidden" : "Connections visible");
+    setInternalShowConnections(prev => !prev);
+    toast.info(internalShowConnections ? "Connections hidden" : "Connections visible");
   };
   
   // Handle UTXO selection
@@ -281,9 +282,9 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
           variant="outline"
           size="sm"
           onClick={toggleConnections}
-          className={showConnections ? "bg-primary/10" : ""}
+          className={internalShowConnections ? "bg-primary/10" : ""}
         >
-          {showConnections ? (
+          {internalShowConnections ? (
             <><Eye className="h-4 w-4 mr-1" /> Hide Connections</>
           ) : (
             <><EyeOff className="h-4 w-4 mr-1" /> Show Connections</>
@@ -295,7 +296,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
         </Button>
         
         <span className="text-xs px-2 bg-background/80 rounded">
-          {Math.round(zoomLevel * 100)}%
+          {Math.round(internalZoomLevel * 100)}%
         </span>
         
         <Button variant="outline" size="icon" onClick={handleZoomIn} title="Zoom In">
@@ -324,7 +325,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
           viewBox="0 0 1000 600" 
           preserveAspectRatio="xMidYMid meet"
           style={{
-            transform: `translate(${position.x}px, ${position.y}px) scale(${zoomLevel})`,
+            transform: `translate(${position.x}px, ${position.y}px) scale(${internalZoomLevel})`,
             transformOrigin: '0 0',
             transition: isDragging ? 'none' : 'transform 0.1s ease'
           }}
@@ -466,7 +467,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
           })}
           
           {/* Connection lines between related UTXOs - rendered on top for better visibility */}
-          {showConnections && connections.map((conn, index) => (
+          {internalShowConnections && connections.map((conn, index) => (
             <path
               key={`conn-${index}`}
               d={conn.path}
