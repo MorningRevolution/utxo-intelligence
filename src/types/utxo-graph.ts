@@ -1,4 +1,3 @@
-
 import { UTXO } from "./utxo";
 
 export interface GraphNode {
@@ -145,4 +144,26 @@ export interface TransactionConnection {
   amount: number;
   path: string;
   riskLevel: "low" | "medium" | "high";
+}
+
+// Add new types for the matrix visualization
+export interface MatrixNode {
+  id: string;
+  type: 'input' | 'transaction' | 'output';
+  data: { 
+    txid: string; 
+    utxos: UTXO[] 
+  };
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface MatrixConnection {
+  source: string;
+  target: string;
+  value: number;
+  path: string;
+  riskLevel: 'low' | 'medium' | 'high';
 }

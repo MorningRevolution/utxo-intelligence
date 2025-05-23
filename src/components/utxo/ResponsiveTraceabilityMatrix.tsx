@@ -1,21 +1,26 @@
+
 import React, { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
+import { ZoomIn, ZoomOut, ArrowLeft } from "lucide-react";
 import { UTXO } from "@/types/utxo";
-import { getRiskColor } from "@/utils/utxo-utils";
+import { MatrixNode, MatrixConnection } from "@/types/utxo-graph";
+import { formatBTC, formatTxid, getRiskColor } from "@/utils/utxo-utils";
+import { Button } from "@/components/ui/button";
 
 interface ResponsiveTraceabilityMatrixProps {
   utxos: UTXO[];
   onSelectUtxo?: (utxo: UTXO | null) => void;
   selectedUtxo?: UTXO | null;
-  showConnections?: boolean; // Added prop
-  zoomLevel?: number; // Added prop
+  showConnections?: boolean;
+  zoomLevel?: number;
 }
 
 export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrixProps> = ({
   utxos,
   onSelectUtxo,
   selectedUtxo,
-  showConnections = true, // Default to true if not provided
-  zoomLevel = 1 // Default to 1 if not provided
+  showConnections: initialShowConnections = true,
+  zoomLevel: initialZoomLevel = 1
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [nodes, setNodes] = useState<MatrixNode[]>([]);
@@ -23,9 +28,10 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [showConnections, setShowConnections] = useState(showConnections);
+  const [showConnections, setShowConnections] = useState(initialShowConnections);
   const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(new Set());
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(initialZoomLevel);
   
   // Process UTXOs into a Sankey-style matrix layout
   useEffect(() => {
@@ -323,7 +329,7 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
     
     // For input/output nodes, we don't have a specific UTXO to select
     if (node.type === 'transaction') {
-      const txData = node.data as { txid: string; utxos: UTXO[] };
+      const txData = node.data;
       if (txData.utxos.length > 0) {
         // Select the first UTXO from this transaction
         if (selectedUtxo && 
