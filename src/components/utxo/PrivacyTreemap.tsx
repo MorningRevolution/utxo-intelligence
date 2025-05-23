@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { UTXO } from "@/types/utxo";
 import { ZoomIn, ZoomOut } from "lucide-react";
@@ -17,12 +16,14 @@ interface PrivacyTreemapProps {
   utxos: UTXO[];
   onSelectUtxo?: (utxo: UTXO | null) => void;
   initialZoomLevel?: number;
+  zoomLevel?: number; // Added prop
 }
 
 export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
   utxos,
   onSelectUtxo,
-  initialZoomLevel = 1
+  initialZoomLevel = 1,
+  zoomLevel: externalZoomLevel // Use external zoom level if provided
 }) => {
   const [zoomLevel, setZoomLevel] = useState(initialZoomLevel);
   const [tiles, setTiles] = useState<TreemapTile[]>([]);
@@ -30,6 +31,13 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
   const [hoveredTile, setHoveredTile] = useState<string | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 800, height: 600 });
   const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Use external zoom level if provided
+  useEffect(() => {
+    if (externalZoomLevel !== undefined) {
+      setZoomLevel(externalZoomLevel);
+    }
+  }, [externalZoomLevel]);
 
   // Handle zoom controls
   const handleZoomIn = () => {

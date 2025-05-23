@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { UTXO } from "@/types/utxo";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -496,9 +495,10 @@ export const UTXOTableBody: React.FC<UTXOTableBodyProps> = ({
                   {visibleColumns.tags && (
                     <TableCell>
                       <TagSelector
+                        utxoId={`${utxo.txid}-${utxo.vout}`}
+                        onSelect={handleTagSelection}
+                        utxoTags={utxo.tags}
                         selectedTags={utxo.tags}
-                        onSelectTag={(tagId) => handleTagSelection(`${utxo.txid}-${utxo.vout}`, tagId)}
-                        onRemoveTag={(tagId) => handleTagSelection(`${utxo.txid}-${utxo.vout}`, tagId, true)}
                         availableTags={walletData.tags}
                       />
                     </TableCell>

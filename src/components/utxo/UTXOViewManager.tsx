@@ -1,4 +1,3 @@
-
 import React from "react";
 import { UTXO } from "@/types/utxo";
 import { UTXOTableBody } from "./UTXOTableBody";
@@ -32,6 +31,8 @@ interface UTXOViewManagerProps {
   handleNotesEdit: (utxoId: string, newValue: string) => void;
   selectedVisualUtxo: UTXO | null;
   handleVisualSelect: (utxo: UTXO | null) => void;
+  showConnections?: boolean;
+  zoomLevel?: number;
 }
 
 export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
@@ -56,6 +57,8 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
   handleNotesEdit,
   selectedVisualUtxo,
   handleVisualSelect,
+  showConnections = true,
+  zoomLevel = 1
 }) => {
   const handleRowClick = (utxo: UTXO) => {
     // Only select for visualization if not currently editing
@@ -133,8 +136,8 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
               utxos={filteredUtxos} 
               onSelectUtxo={handleVisualSelect}
               selectedUtxo={selectedVisualUtxo}
-              initialShowConnections={true}
-              initialZoomLevel={1}
+              showConnections={showConnections}
+              zoomLevel={zoomLevel}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-muted/20 rounded-md">
@@ -150,8 +153,8 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
               utxos={filteredUtxos}
               onSelectUtxo={handleVisualSelect}
               selectedUtxo={selectedVisualUtxo}
-              initialShowConnections={true}
-              initialZoomLevel={1}
+              showConnections={showConnections}
+              zoomLevel={zoomLevel}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-muted/20 rounded-md">
@@ -166,7 +169,7 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
             <PrivacyTreemap
               utxos={filteredUtxos}
               onSelectUtxo={handleVisualSelect}
-              initialZoomLevel={1}
+              zoomLevel={zoomLevel}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-muted/20 rounded-md">

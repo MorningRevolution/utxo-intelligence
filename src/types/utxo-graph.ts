@@ -167,3 +167,24 @@ export interface MatrixConnection {
   path: string;
   riskLevel: 'low' | 'medium' | 'high';
 }
+
+// Define new interfaces for the visualization components
+export interface EnhancedTimelineViewProps {
+  utxos: UTXO[];
+  onSelectUtxo?: (utxo: UTXO | null) => void;
+  selectedUtxo?: UTXO | null;
+  initialShowConnections?: boolean;
+  initialZoomLevel?: number;
+  showConnections?: boolean; // Added prop
+  zoomLevel?: number; // Added prop
+}
+
+export interface ResponsiveTraceabilityMatrixProps {
+  utxos: UTXO[];
+  onSelectUtxo?: (utxo: UTXO | null) => void;
+  selectedUtxo?: UTXO | null;
+  initialShowConnections?: boolean;
+  initialZoomLevel?: number;
+  showConnections?: boolean; // Added prop
+  zoomLevel?: number; // Added prop
+}
