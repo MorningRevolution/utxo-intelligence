@@ -3,9 +3,9 @@ import React from "react";
 import { UTXO } from "@/types/utxo";
 import { UTXOTableBody } from "./UTXOTableBody";
 import { UTXOViewType } from "@/types/utxo-graph";
+import { SimpleTraceabilityGraph } from "./SimpleTraceabilityGraph";
 import { ResponsiveTraceabilityMatrix } from "./ResponsiveTraceabilityMatrix";
 import { EnhancedTimelineView } from "./EnhancedTimelineView";
-import { PrivacyTreemap } from "./PrivacyTreemap";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
 
@@ -77,8 +77,6 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
         return "Matrix view shows relationships between transactions and addresses. Hover over nodes for details.";
       case 'timeline':
         return "Timeline view displays transactions chronologically by month. Size represents BTC amount.";
-      case 'treemap':
-        return "Treemap displays UTXOs as tiles sized by BTC amount, grouped by risk level.";
       default:
         return "Table view of all UTXOs. Click a row to select.";
     }
@@ -155,21 +153,6 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-muted/20 rounded-md">
               <p className="text-muted-foreground text-lg">No UTXOs to display. Try adjusting your filters.</p>
-            </div>
-          )}
-        </div>
-      )}
-      {view === 'treemap' && (
-        <div className="w-full h-[600px] relative overflow-hidden rounded-lg border">
-          {filteredUtxos.length > 0 ? (
-            <PrivacyTreemap
-              utxos={filteredUtxos}
-              onSelectUtxo={handleVisualSelect}
-              zoomLevel={1}
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-muted/20 rounded-md">
-              <p className="text-muted-foreground text-lg">No UTXOs to display in treemap.</p>
             </div>
           )}
         </div>

@@ -1,12 +1,11 @@
 
 import React, { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
+import { ZoomIn, ZoomOut, ArrowLeft } from "lucide-react";
 import { UTXO } from "@/types/utxo";
 import { MatrixNode, MatrixConnection } from "@/types/utxo-graph";
 import { formatBTC, formatTxid, getRiskColor } from "@/utils/utxo-utils";
-import { toast } from "sonner";
-import { ZoomIn, ZoomOut, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ResponsiveTraceabilityMatrixProps {
   utxos: UTXO[];
@@ -29,10 +28,10 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [localShowConnections, setLocalShowConnections] = useState(initialShowConnections);
-  const [localZoomLevel, setLocalZoomLevel] = useState(initialZoomLevel);
+  const [showConnections, setShowConnections] = useState(initialShowConnections);
   const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(new Set());
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(initialZoomLevel);
   
   // Process UTXOs into a Sankey-style matrix layout
   useEffect(() => {
@@ -120,8 +119,7 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
     // Create transaction nodes
     transactions.forEach(([txid, txUtxos]) => {
       const totalAmount = txUtxos.reduce((sum, u) => sum + u.amount, 0);
-      // Improved size calculation for better proportional sizing (2.3 Matrix View Enhancement)
-      const height = Math.max(nodeHeight, Math.min(120, 40 + Math.pow(Math.log10(1 + totalAmount) * 15, 1.2)));
+      const height = Math.max(nodeHeight, Math.min(100, 40 + Math.log10(1 + totalAmount) * 20));
       
       matrixNodes.push({
         id: `tx-${txid}`,
@@ -263,7 +261,7 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
     // Reset view when data changes
     if (matrixNodes.length > 0) {
       setPosition({ x: 0, y: 0 });
-      setLocalZoomLevel(1);
+      setZoomLevel(1);
     }
   }, [utxos]);
   
@@ -302,27 +300,27 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
     e.preventDefault();
     // Adjust zoom with mouse wheel
     const delta = -Math.sign(e.deltaY) * 0.1;
-    const newZoom = Math.min(3, Math.max(0.5, localZoomLevel + delta));
-    setLocalZoomLevel(newZoom);
+    const newZoom = Math.min(3, Math.max(0.5, zoomLevel + delta));
+    setZoomLevel(newZoom);
   };
   
   // Zoom buttons handlers
   const handleZoomIn = () => {
-    setLocalZoomLevel(prev => Math.min(3, prev + 0.2));
+    setZoomLevel(prev => Math.min(3, prev + 0.2));
   };
-
+  
   const handleZoomOut = () => {
-    setLocalZoomLevel(prev => Math.max(0.5, prev - 0.2));
+    setZoomLevel(prev => Math.max(0.5, prev - 0.2));
   };
-
+  
   const handleResetView = () => {
-    setLocalZoomLevel(1);
+    setZoomLevel(1);
     setPosition({ x: 0, y: 0 });
   };
   
   const toggleConnections = () => {
-    setLocalShowConnections(prev => !prev);
-    toast.info(localShowConnections ? "Connections hidden" : "Connections visible");
+    setShowConnections(prev => !prev);
+    toast.info(showConnections ? "Connections hidden" : "Connections visible");
   };
   
   // Handle node selection
@@ -331,7 +329,7 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
     
     // For input/output nodes, we don't have a specific UTXO to select
     if (node.type === 'transaction') {
-      const txData = node.data as { txid: string; utxos: UTXO[] };
+      const txData = node.data;
       if (txData.utxos.length > 0) {
         // Select the first UTXO from this transaction
         if (selectedUtxo && 
@@ -451,13 +449,9 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
           variant="outline"
           size="sm"
           onClick={toggleConnections}
-          className={localShowConnections ? "bg-primary/10" : ""}
+          className={showConnections ? "bg-primary/10" : ""}
         >
-          {localShowConnections ? (
-            <><Eye className="h-4 w-4 mr-1" /> Hide Connections</>
-          ) : (
-            <><EyeOff className="h-4 w-4 mr-1" /> Show Connections</>
-          )}
+          {showConnections ? "Hide Connections" : "Show Connections"}
         </Button>
         
         <Button variant="outline" size="icon" onClick={handleZoomOut} title="Zoom Out">
@@ -465,7 +459,7 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
         </Button>
         
         <span className="text-xs px-2 bg-background/80 rounded">
-          {Math.round(localZoomLevel * 100)}%
+          {Math.round(zoomLevel * 100)}%
         </span>
         
         <Button variant="outline" size="icon" onClick={handleZoomIn} title="Zoom In">
@@ -480,13 +474,13 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
       
       {/* Column labels */}
       <div className="absolute top-2 left-0 w-full flex justify-around z-10">
-        <div className="bg-background/90 px-4 py-1 rounded-full text-sm font-medium shadow-sm">
+        <div className="bg-background/80 px-4 py-1 rounded-full text-sm font-medium">
           Sending Addresses
         </div>
-        <div className="bg-background/90 px-4 py-1 rounded-full text-sm font-medium shadow-sm">
+        <div className="bg-background/80 px-4 py-1 rounded-full text-sm font-medium">
           Transactions
         </div>
-        <div className="bg-background/90 px-4 py-1 rounded-full text-sm font-medium shadow-sm">
+        <div className="bg-background/80 px-4 py-1 rounded-full text-sm font-medium">
           Receiving Addresses
         </div>
       </div>
@@ -507,172 +501,116 @@ export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrix
           viewBox="0 0 1000 800" 
           preserveAspectRatio="xMidYMid meet"
           style={{
-            transform: `translate(${position.x}px, ${position.y}px) scale(${localZoomLevel})`,
+            transform: `translate(${position.x}px, ${position.y}px) scale(${zoomLevel})`,
             transformOrigin: '0 0',
             transition: isDragging ? 'none' : 'transform 0.1s ease'
           }}
         >
-          {/* Define arrowhead marker */}
-          <defs>
-            <marker
-              id="arrowhead"
-              markerWidth="10"
-              markerHeight="7"
-              refX="10"
-              refY="3.5"
-              orient="auto"
-            >
-              <polygon points="0 0, 10 3.5, 0 7" fill="rgba(107, 114, 128, 0.8)" />
-            </marker>
-            <marker
-              id="arrowhead-highlighted"
-              markerWidth="10"
-              markerHeight="7"
-              refX="10"
-              refY="3.5"
-              orient="auto"
-            >
-              <polygon points="0 0, 10 3.5, 0 7" fill="#f97316" />
-            </marker>
-          </defs>
-        
-          {/* Matrix nodes - we render these first so connections appear on top for better highlighting */}
+          {/* Connection lines */}
+          {showConnections && connections.map((conn, index) => (
+            <path
+              key={`conn-${index}`}
+              d={conn.path}
+              stroke={getConnectionColor(conn, isConnectionHighlighted(conn))}
+              strokeWidth={isConnectionHighlighted(conn) ? 4 : 2}
+              strokeOpacity={isConnectionHighlighted(conn) ? 1 : 0.7}
+              fill="none"
+              markerEnd={isConnectionHighlighted(conn) ? "url(#arrowhead-highlighted)" : "url(#arrowhead)"}
+              className={`transition-all duration-200 ${isConnectionHighlighted(conn) ? 'z-10' : 'z-0'}`}
+            />
+          ))}
+          
+          {/* Matrix nodes */}
           {nodes.map((node) => {
             const isHighlight = isHighlighted(node.id);
             const isSelected = selectedUtxo && node.type === 'transaction' && 
                               (node.data as { txid: string }).txid === selectedUtxo.txid;
-            
-            const nodeLabel = getNodeLabel(node);
-            const nodeFill = getNodeColor(node);
-            const nodeOpacity = (isHighlight || !hoveredNode) ? 1 : 0.6;
-            
+            const label = getNodeLabel(node);
+                              
             return (
               <g 
-                key={node.id}
+                key={node.id} 
                 transform={`translate(${node.x}, ${node.y})`}
                 onClick={() => handleNodeClick(node)}
                 onMouseEnter={() => handleNodeMouseEnter(node.id)}
                 onMouseLeave={handleNodeMouseLeave}
-                className="cursor-pointer transition-opacity duration-200"
-                style={{ opacity: nodeOpacity }}
+                className="cursor-pointer"
+                style={{ transition: 'all 0.2s ease' }}
               >
-                {/* Node outline - thicker when selected or highlighted */}
+                {/* Node background */}
                 <rect
                   width={node.width}
                   height={node.height}
-                  rx={6}
-                  fill={nodeFill}
-                  stroke={isSelected ? "white" : isHighlight ? "white" : "rgba(255,255,255,0.3)"}
-                  strokeWidth={isSelected ? 3 : isHighlight ? 2 : 1}
-                  className="transition-all duration-200"
+                  rx={5}
+                  fill={getNodeColor(node)}
+                  fillOpacity={isHighlight || isSelected ? 1 : 0.8}
+                  stroke={isSelected ? '#ffffff' : isHighlight ? '#ffffff' : 'transparent'}
+                  strokeWidth={isSelected || isHighlight ? 2 : 0}
+                  className={`transition-all duration-200 ${isSelected || isHighlight ? 'shadow-lg' : ''}`}
                 />
                 
-                {/* Node labels with contrasting background to ensure visibility */}
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <g>
-                        {/* Background for better text contrast */}
-                        <rect
-                          x={5}
-                          y={5}
-                          width={node.width - 10}
-                          height={node.height - 10}
-                          rx={4}
-                          fill="rgba(0,0,0,0.2)"
-                          className="transition-all duration-200"
-                        />
-                        
-                        {/* Title */}
-                        <text
-                          x={10}
-                          y={20}
-                          className="fill-white text-sm font-medium"
-                          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}
-                        >
-                          {nodeLabel.title}
-                        </text>
-                        
-                        {/* Subtitle */}
-                        <text
-                          x={10}
-                          y={38}
-                          className="fill-white/90 text-xs"
-                          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}
-                        >
-                          {nodeLabel.subtitle}
-                        </text>
-                        
-                        {/* Amount */}
-                        <text
-                          x={node.width - 10}
-                          y={node.height - 10}
-                          textAnchor="end"
-                          className="fill-white text-sm font-bold"
-                          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}
-                        >
-                          {nodeLabel.amount}
-                        </text>
-                      </g>
-                    </TooltipTrigger>
-                    <TooltipContent className="p-2 max-w-xs">
-                      <div className="flex flex-col gap-1">
-                        <div className="font-medium">{nodeLabel.title}</div>
-                        <div className="text-xs opacity-80">{nodeLabel.subtitle}</div>
-                        <div className="font-mono mt-1">{nodeLabel.amount}</div>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                {/* Node title */}
+                <text
+                  x={10}
+                  y={16}
+                  className="fill-white text-xs font-bold"
+                >
+                  {label.title}
+                </text>
+                
+                {/* Node subtitle */}
+                <text
+                  x={10}
+                  y={32}
+                  className="fill-white text-xs opacity-80"
+                >
+                  {label.subtitle}
+                </text>
+                
+                {/* Node amount */}
+                <text
+                  x={node.width - 10}
+                  y={node.height - 12}
+                  textAnchor="end"
+                  className="fill-white text-xs font-medium"
+                >
+                  {label.amount}
+                </text>
               </g>
             );
           })}
           
-          {/* Connection lines - Rendered on top for better visibility and highlighting */}
-          {localShowConnections && connections.map((conn, index) => {
-            const isHighlight = isConnectionHighlighted(conn);
-            return (
-              <TooltipProvider key={`conn-${index}`}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <path
-                      d={conn.path}
-                      stroke={getConnectionColor(conn, isHighlight)}
-                      strokeWidth={isHighlight ? 3 : 1.5}
-                      fill="none"
-                      markerEnd={isHighlight ? "url(#arrowhead-highlighted)" : "url(#arrowhead)"}
-                      className={`transition-all duration-200 ${isHighlight ? 'z-20' : 'z-10'}`}
-                      style={{ pointerEvents: "stroke" }}
-                      onMouseEnter={() => {
-                        // Find connected nodes and highlight them
-                        const sourceNode = nodes.find(n => n.id === conn.source);
-                        const targetNode = nodes.find(n => n.id === conn.target);
-                        if (sourceNode) handleNodeMouseEnter(sourceNode.id);
-                      }}
-                      onMouseLeave={handleNodeMouseLeave}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent className="p-2">
-                    <div className="font-mono text-xs">{formatBTC(conn.value)} BTC</div>
-                    <div className="text-xs mt-1">
-                      Risk: <span className={conn.riskLevel === 'high' ? 'text-red-500' : 
-                                            conn.riskLevel === 'medium' ? 'text-amber-500' : 
-                                            'text-emerald-500'}>
-                              {conn.riskLevel.toUpperCase()}
-                            </span>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            );
-          })}
+          {/* Arrow markers for connections */}
+          <defs>
+            <marker
+              id="arrowhead"
+              markerWidth="6"
+              markerHeight="4"
+              refX="5"
+              refY="2"
+              orient="auto"
+            >
+              <path d="M0,0 L6,2 L0,4 Z" fill="rgba(107, 114, 128, 0.8)" />
+            </marker>
+            
+            <marker
+              id="arrowhead-highlighted"
+              markerWidth="8"
+              markerHeight="6"
+              refX="7"
+              refY="3"
+              orient="auto"
+            >
+              <path d="M0,0 L8,3 L0,6 Z" fill="#ffffff" />
+            </marker>
+          </defs>
         </svg>
       </div>
       
       {/* Empty state */}
       {nodes.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted/20">
-          <p className="text-muted-foreground text-lg">No UTXO data available for matrix visualization.</p>
+          <p className="text-muted-foreground text-lg">No UTXO data available for visualization.</p>
         </div>
       )}
     </div>
