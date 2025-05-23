@@ -6,7 +6,7 @@ import { UTXOViewType } from "@/types/utxo-graph";
 import { SimpleTraceabilityGraph } from "./SimpleTraceabilityGraph";
 import { ResponsiveTraceabilityMatrix } from "./ResponsiveTraceabilityMatrix";
 import { EnhancedTimelineView } from "./EnhancedTimelineView";
-import { Tooltip } from "@/components/ui/tooltip";
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
 
 interface UTXOViewManagerProps {
@@ -85,9 +85,16 @@ export const UTXOViewManager: React.FC<UTXOViewManagerProps> = ({
   return (
     <div className="w-full">
       <div className="mb-3 flex items-center">
-        <Tooltip content={getViewTooltip()}>
-          <Info className="h-4 w-4 text-muted-foreground mr-2" />
-        </Tooltip>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-4 w-4 text-muted-foreground mr-2" />
+            </TooltipTrigger>
+            <TooltipContent>
+              {getViewTooltip()}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <p className="text-sm text-muted-foreground">{filteredUtxos.length} UTXOs shown</p>
       </div>
       

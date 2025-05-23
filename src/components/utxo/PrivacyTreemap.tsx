@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UTXO } from "@/types/utxo";
@@ -211,11 +210,13 @@ const createSquarifiedLayout = (tiles: TreemapTile[], width: number, height: num
 interface PrivacyTreemapProps {
   utxos: UTXO[];
   onSelectUtxo?: (utxo: UTXO | null) => void;
+  zoomLevel?: number; // Add zoomLevel prop
 }
 
 export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({ 
   utxos, 
-  onSelectUtxo 
+  onSelectUtxo,
+  zoomLevel: externalZoomLevel 
 }) => {
   // References
   const containerRef = useRef<HTMLDivElement>(null);
@@ -228,12 +229,12 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [groupingOption, setGroupingOption] = useState<TreemapGroupingOption>("none");
   
-  // Zoom and pan controls
+  // Zoom and pan controls - use external zoom level if provided
   const {
-    zoom,
+    zoom: internalZoom,
     position,
     isDragging,
-    setZoom,
+    setZoom: setInternalZoom,
     handleZoomIn,
     handleZoomOut,
     handleReset,
@@ -241,7 +242,17 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
     handleMouseMove,
     handleMouseUp,
     handleWheel
-  } = useZoomAndPan(1);
+  } = useZoomAndPan(externalZoomLevel !== undefined ? externalZoomLevel : 1);
+  
+  // Use external zoom level if provided, otherwise use internal zoom
+  const effectiveZoom = externalZoomLevel !== undefined ? externalZoomLevel : internalZoom;
+  
+  // Effect to sync external zoom level changes
+  useEffect(() => {
+    if (externalZoomLevel !== undefined) {
+      setInternalZoom(externalZoomLevel);
+    }
+  }, [externalZoomLevel]);
   
   // Filters state
   const [filters, setFilters] = useState<UTXOFiltersState>({
@@ -372,244 +383,246 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
   
   return (
     <div className="w-full h-full flex flex-col">
-      {/* Controls */}
-      <div className="bg-card p-2 rounded-lg shadow-sm mb-4 flex flex-wrap justify-between items-center gap-2">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleZoomOut}
-            className="h-8 w-8"
-          >
-            <Minus className="h-4 w-4" />
-          </Button>
-          
-          <div className="w-24">
-            <Slider
-              min={0.5}
-              max={2}
-              step={0.1}
-              value={[zoom]}
-              onValueChange={(value) => value[0] && setZoom(value[0])}
-            />
+      {/* Controls - only show if not externally controlled */}
+      {externalZoomLevel === undefined && (
+        <div className="bg-card p-2 rounded-lg shadow-sm mb-4 flex flex-wrap justify-between items-center gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleZoomOut}
+              className="h-8 w-8"
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+            
+            <div className="w-24">
+              <Slider
+                min={0.5}
+                max={2}
+                step={0.1}
+                value={[effectiveZoom]}
+                onValueChange={(value) => value[0] && setInternalZoom(value[0])}
+              />
+            </div>
+            
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleZoomIn}
+              className="h-8 w-8"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleReset}
+              className="flex items-center gap-1"
+            >
+              <Maximize className="h-4 w-4" />
+              <span>Reset</span>
+            </Button>
+            
+            <Sheet open={showFilterSheet} onOpenChange={setShowFilterSheet}>
+              <SheetTrigger asChild>
+                <Button
+                  variant={Object.values(filters).some(v => 
+                    Array.isArray(v) ? v.length > 0 : Boolean(v)
+                  ) ? "default" : "outline"}
+                  size="sm"
+                  className="flex items-center gap-1"
+                >
+                  <Filter className="h-4 w-4" />
+                  <span>Filters</span>
+                  {(filters.selectedTags.length > 0 || 
+                    filters.selectedWallets.length > 0 || 
+                    filters.selectedRiskLevels.length > 0) && (
+                    <Badge variant="secondary" className="ml-1">
+                      {filters.selectedTags.length + 
+                       filters.selectedWallets.length + 
+                       filters.selectedRiskLevels.length}
+                    </Badge>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                <SheetHeader>
+                  <SheetTitle>Filter UTXOs</SheetTitle>
+                  <SheetDescription>
+                    Apply filters to visualize specific UTXOs
+                  </SheetDescription>
+                </SheetHeader>
+                
+                <div className="py-6 space-y-6">
+                  {/* Search */}
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium">Search</h3>
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search by txid, address, tag..."
+                        className="pl-8"
+                        value={filters.searchTerm}
+                        onChange={handleSearchChange}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Risk Levels */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-sm font-medium">Risk Levels</h3>
+                      {filters.selectedRiskLevels.length > 0 && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setFilters(prev => ({ ...prev, selectedRiskLevels: [] }))}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge 
+                        className={`cursor-pointer ${filters.selectedRiskLevels.includes("low") 
+                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                          : "bg-secondary text-secondary-foreground"}`}
+                        onClick={() => handleRiskFilterToggle("low")}
+                      >
+                        Low Risk
+                      </Badge>
+                      <Badge 
+                        className={`cursor-pointer ${filters.selectedRiskLevels.includes("medium") 
+                          ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100"
+                          : "bg-secondary text-secondary-foreground"}`}
+                        onClick={() => handleRiskFilterToggle("medium")}
+                      >
+                        Medium Risk
+                      </Badge>
+                      <Badge 
+                        className={`cursor-pointer ${filters.selectedRiskLevels.includes("high") 
+                          ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
+                          : "bg-secondary text-secondary-foreground"}`}
+                        onClick={() => handleRiskFilterToggle("high")}
+                      >
+                        High Risk
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  {/* Tags */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-sm font-medium">Tags</h3>
+                      {filters.selectedTags.length > 0 && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setFilters(prev => ({ ...prev, selectedTags: [] }))}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto pr-2">
+                      {availableTags.map(tag => (
+                        <Badge 
+                          key={tag}
+                          className={`cursor-pointer ${filters.selectedTags.includes(tag) 
+                            ? "bg-primary text-primary-foreground" 
+                            : "bg-secondary text-secondary-foreground"}`}
+                          onClick={() => handleTagFilterToggle(tag)}
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
+                      {availableTags.length === 0 && (
+                        <p className="text-sm text-muted-foreground">No tags available</p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Wallets */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-sm font-medium">Wallets</h3>
+                      {filters.selectedWallets.length > 0 && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setFilters(prev => ({ ...prev, selectedWallets: [] }))}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto pr-2">
+                      {availableWallets.map(wallet => (
+                        <Badge 
+                          key={wallet}
+                          className={`cursor-pointer ${filters.selectedWallets.includes(wallet) 
+                            ? "bg-primary text-primary-foreground" 
+                            : "bg-secondary text-secondary-foreground"}`}
+                          onClick={() => handleWalletFilterToggle(wallet)}
+                        >
+                          {wallet}
+                        </Badge>
+                      ))}
+                      {availableWallets.length === 0 && (
+                        <p className="text-sm text-muted-foreground">No wallets available</p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Reset Button */}
+                  <div className="pt-4">
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={clearFilters}
+                    >
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Reset All Filters
+                    </Button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
           
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleZoomIn}
-            className="h-8 w-8"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
+          {/* Grouping Selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm whitespace-nowrap">Group By:</span>
+            <Select
+              value={groupingOption}
+              onValueChange={(value) => setGroupingOption(value as TreemapGroupingOption)}
+            >
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="risk">Risk Level</SelectItem>
+                <SelectItem value="wallet">Wallet</SelectItem>
+                <SelectItem value="tag">Tag</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleReset}
-            className="flex items-center gap-1"
-          >
-            <Maximize className="h-4 w-4" />
-            <span>Reset</span>
-          </Button>
-          
-          <Sheet open={showFilterSheet} onOpenChange={setShowFilterSheet}>
-            <SheetTrigger asChild>
-              <Button
-                variant={Object.values(filters).some(v => 
-                  Array.isArray(v) ? v.length > 0 : Boolean(v)
-                ) ? "default" : "outline"}
-                size="sm"
-                className="flex items-center gap-1"
-              >
-                <Filter className="h-4 w-4" />
-                <span>Filters</span>
-                {(filters.selectedTags.length > 0 || 
-                  filters.selectedWallets.length > 0 || 
-                  filters.selectedRiskLevels.length > 0) && (
-                  <Badge variant="secondary" className="ml-1">
-                    {filters.selectedTags.length + 
-                     filters.selectedWallets.length + 
-                     filters.selectedRiskLevels.length}
-                  </Badge>
-                )}
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-              <SheetHeader>
-                <SheetTitle>Filter UTXOs</SheetTitle>
-                <SheetDescription>
-                  Apply filters to visualize specific UTXOs
-                </SheetDescription>
-              </SheetHeader>
-              
-              <div className="py-6 space-y-6">
-                {/* Search */}
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium">Search</h3>
-                  <div className="relative">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search by txid, address, tag..."
-                      className="pl-8"
-                      value={filters.searchTerm}
-                      onChange={handleSearchChange}
-                    />
-                  </div>
-                </div>
-                
-                {/* Risk Levels */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-medium">Risk Levels</h3>
-                    {filters.selectedRiskLevels.length > 0 && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => setFilters(prev => ({ ...prev, selectedRiskLevels: [] }))}
-                      >
-                        Clear
-                      </Button>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge 
-                      className={`cursor-pointer ${filters.selectedRiskLevels.includes("low") 
-                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                        : "bg-secondary text-secondary-foreground"}`}
-                      onClick={() => handleRiskFilterToggle("low")}
-                    >
-                      Low Risk
-                    </Badge>
-                    <Badge 
-                      className={`cursor-pointer ${filters.selectedRiskLevels.includes("medium") 
-                        ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100"
-                        : "bg-secondary text-secondary-foreground"}`}
-                      onClick={() => handleRiskFilterToggle("medium")}
-                    >
-                      Medium Risk
-                    </Badge>
-                    <Badge 
-                      className={`cursor-pointer ${filters.selectedRiskLevels.includes("high") 
-                        ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
-                        : "bg-secondary text-secondary-foreground"}`}
-                      onClick={() => handleRiskFilterToggle("high")}
-                    >
-                      High Risk
-                    </Badge>
-                  </div>
-                </div>
-                
-                {/* Tags */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-medium">Tags</h3>
-                    {filters.selectedTags.length > 0 && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => setFilters(prev => ({ ...prev, selectedTags: [] }))}
-                      >
-                        Clear
-                      </Button>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto pr-2">
-                    {availableTags.map(tag => (
-                      <Badge 
-                        key={tag}
-                        className={`cursor-pointer ${filters.selectedTags.includes(tag) 
-                          ? "bg-primary text-primary-foreground" 
-                          : "bg-secondary text-secondary-foreground"}`}
-                        onClick={() => handleTagFilterToggle(tag)}
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                    {availableTags.length === 0 && (
-                      <p className="text-sm text-muted-foreground">No tags available</p>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Wallets */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-medium">Wallets</h3>
-                    {filters.selectedWallets.length > 0 && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => setFilters(prev => ({ ...prev, selectedWallets: [] }))}
-                      >
-                        Clear
-                      </Button>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto pr-2">
-                    {availableWallets.map(wallet => (
-                      <Badge 
-                        key={wallet}
-                        className={`cursor-pointer ${filters.selectedWallets.includes(wallet) 
-                          ? "bg-primary text-primary-foreground" 
-                          : "bg-secondary text-secondary-foreground"}`}
-                        onClick={() => handleWalletFilterToggle(wallet)}
-                      >
-                        {wallet}
-                      </Badge>
-                    ))}
-                    {availableWallets.length === 0 && (
-                      <p className="text-sm text-muted-foreground">No wallets available</p>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Reset Button */}
-                <div className="pt-4">
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={clearFilters}
-                  >
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Reset All Filters
-                  </Button>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-[150px]">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search UTXOs..."
+              className="pl-8 w-full"
+              value={filters.searchTerm}
+              onChange={handleSearchChange}
+            />
+          </div>
         </div>
-        
-        {/* Grouping Selector */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm whitespace-nowrap">Group By:</span>
-          <Select
-            value={groupingOption}
-            onValueChange={(value) => setGroupingOption(value as TreemapGroupingOption)}
-          >
-            <SelectTrigger className="w-[130px]">
-              <SelectValue placeholder="None" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              <SelectItem value="risk">Risk Level</SelectItem>
-              <SelectItem value="wallet">Wallet</SelectItem>
-              <SelectItem value="tag">Tag</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* Search Input */}
-        <div className="relative flex-1 min-w-[150px]">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search UTXOs..."
-            className="pl-8 w-full"
-            value={filters.searchTerm}
-            onChange={handleSearchChange}
-          />
-        </div>
-      </div>
+      )}
       
       {/* Treemap Container */}
       <div 
@@ -639,7 +652,7 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
         <div
           className="relative w-full h-full"
           style={{
-            transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
+            transform: `translate(${position.x}px, ${position.y}px) scale(${effectiveZoom})`,
             transformOrigin: 'center',
             transition: isDragging ? 'none' : 'transform 0.2s ease'
           }}
@@ -823,4 +836,3 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
     </div>
   );
 };
-

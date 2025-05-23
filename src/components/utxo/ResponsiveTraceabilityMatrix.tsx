@@ -1,48 +1,29 @@
-
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { UTXO } from "@/types/utxo";
-import { formatBTC, formatTxid, getRiskColor } from "@/utils/utxo-utils";
-import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, ArrowLeft } from "lucide-react";
-import { toast } from "sonner";
+import { getRiskColor } from "@/utils/utxo-utils";
 
 interface ResponsiveTraceabilityMatrixProps {
   utxos: UTXO[];
   onSelectUtxo?: (utxo: UTXO | null) => void;
   selectedUtxo?: UTXO | null;
-}
-
-interface MatrixNode {
-  id: string;
-  type: 'input' | 'output' | 'transaction';
-  data: UTXO | { txid: string; utxos: UTXO[] };
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-interface MatrixConnection {
-  source: string;
-  target: string;
-  value: number;
-  path: string;
-  riskLevel: 'low' | 'medium' | 'high';
+  showConnections?: boolean; // Added prop
+  zoomLevel?: number; // Added prop
 }
 
 export const ResponsiveTraceabilityMatrix: React.FC<ResponsiveTraceabilityMatrixProps> = ({
   utxos,
   onSelectUtxo,
-  selectedUtxo
+  selectedUtxo,
+  showConnections = true, // Default to true if not provided
+  zoomLevel = 1 // Default to 1 if not provided
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [nodes, setNodes] = useState<MatrixNode[]>([]);
   const [connections, setConnections] = useState<MatrixConnection[]>([]);
-  const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [showConnections, setShowConnections] = useState(true);
+  const [showConnections, setShowConnections] = useState(showConnections);
   const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(new Set());
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   

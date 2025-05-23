@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { UTXO } from "@/types/utxo";
 import { format, parseISO, startOfMonth, addMonths } from "date-fns";
@@ -13,6 +12,8 @@ interface EnhancedTimelineViewProps {
   utxos: UTXO[];
   onSelectUtxo?: (utxo: UTXO | null) => void;
   selectedUtxo?: UTXO | null;
+  showConnections?: boolean; // Added prop
+  zoomLevel?: number; // Added prop
 }
 
 interface MonthColumn {
@@ -37,18 +38,26 @@ interface Connection {
 export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
   utxos,
   onSelectUtxo,
-  selectedUtxo
+  selectedUtxo,
+  showConnections = true, // Default to true if not provided
+  zoomLevel: externalZoomLevel
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [months, setMonths] = useState<MonthColumn[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
-  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [internalZoomLevel, setInternalZoomLevel] = useState<number>(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [showConnections, setShowConnections] = useState(true);
+  const [showConnectionsInternal, setShowConnectionsInternal] = useState(true);
   const [highlightedUtxos, setHighlightedUtxos] = useState<Set<string>>(new Set());
   const [hoveredUtxo, setHoveredUtxo] = useState<string | null>(null);
+  
+  // Use external zoom level if provided, otherwise use internal state
+  const effectiveZoomLevel = externalZoomLevel !== undefined ? externalZoomLevel : internalZoomLevel;
+  
+  // Use external showConnections if provided, otherwise use internal state
+  const effectiveShowConnections = showConnections !== undefined ? showConnections : showConnectionsInternal;
   
   // Calculate a unique ID for each UTXO
   const getUtxoId = (utxo: UTXO) => `${utxo.txid}-${utxo.vout}`;
@@ -216,9 +225,13 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
     setPosition({ x: 0, y: 0 });
   };
   
+  // Update toggle connections handler to work with both internal and external state
   const toggleConnections = () => {
-    setShowConnections(prev => !prev);
-    toast.info(showConnections ? "Connections hidden" : "Connections visible");
+    if (showConnections === undefined) {
+      // Only update internal state if not controlled externally
+      setShowConnectionsInternal(prev => !prev);
+      toast.info(showConnectionsInternal ? "Connections hidden" : "Connections visible");
+    }
   };
   
   // Handle UTXO selection
@@ -291,34 +304,36 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
   
   return (
     <div className="relative h-full w-full overflow-hidden border border-muted-foreground/20 rounded-md bg-background">
-      {/* Visualization controls */}
-      <div className="absolute top-2 right-2 flex items-center gap-2 z-10">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={toggleConnections}
-          className={showConnections ? "bg-primary/10" : ""}
-        >
-          {showConnections ? "Hide Connections" : "Show Connections"}
-        </Button>
-        
-        <Button variant="outline" size="icon" onClick={handleZoomOut} title="Zoom Out">
-          <ZoomOut className="h-4 w-4" />
-        </Button>
-        
-        <span className="text-xs px-2 bg-background/80 rounded">
-          {Math.round(zoomLevel * 100)}%
-        </span>
-        
-        <Button variant="outline" size="icon" onClick={handleZoomIn} title="Zoom In">
-          <ZoomIn className="h-4 w-4" />
-        </Button>
-        
-        <Button variant="outline" size="sm" onClick={handleResetView} className="ml-2">
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Reset View
-        </Button>
-      </div>
+      {/* Visualization controls - only show if not externally controlled */}
+      {externalZoomLevel === undefined && (
+        <div className="absolute top-2 right-2 flex items-center gap-2 z-10">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleConnections}
+            className={effectiveShowConnections ? "bg-primary/10" : ""}
+          >
+            {effectiveShowConnections ? "Hide Connections" : "Show Connections"}
+          </Button>
+          
+          <Button variant="outline" size="icon" onClick={handleZoomOut} title="Zoom Out">
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          
+          <span className="text-xs px-2 bg-background/80 rounded">
+            {Math.round(effectiveZoomLevel * 100)}%
+          </span>
+          
+          <Button variant="outline" size="icon" onClick={handleZoomIn} title="Zoom In">
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+          
+          <Button variant="outline" size="sm" onClick={handleResetView} className="ml-2">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Reset View
+          </Button>
+        </div>
+      )}
       
       {/* SVG Canvas for visualization */}
       <div 
@@ -336,13 +351,13 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
           viewBox="0 0 1600 800" 
           preserveAspectRatio="xMidYMid meet"
           style={{
-            transform: `translate(${position.x}px, ${position.y}px) scale(${zoomLevel})`,
+            transform: `translate(${position.x}px, ${position.y}px) scale(${effectiveZoomLevel})`,
             transformOrigin: '0 0',
             transition: isDragging ? 'none' : 'transform 0.1s ease'
           }}
         >
-          {/* Connection lines */}
-          {showConnections && connections.map((conn, index) => (
+          {/* Connection lines - use effectiveShowConnections instead of showConnections */}
+          {effectiveShowConnections && connections.map((conn, index) => (
             <path
               key={`conn-${index}`}
               d={getConnectionPath(conn)}

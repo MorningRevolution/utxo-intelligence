@@ -12,7 +12,7 @@ import { PrivacyTreemap } from "@/components/utxo/PrivacyTreemap";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBTC } from "@/utils/utxo-utils";
 import { getRiskTextColor } from "@/utils/utxo-utils";
-import { Tooltip } from "@/components/ui/tooltip";
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const UTXOMap: React.FC = () => {
   const navigate = useNavigate();
@@ -124,48 +124,63 @@ const UTXOMap: React.FC = () => {
             </div>
             
             <div className="flex items-center gap-2">
-              <Tooltip content="Zoom out">
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  onClick={handleZoomOut}
-                  disabled={zoomLevel <= 0.5}
-                  className="h-8 w-8"
-                >
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-              </Tooltip>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      onClick={handleZoomOut}
+                      disabled={zoomLevel <= 0.5}
+                      className="h-8 w-8"
+                    >
+                      <ZoomOut className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Zoom out</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               
               <span className="text-xs font-mono bg-muted px-2 py-1 rounded">
                 {Math.round(zoomLevel * 100)}%
               </span>
               
-              <Tooltip content="Zoom in">
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  onClick={handleZoomIn}
-                  disabled={zoomLevel >= 2.5}
-                  className="h-8 w-8"
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-              </Tooltip>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      onClick={handleZoomIn}
+                      disabled={zoomLevel >= 2.5}
+                      className="h-8 w-8"
+                    >
+                      <ZoomIn className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Zoom in</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
-              <Tooltip content={showConnections ? "Hide connections" : "Show connections"}>
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  onClick={handleToggleConnections}
-                  className={`h-8 w-8 ${showConnections ? "bg-primary/10" : ""}`}
-                >
-                  {showConnections ? (
-                    <Eye className="h-4 w-4" />
-                  ) : (
-                    <EyeOff className="h-4 w-4" />
-                  )}
-                </Button>
-              </Tooltip>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      onClick={handleToggleConnections}
+                      className={`h-8 w-8 ${showConnections ? "bg-primary/10" : ""}`}
+                    >
+                      {showConnections ? (
+                        <Eye className="h-4 w-4" />
+                      ) : (
+                        <EyeOff className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{showConnections ? "Hide connections" : "Show connections"}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
           
