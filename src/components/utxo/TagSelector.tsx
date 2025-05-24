@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Check, Plus, Tag as TagIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,6 @@ interface TagSelectorProps {
   onSelect: (tagId: string, remove?: boolean) => void;
   utxoTags: string[];
   selectedTags?: string[];
-  availableTags?: any[];
   trigger?: React.ReactNode;
 }
 
@@ -29,8 +29,7 @@ export const TagSelector = ({
   onSelect, 
   utxoTags, 
   selectedTags = [],
-  trigger,
-  availableTags
+  trigger 
 }: TagSelectorProps) => {
   const { tags, addTag, walletData } = useWallet();
   const location = useLocation();

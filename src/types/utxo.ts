@@ -20,8 +20,6 @@ export interface UTXO {
   receiverAddress: string | null;
   walletName?: string; // Which wallet this UTXO belongs to
   fee?: number; // Fee in BTC
-  btcPrice?: number; // Current BTC price for this UTXO
-  costBasis?: number; // Cost basis in fiat currency
 }
 
 export interface WalletData {

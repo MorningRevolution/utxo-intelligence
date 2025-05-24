@@ -1,44 +1,35 @@
 import React, { useState, useEffect, useRef } from "react";
 import { UTXO } from "@/types/utxo";
-import { EnhancedTimelineViewProps } from "@/types/utxo-graph";
 import { ZoomIn, ZoomOut, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getRiskColor, formatBTC, calculateTimelineSpacing, groupUtxosByMonth, calculateCurvedPath } from "@/utils/utxo-utils";
 import { toast } from "sonner";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { format } from "date-fns";
+
+interface EnhancedTimelineViewProps {
+  utxos: UTXO[];
+  onSelectUtxo?: (utxo: UTXO | null) => void;
+  selectedUtxo?: UTXO | null;
+  showConnections?: boolean;
+  zoomLevel?: number;
+}
 
 export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
   utxos,
   onSelectUtxo,
   selectedUtxo,
-  showConnections = true,
-  zoomLevel = 1
+  showConnections: initialShowConnections = true,
+  zoomLevel: initialZoomLevel = 1
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [internalShowConnections, setInternalShowConnections] = useState(showConnections);
-  const [internalZoomLevel, setInternalZoomLevel] = useState(zoomLevel);
+  const [showConnections, setShowConnections] = useState(initialShowConnections);
+  const [zoomLevel, setZoomLevel] = useState(initialZoomLevel);
   const [hoveredUtxo, setHoveredUtxo] = useState<UTXO | null>(null);
   const [dimensions, setDimensions] = useState({ width: 1000, height: 600 });
   const [monthGroups, setMonthGroups] = useState<{ groups: Record<string, UTXO[]>, sortedKeys: string[] }>({ groups: {}, sortedKeys: [] });
   const [connections, setConnections] = useState<{ path: string, source: UTXO, target: UTXO, risk: 'low' | 'medium' | 'high' }[]>([]);
-
-  // Update internal state when props change
-  useEffect(() => {
-    setInternalShowConnections(showConnections);
-  }, [showConnections]);
-
-  useEffect(() => {
-    setInternalZoomLevel(zoomLevel);
-  }, [zoomLevel]);
 
   // Calculate dimensions and group UTXOs by month
   useEffect(() => {
@@ -58,7 +49,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
     setMonthGroups(groups);
     
     // Calculate connections between related UTXOs
-    if (internalShowConnections) {
+    if (showConnections) {
       const newConnections: { path: string, source: UTXO, target: UTXO, risk: 'low' | 'medium' | 'high' }[] = [];
       
       // Simple algorithm to find potential connections based on addresses
@@ -125,7 +116,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
         resizeObserver.unobserve(containerRef.current);
       }
     };
-  }, [utxos, internalShowConnections]);
+  }, [utxos, showConnections]);
   
   // Calculate node positions and connection paths
   useEffect(() => {
@@ -139,7 +130,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
     );
     
     // Update connection paths based on node positions
-    if (internalShowConnections) {
+    if (showConnections) {
       const updatedConnections = connections.map(conn => {
         const sourceDate = conn.source.acquisitionDate ? new Date(conn.source.acquisitionDate) : new Date();
         const targetDate = conn.target.acquisitionDate ? new Date(conn.target.acquisitionDate) : new Date();
@@ -163,7 +154,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
       
       setConnections(updatedConnections);
     }
-  }, [dimensions, monthGroups, internalShowConnections, connections, utxos]);
+  }, [dimensions, monthGroups, showConnections, connections, utxos]);
 
   // Handle mouse events for pan and zoom
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -192,27 +183,27 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
     e.preventDefault();
     // Adjust zoom with mouse wheel
     const delta = -Math.sign(e.deltaY) * 0.1;
-    const newZoom = Math.min(3, Math.max(0.5, internalZoomLevel + delta));
-    setInternalZoomLevel(newZoom);
+    const newZoom = Math.min(3, Math.max(0.5, zoomLevel + delta));
+    setZoomLevel(newZoom);
   };
 
   // Handle zoom controls
   const handleZoomIn = () => {
-    setInternalZoomLevel(prev => Math.min(3, prev + 0.2));
+    setZoomLevel(prev => Math.min(3, prev + 0.2));
   };
 
   const handleZoomOut = () => {
-    setInternalZoomLevel(prev => Math.max(0.5, prev - 0.2));
+    setZoomLevel(prev => Math.max(0.5, prev - 0.2));
   };
 
   const handleResetView = () => {
-    setInternalZoomLevel(1);
+    setZoomLevel(1);
     setPosition({ x: 0, y: 0 });
   };
   
   const toggleConnections = () => {
-    setInternalShowConnections(prev => !prev);
-    toast.info(internalShowConnections ? "Connections hidden" : "Connections visible");
+    setShowConnections(prev => !prev);
+    toast.info(showConnections ? "Connections hidden" : "Connections visible");
   };
   
   // Handle UTXO selection
@@ -263,17 +254,6 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
     return date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
   };
 
-  // Helper function to format transaction dates
-  const formatTxDate = (dateStr?: string) => {
-    if (!dateStr) return "Unknown";
-    try {
-      const date = new Date(dateStr);
-      return format(date, "MMM d, yyyy");
-    } catch (e) {
-      return "Invalid Date";
-    }
-  };
-
   return (
     <div className="relative h-full w-full overflow-hidden">
       {/* Visualization controls */}
@@ -282,9 +262,9 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
           variant="outline"
           size="sm"
           onClick={toggleConnections}
-          className={internalShowConnections ? "bg-primary/10" : ""}
+          className={showConnections ? "bg-primary/10" : ""}
         >
-          {internalShowConnections ? (
+          {showConnections ? (
             <><Eye className="h-4 w-4 mr-1" /> Hide Connections</>
           ) : (
             <><EyeOff className="h-4 w-4 mr-1" /> Show Connections</>
@@ -296,7 +276,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
         </Button>
         
         <span className="text-xs px-2 bg-background/80 rounded">
-          {Math.round(internalZoomLevel * 100)}%
+          {Math.round(zoomLevel * 100)}%
         </span>
         
         <Button variant="outline" size="icon" onClick={handleZoomIn} title="Zoom In">
@@ -312,7 +292,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
       {/* Timeline visualization */}
       <div 
         ref={containerRef}
-        className="h-full w-full cursor-grab active:cursor-grabbing bg-muted/10"
+        className="h-full w-full cursor-grab active:cursor-grabbing"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -325,29 +305,11 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
           viewBox="0 0 1000 600" 
           preserveAspectRatio="xMidYMid meet"
           style={{
-            transform: `translate(${position.x}px, ${position.y}px) scale(${internalZoomLevel})`,
+            transform: `translate(${position.x}px, ${position.y}px) scale(${zoomLevel})`,
             transformOrigin: '0 0',
             transition: isDragging ? 'none' : 'transform 0.1s ease'
           }}
         >
-          <defs>
-            <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.3" />
-            </filter>
-            
-            <marker
-              id="arrowhead"
-              markerWidth="6"
-              markerHeight="4"
-              refX="6"
-              refY="2"
-              orient="auto"
-              fill="currentColor"
-            >
-              <path d="M0,0 L6,2 L0,4 Z" />
-            </marker>
-          </defs>
-          
           {/* Month separators and labels */}
           {monthGroups.sortedKeys.map((monthKey, index) => {
             const x = index * 200;
@@ -370,7 +332,6 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
                   y={30} 
                   textAnchor="middle" 
                   className="fill-foreground text-sm font-medium"
-                  style={{ filter: "drop-shadow(0px 1px 1px rgba(0,0,0,0.2))" }}
                 >
                   {formatMonthLabel(monthKey)}
                 </text>
@@ -383,103 +344,80 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
                   
                   // Calculate position within month column
                   const nodeX = x + 100; // Center of month column
-                  const nodeY = 100 + (utxoIndex * 60) % 400; // Distribute vertically with wrapping
+                  const nodeY = 100 + (utxoIndex * 60) % 400; // Distribute vertically
                   
                   return (
-                    <TooltipProvider key={`utxo-${utxo.txid}-${utxo.vout}`}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <g 
-                            transform={`translate(${nodeX}, ${nodeY})`}
-                            onClick={() => handleUtxoClick(utxo)}
-                            onMouseEnter={() => handleUtxoMouseEnter(utxo)}
-                            onMouseLeave={handleUtxoMouseLeave}
-                            className="cursor-pointer"
-                          >
-                            {/* UTXO node circle with drop shadow */}
-                            <circle
-                              r={nodeSize / 2}
-                              fill={getNodeColor(utxo.privacyRisk, isSelected, isHovered)}
-                              stroke={isSelected ? "white" : "rgba(255,255,255,0.5)"}
-                              strokeWidth={isSelected ? 2 : 1}
-                              className="transition-all duration-200"
-                              style={{ filter: "url(#dropShadow)" }}
-                            />
-                            
-                            {/* UTXO amount label */}
-                            <text
-                              y={4}
-                              textAnchor="middle"
-                              className="fill-white text-xs font-medium"
-                              style={{ 
-                                pointerEvents: 'none',
-                                textShadow: "0px 1px 2px rgba(0,0,0,0.5)",
-                              }}
-                            >
-                              {formatBTC(utxo.amount, { trimZeros: true, maxDecimals: 4 })}
-                            </text>
-                            
-                            {/* UTXO txid label (only show when selected or hovered) */}
-                            {(isSelected || isHovered) && (
-                              <text
-                                y={nodeSize / 2 + 16}
-                                textAnchor="middle"
-                                className="fill-background text-xs font-medium"
-                                style={{ 
-                                  pointerEvents: 'none',
-                                  textShadow: "0px 0px 3px rgba(255,255,255,0.9)",
-                                }}
-                              >
-                                {`${utxo.txid.substring(0, 6)}...${utxo.vout}`}
-                              </text>
-                            )}
-                          </g>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs z-50">
-                          <div className="space-y-1">
-                            <p className="font-medium">
-                              {formatBTC(utxo.amount)} 
-                              <span className="text-muted-foreground ml-1 text-xs">(vout: {utxo.vout})</span>
-                            </p>
-                            <p className="text-xs text-muted-foreground break-all">{utxo.txid}</p>
-                            <div className="text-xs pt-1">
-                              <p><span className="font-medium">Date:</span> {formatTxDate(utxo.acquisitionDate)}</p>
-                              {utxo.walletName && <p><span className="font-medium">Wallet:</span> {utxo.walletName}</p>}
-                              {utxo.notes && <p><span className="font-medium">Notes:</span> {utxo.notes}</p>}
-                            </div>
-                            <div className="pt-1">
-                              <span className={`text-xs rounded px-1.5 py-0.5 font-medium ${
-                                utxo.privacyRisk === 'high' ? 'bg-red-100 text-red-800' : 
-                                utxo.privacyRisk === 'medium' ? 'bg-amber-100 text-amber-800' : 
-                                'bg-green-100 text-green-800'
-                              }`}>
-                                {utxo.privacyRisk.toUpperCase()} RISK
-                              </span>
-                            </div>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <g 
+                      key={`utxo-${utxo.txid}-${utxo.vout}`}
+                      transform={`translate(${nodeX}, ${nodeY})`}
+                      onClick={() => handleUtxoClick(utxo)}
+                      onMouseEnter={() => handleUtxoMouseEnter(utxo)}
+                      onMouseLeave={handleUtxoMouseLeave}
+                      className="cursor-pointer"
+                    >
+                      {/* UTXO node circle */}
+                      <circle
+                        r={nodeSize / 2}
+                        fill={getNodeColor(utxo.privacyRisk, isSelected, isHovered)}
+                        stroke={isSelected ? "white" : "transparent"}
+                        strokeWidth={isSelected ? 2 : 0}
+                        className="transition-all duration-200"
+                      />
+                      
+                      {/* UTXO amount label */}
+                      <text
+                        y={4}
+                        textAnchor="middle"
+                        className="fill-white text-xs font-medium"
+                        style={{ pointerEvents: 'none' }}
+                      >
+                        {formatBTC(utxo.amount, { trimZeros: true, maxDecimals: 4 })}
+                      </text>
+                      
+                      {/* UTXO txid label (only show when selected or hovered) */}
+                      {(isSelected || isHovered) && (
+                        <text
+                          y={nodeSize / 2 + 16}
+                          textAnchor="middle"
+                          className="fill-muted-foreground text-xs"
+                          style={{ pointerEvents: 'none' }}
+                        >
+                          {`${utxo.txid.substring(0, 6)}...${utxo.vout}`}
+                        </text>
+                      )}
+                    </g>
                   );
                 })}
               </g>
             );
           })}
           
-          {/* Connection lines between related UTXOs - rendered on top for better visibility */}
-          {internalShowConnections && connections.map((conn, index) => (
+          {/* Connection lines between related UTXOs */}
+          {showConnections && connections.map((conn, index) => (
             <path
               key={`conn-${index}`}
               d={conn.path}
               stroke={getRiskColor(conn.risk)}
-              strokeWidth={conn.source === hoveredUtxo || conn.target === hoveredUtxo ? 3 : 1.5}
-              strokeOpacity={conn.source === hoveredUtxo || conn.target === hoveredUtxo ? 0.9 : 0.5}
+              strokeWidth={conn.source === hoveredUtxo || conn.target === hoveredUtxo ? 2 : 1}
+              strokeOpacity={conn.source === hoveredUtxo || conn.target === hoveredUtxo ? 0.8 : 0.4}
               fill="none"
               markerEnd="url(#arrowhead)"
-              style={{ pointerEvents: "none" }}
-              className="transition-opacity duration-200"
             />
           ))}
+          
+          {/* Arrow marker definition */}
+          <defs>
+            <marker
+              id="arrowhead"
+              markerWidth="6"
+              markerHeight="4"
+              refX="5"
+              refY="2"
+              orient="auto"
+            >
+              <path d="M0,0 L6,2 L0,4 Z" fill="currentColor" />
+            </marker>
+          </defs>
         </svg>
       </div>
       
