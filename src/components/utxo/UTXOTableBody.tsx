@@ -167,13 +167,6 @@ export const UTXOTableBody: React.FC<UTXOTableBodyProps> = ({
     return null;
   };
 
-  // Create a wrapper function for tag selection to match the expected signature
-  const createTagSelectorHandler = (utxoId: string) => {
-    return (tagId: string, remove?: boolean) => {
-      handleTagSelection(utxoId, tagId, remove);
-    };
-  };
-
   return (
     <div className="w-full relative">
       <ScrollArea className="h-[calc(100vh-300px)] w-full">
@@ -504,7 +497,9 @@ export const UTXOTableBody: React.FC<UTXOTableBodyProps> = ({
                     <TableCell>
                       <TagSelector
                         utxoId={`${utxo.txid}-${utxo.vout}`}
-                        onSelect={createTagSelectorHandler(`${utxo.txid}-${utxo.vout}`)}
+                        onSelect={(tagId: string, remove?: boolean) => {
+                          handleTagSelection(`${utxo.txid}-${utxo.vout}`, tagId, remove);
+                        }}
                         utxoTags={utxo.tags}
                         selectedTags={utxo.tags}
                         availableTags={walletData.tags}
@@ -587,7 +582,7 @@ export const UTXOTableBody: React.FC<UTXOTableBodyProps> = ({
                 <TableCell colSpan={12} className="text-center py-8">
                   <div className="text-muted-foreground">No UTXOs found matching the current filters.</div>
                 </TableCell>
-              )}
+              </TableRow>
             )}
           </TableBody>
         </Table>
