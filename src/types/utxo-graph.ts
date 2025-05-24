@@ -167,3 +167,26 @@ export interface MatrixConnection {
   path: string;
   riskLevel: 'low' | 'medium' | 'high';
 }
+
+// Add missing props interfaces for the visualization components
+export interface ResponsiveTraceabilityMatrixProps {
+  utxos: UTXO[];
+  onSelectUtxo?: (utxo: UTXO | null) => void;
+  selectedUtxo?: UTXO | null;
+  showConnections?: boolean;
+  zoomLevel?: number;
+}
+
+export interface EnhancedTimelineViewProps {
+  utxos: UTXO[];
+  onSelectUtxo?: (utxo: UTXO | null) => void;
+  selectedUtxo?: UTXO | null;
+  showConnections?: boolean;
+  zoomLevel?: number;
+}
+
+export interface PrivacyTreemapProps {
+  utxos: UTXO[];
+  onSelectUtxo?: (utxo: UTXO | null) => void;
+  zoomLevel?: number;
+}

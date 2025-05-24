@@ -47,134 +47,73 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
     return () => resizeObserver.disconnect();
   }, []);
 
-  // Generate treemap layout
+  // Generate mempool-style treemap layout
   useEffect(() => {
     if (!utxos.length) return;
 
-    // Group UTXOs by risk level
-    const riskGroups: Record<string, UTXO[]> = {
-      high: [],
-      medium: [],
-      low: []
-    };
-
-    utxos.forEach(utxo => {
-      riskGroups[utxo.privacyRisk].push(utxo);
-    });
-
-    // Create tiles with hierarchical layout
+    // Sort UTXOs by amount (largest first) for better packing
+    const sortedUtxos = [...utxos].sort((a, b) => b.amount - a.amount);
+    
+    // Calculate total amount for proportional sizing
+    const totalAmount = sortedUtxos.reduce((sum, utxo) => sum + utxo.amount, 0);
+    
     const newTiles: TreemapTile[] = [];
     
-    // Calculate total amount for scaling
-    const totalAmount = utxos.reduce((sum, utxo) => sum + utxo.amount, 0);
+    // Simple rectangle packing algorithm for mempool-style layout
+    const padding = 2;
+    const availableWidth = containerSize.width - 40; // Account for padding
+    const availableHeight = containerSize.height - 40;
     
-    // Layout algorithm (simple treemap)
-    const layoutTreemap = (
-      items: UTXO[], 
-      x: number, 
-      y: number, 
-      width: number, 
-      height: number,
-      riskLevel: 'high' | 'medium' | 'low'
-    ) => {
-      // Sort by amount (descending)
-      const sortedItems = [...items].sort((a, b) => b.amount - a.amount);
+    let currentX = 20;
+    let currentY = 20;
+    let rowHeight = 0;
+    
+    sortedUtxos.forEach(utxo => {
+      // Calculate tile size proportional to BTC amount
+      const proportion = utxo.amount / totalAmount;
+      const tileArea = proportion * availableWidth * availableHeight;
       
-      if (sortedItems.length === 0) return;
+      // Try to maintain reasonable aspect ratio
+      const aspectRatio = 1.5; // Width to height ratio
+      let tileWidth = Math.sqrt(tileArea * aspectRatio);
+      let tileHeight = tileArea / tileWidth;
       
-      // Calculate group total
-      const groupTotal = sortedItems.reduce((sum, utxo) => sum + utxo.amount, 0);
+      // Minimum and maximum sizes for visibility
+      tileWidth = Math.max(30, Math.min(200, tileWidth));
+      tileHeight = Math.max(20, Math.min(150, tileHeight));
       
-      // Simple row-based layout
-      let currentX = x;
-      let currentY = y;
-      let rowHeight = 0;
-      let rowWidth = 0;
+      // Check if we need to start a new row
+      if (currentX + tileWidth > availableWidth + 20) {
+        currentX = 20;
+        currentY += rowHeight + padding;
+        rowHeight = 0;
+      }
       
-      sortedItems.forEach((utxo, index) => {
-        // Calculate tile size proportional to BTC amount
-        const tileArea = (utxo.amount / groupTotal) * width * height;
-        
-        // Try to maintain aspect ratio close to 1
-        let tileWidth = Math.sqrt(tileArea * (width / height));
-        let tileHeight = tileArea / tileWidth;
-        
-        // Check if we need to start a new row
-        if (currentX + tileWidth > x + width) {
-          currentX = x;
-          currentY += rowHeight;
-          rowHeight = 0;
-          rowWidth = 0;
-        }
-        
-        // Add tile
-        newTiles.push({
-          id: `${utxo.txid}-${utxo.vout}`,
-          name: `${utxo.txid.substring(0, 8)}...`,
-          value: utxo.amount,
-          displaySize: Math.sqrt(utxo.amount / totalAmount) * 100,
-          color: getRiskColor(utxo.privacyRisk),
-          data: utxo,
-          x: currentX,
-          y: currentY,
-          width: tileWidth,
-          height: tileHeight
-        });
-        
-        // Update position for next tile
-        currentX += tileWidth;
-        rowWidth += tileWidth;
-        rowHeight = Math.max(rowHeight, tileHeight);
+      // Make sure we don't exceed container height
+      if (currentY + tileHeight > availableHeight + 20) {
+        // Start a new column or reduce size
+        const scaleFactor = Math.min(1, (availableHeight - currentY + 20) / tileHeight);
+        tileHeight *= scaleFactor;
+        tileWidth *= scaleFactor;
+      }
+      
+      newTiles.push({
+        id: `${utxo.txid}-${utxo.vout}`,
+        name: `${utxo.txid.substring(0, 8)}...`,
+        value: utxo.amount,
+        displaySize: Math.sqrt(utxo.amount / totalAmount) * 100,
+        color: getRiskColor(utxo.privacyRisk),
+        data: utxo,
+        x: currentX,
+        y: currentY,
+        width: tileWidth,
+        height: tileHeight
       });
-    };
-    
-    // Calculate section heights based on amount proportions
-    const highRiskTotal = riskGroups.high.reduce((sum, u) => sum + u.amount, 0);
-    const mediumRiskTotal = riskGroups.medium.reduce((sum, u) => sum + u.amount, 0);
-    const lowRiskTotal = riskGroups.low.reduce((sum, u) => sum + u.amount, 0);
-    
-    const totalHeight = containerSize.height - 40; // Account for padding
-    const highHeight = Math.max(50, (highRiskTotal / totalAmount) * totalHeight);
-    const mediumHeight = Math.max(50, (mediumRiskTotal / totalAmount) * totalHeight);
-    const lowHeight = Math.max(50, (lowRiskTotal / totalAmount) * totalHeight);
-    
-    // Layout each risk section
-    let yOffset = 20;
-    
-    if (riskGroups.high.length > 0) {
-      layoutTreemap(
-        riskGroups.high, 
-        20, 
-        yOffset, 
-        containerSize.width - 40, 
-        highHeight,
-        'high'
-      );
-      yOffset += highHeight + 10;
-    }
-    
-    if (riskGroups.medium.length > 0) {
-      layoutTreemap(
-        riskGroups.medium, 
-        20, 
-        yOffset, 
-        containerSize.width - 40, 
-        mediumHeight,
-        'medium'
-      );
-      yOffset += mediumHeight + 10;
-    }
-    
-    if (riskGroups.low.length > 0) {
-      layoutTreemap(
-        riskGroups.low, 
-        20, 
-        yOffset, 
-        containerSize.width - 40, 
-        lowHeight,
-        'low'
-      );
-    }
+      
+      // Update position for next tile
+      currentX += tileWidth + padding;
+      rowHeight = Math.max(rowHeight, tileHeight);
+    });
     
     setTiles(newTiles);
   }, [utxos, containerSize]);
@@ -209,7 +148,7 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
         </Button>
       </div>
       
-      {/* Risk level labels */}
+      {/* Risk level legend */}
       <div className="absolute top-2 left-4 flex flex-col gap-1 z-10">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded-full bg-rose-500"></div>
