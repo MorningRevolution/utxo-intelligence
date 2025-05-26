@@ -55,7 +55,7 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
     return () => resizeObserver.disconnect();
   }, []);
 
-  // Mempool-style rectangle packing algorithm
+  // Improved treemap layout algorithm - proper container-based proportional layout
   useEffect(() => {
     if (!utxos.length) return;
 
@@ -65,125 +65,82 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
     // Calculate total amount for proportional sizing
     const totalAmount = sortedUtxos.reduce((sum, utxo) => sum + utxo.amount, 0);
     
+    // Container dimensions with proper padding
+    const padding = 20;
+    const containerWidth = containerSize.width - (padding * 2);
+    const containerHeight = containerSize.height - (padding * 2);
+    const totalArea = containerWidth * containerHeight;
+    
+    // Squarified treemap algorithm for proper non-overlapping layout
     const newRectangles: Rectangle[] = [];
     
-    // Container dimensions with padding
-    const padding = 4;
-    const availableWidth = containerSize.width - 40;
-    const availableHeight = containerSize.height - 40;
-    const totalArea = availableWidth * availableHeight * 0.95; // Use 95% of available space
-    
-    // Squarified treemap algorithm
-    interface PackingRow {
-      rectangles: Rectangle[];
-      totalArea: number;
-      bounds: { x: number; y: number; width: number; height: number };
-    }
-    
-    const calculateAspectRatio = (areas: number[], width: number): number => {
-      const sum = areas.reduce((a, b) => a + b, 0);
-      const maxArea = Math.max(...areas);
-      const minArea = Math.min(...areas);
-      return Math.max((width * width * maxArea) / (sum * sum), (sum * sum) / (width * width * minArea));
-    };
-    
-    const layoutRow = (row: number[], x: number, y: number, width: number, height: number): Rectangle[] => {
-      const sum = row.reduce((a, b) => a + b, 0);
-      const rects: Rectangle[] = [];
-      let offset = 0;
-      
-      const isHorizontal = width >= height;
-      
-      row.forEach((area, index) => {
-        const utxo = sortedUtxos[rectangles.length + index];
-        if (!utxo) return;
-        
-        if (isHorizontal) {
-          const rectHeight = height;
-          const rectWidth = (area / sum) * width;
-          rects.push({
-            x: x + offset,
-            y: y,
-            width: rectWidth - padding,
-            height: rectHeight - padding,
-            utxo
-          });
-          offset += rectWidth;
-        } else {
-          const rectWidth = width;
-          const rectHeight = (area / sum) * height;
-          rects.push({
-            x: x,
-            y: y + offset,
-            width: rectWidth - padding,
-            height: rectHeight - padding,
-            utxo
-          });
-          offset += rectHeight;
-        }
-      });
-      
-      return rects;
-    };
-    
-    // Calculate areas proportional to BTC amounts
+    // Calculate normalized areas based on BTC amounts
     const areas = sortedUtxos.map(utxo => (utxo.amount / totalAmount) * totalArea);
     
-    const rectangles: Rectangle[] = [];
-    let remainingAreas = [...areas];
-    let currentBounds = { x: 20, y: 20, width: availableWidth, height: availableHeight };
-    
-    while (remainingAreas.length > 0) {
-      let row: number[] = [remainingAreas[0]];
-      let bestAspectRatio = calculateAspectRatio(row, Math.min(currentBounds.width, currentBounds.height));
+    // Recursive function to layout rectangles
+    const layoutRectangles = (
+      utxoIndices: number[],
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ) => {
+      if (utxoIndices.length === 0) return;
       
-      // Try adding more rectangles to the row
-      for (let i = 1; i < remainingAreas.length; i++) {
-        const newRow = [...row, remainingAreas[i]];
-        const newAspectRatio = calculateAspectRatio(newRow, Math.min(currentBounds.width, currentBounds.height));
+      if (utxoIndices.length === 1) {
+        // Single rectangle - fill the space
+        const index = utxoIndices[0];
+        const utxo = sortedUtxos[index];
+        newRectangles.push({
+          x: x + 2,
+          y: y + 2,
+          width: width - 4,
+          height: height - 4,
+          utxo
+        });
+        return;
+      }
+      
+      // Find the best split point
+      const totalAreaForGroup = utxoIndices.reduce((sum, i) => sum + areas[i], 0);
+      let bestSplit = 1;
+      let bestRatio = Infinity;
+      
+      for (let split = 1; split < utxoIndices.length; split++) {
+        const leftArea = utxoIndices.slice(0, split).reduce((sum, i) => sum + areas[i], 0);
+        const rightArea = totalAreaForGroup - leftArea;
+        const ratio = Math.max(leftArea / rightArea, rightArea / leftArea);
         
-        if (newAspectRatio < bestAspectRatio) {
-          row = newRow;
-          bestAspectRatio = newAspectRatio;
-        } else {
-          break;
+        if (ratio < bestRatio) {
+          bestRatio = ratio;
+          bestSplit = split;
         }
       }
       
-      // Layout the current row
-      const rowRects = layoutRow(row, currentBounds.x, currentBounds.y, currentBounds.width, currentBounds.height);
-      rectangles.push(...rowRects);
+      // Split the area
+      const leftIndices = utxoIndices.slice(0, bestSplit);
+      const rightIndices = utxoIndices.slice(bestSplit);
+      const leftArea = leftIndices.reduce((sum, i) => sum + areas[i], 0);
+      const leftRatio = leftArea / totalAreaForGroup;
       
-      // Update remaining areas and bounds
-      remainingAreas = remainingAreas.slice(row.length);
-      
-      if (remainingAreas.length > 0) {
-        const rowSum = row.reduce((a, b) => a + b, 0);
-        const remainingSum = remainingAreas.reduce((a, b) => a + b, 0);
-        
-        if (currentBounds.width >= currentBounds.height) {
-          // Horizontal split
-          const usedWidth = (rowSum / (rowSum + remainingSum)) * currentBounds.width;
-          currentBounds = {
-            x: currentBounds.x + usedWidth,
-            y: currentBounds.y,
-            width: currentBounds.width - usedWidth,
-            height: currentBounds.height
-          };
-        } else {
-          // Vertical split
-          const usedHeight = (rowSum / (rowSum + remainingSum)) * currentBounds.height;
-          currentBounds = {
-            x: currentBounds.x,
-            y: currentBounds.y + usedHeight,
-            width: currentBounds.width,
-            height: currentBounds.height - usedHeight
-          };
-        }
+      if (width > height) {
+        // Split vertically
+        const leftWidth = width * leftRatio;
+        layoutRectangles(leftIndices, x, y, leftWidth, height);
+        layoutRectangles(rightIndices, x + leftWidth, y, width - leftWidth, height);
+      } else {
+        // Split horizontally
+        const leftHeight = height * leftRatio;
+        layoutRectangles(leftIndices, x, y, width, leftHeight);
+        layoutRectangles(rightIndices, x, y + leftHeight, width, height - leftHeight);
       }
-    }
+    };
     
-    setRectangles(rectangles);
+    // Start the layout process
+    const indices = Array.from({ length: sortedUtxos.length }, (_, i) => i);
+    layoutRectangles(indices, padding, padding, containerWidth, containerHeight);
+    
+    setRectangles(newRectangles);
   }, [utxos, containerSize]);
 
   // Handle tile selection

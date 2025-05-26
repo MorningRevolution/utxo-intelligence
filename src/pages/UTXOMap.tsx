@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { EnhancedTimelineView } from "@/components/utxo/EnhancedTimelineView";
 import { ResponsiveTraceabilityMatrix } from "@/components/utxo/ResponsiveTraceabilityMatrix";
 import { PrivacyTreemap } from "@/components/utxo/PrivacyTreemap";
-import { UTXOViewManager } from "@/components/utxo/UTXOViewManager";
+import { UTXOTableBody } from "@/components/utxo/UTXOTableBody";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBTC } from "@/utils/utxo-utils";
 import { getRiskTextColor } from "@/utils/utxo-utils";
@@ -25,6 +25,10 @@ const UTXOMap: React.FC = () => {
   );
   const [showConnections, setShowConnections] = useState<boolean>(true);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
+  
+  // Table-specific state for original UTXOTableBody
+  const [editableUtxo, setEditableUtxo] = useState<string | null>(null);
+  const [datePickerOpen, setDatePickerOpen] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hasWallet) {
@@ -59,6 +63,47 @@ const UTXOMap: React.FC = () => {
     setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
   };
 
+  // Table interaction handlers (placeholder implementations for original UTXOTableBody)
+  const handleSort = (key: keyof UTXO) => {
+    // Implement sorting logic if needed
+  };
+
+  const confirmDeleteUtxo = (id: string) => {
+    // Implement delete logic if needed
+  };
+
+  const handleTagSelection = (utxoId: string, tagId: string, remove?: boolean) => {
+    // Implement tag selection logic if needed
+  };
+
+  const handleAddToSimulation = (utxo: UTXO) => {
+    // Implement simulation logic if needed
+  };
+
+  const handleSenderAddressEdit = (utxoId: string, newValue: string) => {
+    // Implement sender address edit logic if needed
+  };
+
+  const handleReceiverAddressEdit = (utxoId: string, newValue: string) => {
+    // Implement receiver address edit logic if needed
+  };
+
+  const handleDateEdit = (utxoId: string, date: Date | undefined) => {
+    // Implement date edit logic if needed
+  };
+
+  const handleBtcPriceEdit = (utxoId: string, newValue: string) => {
+    // Implement BTC price edit logic if needed
+  };
+
+  const handleCostBasisEdit = (utxoId: string, newValue: string) => {
+    // Implement cost basis edit logic if needed
+  };
+
+  const handleNotesEdit = (utxoId: string, newValue: string) => {
+    // Implement notes edit logic if needed
+  };
+
   if (!walletData) {
     return (
       <div className="container px-4 md:px-8 py-6">
@@ -73,7 +118,7 @@ const UTXOMap: React.FC = () => {
   return (
     <div className="container px-4 md:px-8 py-6">
       <div className="flex flex-col md:flex-row justify-between gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-foreground">UTXO Visualization</h1>
+        <h1 className="text-2xl font-bold text-foreground">UTXO Visualization Suite</h1>
       </div>
 
       <Tabs 
@@ -105,8 +150,8 @@ const UTXOMap: React.FC = () => {
           {/* Visualization Controls */}
           <div className="flex flex-wrap justify-between items-center mb-4">
             <div className="text-sm text-muted-foreground">
-              {activeView === "table" && "Table view shows all UTXOs with detailed information and editing capabilities."}
-              {activeView === "timeline" && "Timeline view shows your transactions chronologically, spaced by date."}
+              {activeView === "table" && "Table view shows all UTXOs with editable fields and detailed information."}
+              {activeView === "timeline" && "Timeline view shows your transactions chronologically with BTC-proportional node sizing."}
               {activeView === "traceability" && "Matrix view shows relationships between addresses and transactions."}
               {activeView === "treemap" && "Treemap displays your UTXOs as proportionally sized tiles based on BTC amount."}
             </div>
@@ -183,33 +228,31 @@ const UTXOMap: React.FC = () => {
                   <div className="p-4">
                     <h3 className="text-lg font-semibold">UTXO Table</h3>
                     <p className="text-sm text-muted-foreground">
-                      Comprehensive table view with editable fields for all UTXOs
+                      Editable table view with all UTXO fields
                     </p>
                   </div>
                 </div>
                 <div className="overflow-y-auto h-[calc(100%-80px)]">
-                  <UTXOViewManager
-                    view="table"
+                  <UTXOTableBody
                     filteredUtxos={walletData.utxos}
                     walletData={walletData}
                     visibleColumns={{}}
                     sortConfig={{ key: 'amount', direction: 'desc' }}
-                    handleSort={() => {}}
-                    editableUtxo={null}
-                    setEditableUtxo={() => {}}
-                    datePickerOpen={null}
-                    setDatePickerOpen={() => {}}
-                    confirmDeleteUtxo={() => {}}
-                    handleTagSelection={() => {}}
-                    handleAddToSimulation={() => {}}
-                    handleSenderAddressEdit={() => {}}
-                    handleReceiverAddressEdit={() => {}}
-                    handleDateEdit={() => {}}
-                    handleBtcPriceEdit={() => {}}
-                    handleCostBasisEdit={() => {}}
-                    handleNotesEdit={() => {}}
-                    selectedVisualUtxo={selectedUtxo}
-                    handleVisualSelect={handleUtxoSelect}
+                    handleSort={handleSort}
+                    editableUtxo={editableUtxo}
+                    setEditableUtxo={setEditableUtxo}
+                    datePickerOpen={datePickerOpen}
+                    setDatePickerOpen={setDatePickerOpen}
+                    confirmDeleteUtxo={confirmDeleteUtxo}
+                    handleTagSelection={handleTagSelection}
+                    handleAddToSimulation={handleAddToSimulation}
+                    handleSenderAddressEdit={handleSenderAddressEdit}
+                    handleReceiverAddressEdit={handleReceiverAddressEdit}
+                    handleDateEdit={handleDateEdit}
+                    handleBtcPriceEdit={handleBtcPriceEdit}
+                    handleCostBasisEdit={handleCostBasisEdit}
+                    handleNotesEdit={handleNotesEdit}
+                    onRowClick={(utxo) => handleUtxoSelect(utxo)}
                   />
                 </div>
               </div>

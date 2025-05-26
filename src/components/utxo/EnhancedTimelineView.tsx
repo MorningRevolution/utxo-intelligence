@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { UTXO } from "@/types/utxo";
 import { ZoomIn, ZoomOut, ArrowLeft, Eye, EyeOff } from "lucide-react";
@@ -46,7 +45,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
   const [timelineNodes, setTimelineNodes] = useState<TimelineNode[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
 
-  // Calculate timeline layout with proper date-based spacing
+  // Calculate timeline layout with improved BTC-based node sizing
   useEffect(() => {
     if (!containerRef.current || !utxos.length) return;
     
@@ -74,7 +73,13 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
     const maxDate = Math.max(...dates.map(d => d.getTime()));
     const timeRange = maxDate - minDate || 1;
     
-    // Create timeline nodes with proper spacing
+    // Find min and max BTC amounts for proportional sizing
+    const amounts = sortedUtxos.map(utxo => utxo.amount);
+    const minAmount = Math.min(...amounts);
+    const maxAmount = Math.max(...amounts);
+    const amountRange = maxAmount - minAmount || 1;
+    
+    // Create timeline nodes with BTC-proportional sizing
     const nodes: TimelineNode[] = [];
     const nodesByDate = new Map<string, TimelineNode[]>();
     
@@ -89,9 +94,13 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
       }
       
       const sameDataNodes = nodesByDate.get(dateKey)!;
-      const y = 100 + (sameDataNodes.length * 80); // Vertical spacing for same date
+      const y = 100 + (sameDataNodes.length * 120); // Increased spacing for larger nodes
       
-      const size = Math.max(30, Math.min(60, Math.log10(1 + utxo.amount * 10) * 15));
+      // Calculate size based on BTC amount (proportional scaling)
+      const normalizedAmount = (utxo.amount - minAmount) / amountRange;
+      const minSize = 25;
+      const maxSize = 80;
+      const size = minSize + (normalizedAmount * (maxSize - minSize));
       
       const node: TimelineNode = {
         utxo,
@@ -363,7 +372,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
             />
           ))}
           
-          {/* Timeline nodes */}
+          {/* Timeline nodes with BTC-proportional sizing */}
           {timelineNodes.map((node, index) => {
             const isSelected = selectedUtxo && 
               selectedUtxo.txid === node.utxo.txid && 
@@ -381,7 +390,7 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
                 onMouseLeave={() => setHoveredUtxo(null)}
                 className="cursor-pointer"
               >
-                {/* Node circle with risk color */}
+                {/* Node circle with proportional size based on BTC amount */}
                 <circle
                   r={node.size / 2}
                   fill={getRiskColor(node.utxo.privacyRisk)}
@@ -394,14 +403,14 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
                   }}
                 />
                 
-                {/* BTC amount label - always visible */}
+                {/* BTC amount label - scaled with node size */}
                 <text
                   y={2}
                   textAnchor="middle"
                   className="fill-white text-xs font-bold"
                   style={{ 
                     textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
-                    fontSize: Math.min(12, node.size / 3)
+                    fontSize: Math.min(14, node.size / 4)
                   }}
                 >
                   {formatBTC(node.utxo.amount, { trimZeros: true, maxDecimals: 3 })}
