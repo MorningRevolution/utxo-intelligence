@@ -27,20 +27,13 @@ const Index = () => {
             these stories can reveal who you are, what you spend on, and how much you own.
             Take back control of your financial privacy.
           </p>
-          <div className="flex flex-wrap justify-center gap-4">
+          <div className="flex justify-center">
             <Button 
               size="lg" 
               onClick={handleGetStarted}
               className="animate-pulse"
             >
               Get Started <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="lg" 
-              onClick={() => navigate('/utxo-table')}
-            >
-              Why It Matters <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
         </div>

@@ -1,11 +1,10 @@
-
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
   Home, 
   Wallet, 
-  Table, 
+  Layers, 
   AlertTriangle, 
   FileText, 
   Bot, 
@@ -20,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/store/WalletContext";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function SideNav() {
   const [isOpen, setIsOpen] = useState(false);
@@ -51,11 +51,12 @@ export function SideNav() {
       ]
     },
     {
-      name: "UTXO Table",
-      path: "/utxo-table",
-      icon: <Table className="mr-2 h-5 w-5" />,
+      name: "UTXO Visualization",
+      path: "/utxo-map",
+      icon: <Layers className="mr-2 h-5 w-5" />,
       disabled: !hasWallet,
-      subItems: []
+      subItems: [],
+      tooltip: "Explore your coins visually – by time, connection, or risk."
     },
     {
       name: "AI Assistant",
@@ -145,7 +146,7 @@ export function SideNav() {
   };
 
   return (
-    <>
+    <TooltipProvider>
       <Button 
         variant="outline" 
         size="icon" 
@@ -245,24 +246,52 @@ export function SideNav() {
                     </CollapsibleContent>
                   </Collapsible>
                 ) : (
-                  <div
-                    className={cn(
-                      "flex items-center px-4 py-2 rounded-md transition-colors cursor-pointer",
-                      isPathActive(route.path, route.subItems)
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                      route.disabled && "opacity-50 cursor-not-allowed pointer-events-none"
-                    )}
-                    onClick={() => {
-                      if (!route.disabled) {
-                        navigate(route.path);
-                        setIsOpen(false);
-                      }
-                    }}
-                  >
-                    {route.icon}
-                    <span>{route.name}</span>
-                  </div>
+                  route.tooltip ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          className={cn(
+                            "flex items-center px-4 py-2 rounded-md transition-colors cursor-pointer",
+                            isPathActive(route.path, route.subItems)
+                              ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                            route.disabled && "opacity-50 cursor-not-allowed pointer-events-none"
+                          )}
+                          onClick={() => {
+                            if (!route.disabled) {
+                              navigate(route.path);
+                              setIsOpen(false);
+                            }
+                          }}
+                        >
+                          {route.icon}
+                          <span>{route.name}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        <p>{route.tooltip}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <div
+                      className={cn(
+                        "flex items-center px-4 py-2 rounded-md transition-colors cursor-pointer",
+                        isPathActive(route.path, route.subItems)
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                        route.disabled && "opacity-50 cursor-not-allowed pointer-events-none"
+                      )}
+                      onClick={() => {
+                        if (!route.disabled) {
+                          navigate(route.path);
+                          setIsOpen(false);
+                        }
+                      }}
+                    >
+                      {route.icon}
+                      <span>{route.name}</span>
+                    </div>
+                  )
                 )}
               </li>
             ))}
@@ -283,6 +312,6 @@ export function SideNav() {
           onClick={toggleSidebar}
         />
       )}
-    </>
+    </TooltipProvider>
   );
 }
