@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { UTXO } from "@/types/utxo";
 import { ZoomIn, ZoomOut, ArrowLeft, Eye, EyeOff } from "lucide-react";
@@ -192,6 +193,14 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
     return `M ${source.x} ${source.y} Q ${midX} ${midY} ${target.x} ${target.y}`;
   };
 
+  // Get connections related to a hovered UTXO
+  const getRelatedConnections = (utxo: UTXO) => {
+    return connections.filter(conn => 
+      (conn.source.utxo.txid === utxo.txid && conn.source.utxo.vout === utxo.vout) ||
+      (conn.target.utxo.txid === utxo.txid && conn.target.utxo.vout === utxo.vout)
+    );
+  };
+
   // Handle mouse events for pan and zoom
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
@@ -356,21 +365,29 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
             </marker>
           </defs>
           
-          {/* Connection arrows with high contrast */}
-          {showConnections && connections.map((conn, index) => (
-            <path
-              key={`conn-${index}`}
-              d={conn.path}
-              stroke={getRiskColor(conn.risk)}
-              strokeWidth={3}
-              strokeOpacity={0.8}
-              fill="none"
-              markerEnd={`url(#arrowhead-${conn.risk})`}
-              style={{
-                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
-              }}
-            />
-          ))}
+          {/* Connection arrows with hover highlighting */}
+          {showConnections && connections.map((conn, index) => {
+            const relatedConnections = hoveredUtxo ? getRelatedConnections(hoveredUtxo) : [];
+            const isHighlighted = relatedConnections.includes(conn);
+            
+            return (
+              <path
+                key={`conn-${index}`}
+                d={conn.path}
+                stroke={getRiskColor(conn.risk)}
+                strokeWidth={isHighlighted ? 5 : 3}
+                strokeOpacity={isHighlighted ? 1 : 0.8}
+                fill="none"
+                markerEnd={`url(#arrowhead-${conn.risk})`}
+                style={{
+                  filter: isHighlighted ? 
+                    'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' : 
+                    'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
+                  transition: 'all 0.2s ease'
+                }}
+              />
+            );
+          })}
           
           {/* Timeline nodes with BTC-proportional sizing */}
           {timelineNodes.map((node, index) => {

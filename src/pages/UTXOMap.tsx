@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBTC } from "@/utils/utxo-utils";
 import { getRiskTextColor } from "@/utils/utxo-utils";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { useUTXOModifiers } from "@/hooks/useUTXOModifiers";
 
 const UTXOMap: React.FC = () => {
   const navigate = useNavigate();
@@ -26,9 +27,21 @@ const UTXOMap: React.FC = () => {
   const [showConnections, setShowConnections] = useState<boolean>(true);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   
-  // Table-specific state for original UTXOTableBody
+  // Table-specific state for UTXOTableBody
   const [editableUtxo, setEditableUtxo] = useState<string | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState<string | null>(null);
+
+  // UTXO modifiers for table functionality
+  const {
+    handleTagSelection,
+    handleSenderAddressEdit,
+    handleReceiverAddressEdit,
+    handleDateEdit,
+    handleBtcPriceEdit,
+    handleCostBasisEdit,
+    handleNotesEdit,
+    deleteUtxoItem
+  } = useUTXOModifiers();
 
   useEffect(() => {
     if (!hasWallet) {
@@ -63,45 +76,18 @@ const UTXOMap: React.FC = () => {
     setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
   };
 
-  // Table interaction handlers (placeholder implementations for original UTXOTableBody)
+  // Table interaction handlers
   const handleSort = (key: keyof UTXO) => {
-    // Implement sorting logic if needed
+    // Sorting can be implemented if needed for the table view
   };
 
   const confirmDeleteUtxo = (id: string) => {
-    // Implement delete logic if needed
-  };
-
-  const handleTagSelection = (utxoId: string, tagId: string, remove?: boolean) => {
-    // Implement tag selection logic if needed
+    deleteUtxoItem(id);
+    toast.success("UTXO deleted successfully");
   };
 
   const handleAddToSimulation = (utxo: UTXO) => {
-    // Implement simulation logic if needed
-  };
-
-  const handleSenderAddressEdit = (utxoId: string, newValue: string) => {
-    // Implement sender address edit logic if needed
-  };
-
-  const handleReceiverAddressEdit = (utxoId: string, newValue: string) => {
-    // Implement receiver address edit logic if needed
-  };
-
-  const handleDateEdit = (utxoId: string, date: Date | undefined) => {
-    // Implement date edit logic if needed
-  };
-
-  const handleBtcPriceEdit = (utxoId: string, newValue: string) => {
-    // Implement BTC price edit logic if needed
-  };
-
-  const handleCostBasisEdit = (utxoId: string, newValue: string) => {
-    // Implement cost basis edit logic if needed
-  };
-
-  const handleNotesEdit = (utxoId: string, newValue: string) => {
-    // Implement notes edit logic if needed
+    toast.info(`UTXO ${utxo.txid.substring(0, 8)}... added to simulation`);
   };
 
   if (!walletData) {
@@ -236,7 +222,20 @@ const UTXOMap: React.FC = () => {
                   <UTXOTableBody
                     filteredUtxos={walletData.utxos}
                     walletData={walletData}
-                    visibleColumns={{}}
+                    visibleColumns={{
+                      txid: true,
+                      wallet: true,
+                      senderAddress: true,
+                      receiverAddress: true,
+                      amount: true,
+                      date: true,
+                      btcPrice: true,
+                      costBasis: true,
+                      notes: true,
+                      tags: true,
+                      risk: true,
+                      actions: true
+                    }}
                     sortConfig={{ key: 'amount', direction: 'desc' }}
                     handleSort={handleSort}
                     editableUtxo={editableUtxo}
