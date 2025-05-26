@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { UTXO } from "@/types/utxo";
 import { ZoomIn, ZoomOut } from "lucide-react";

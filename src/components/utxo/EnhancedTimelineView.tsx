@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { UTXO } from "@/types/utxo";
 import { ZoomIn, ZoomOut, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getRiskColor, formatBTC, calculateTimelineSpacing, groupUtxosByMonth, calculateCurvedPath } from "@/utils/utxo-utils";
+import { getRiskColor, formatBTC } from "@/utils/utxo-utils";
 import { toast } from "sonner";
 
 interface EnhancedTimelineViewProps {
@@ -11,6 +12,20 @@ interface EnhancedTimelineViewProps {
   selectedUtxo?: UTXO | null;
   showConnections?: boolean;
   zoomLevel?: number;
+}
+
+interface TimelineNode {
+  utxo: UTXO;
+  x: number;
+  y: number;
+  size: number;
+}
+
+interface Connection {
+  source: TimelineNode;
+  target: TimelineNode;
+  path: string;
+  risk: 'low' | 'medium' | 'high';
 }
 
 export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
@@ -28,12 +43,12 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
   const [zoomLevel, setZoomLevel] = useState(initialZoomLevel);
   const [hoveredUtxo, setHoveredUtxo] = useState<UTXO | null>(null);
   const [dimensions, setDimensions] = useState({ width: 1000, height: 600 });
-  const [monthGroups, setMonthGroups] = useState<{ groups: Record<string, UTXO[]>, sortedKeys: string[] }>({ groups: {}, sortedKeys: [] });
-  const [connections, setConnections] = useState<{ path: string, source: UTXO, target: UTXO, risk: 'low' | 'medium' | 'high' }[]>([]);
+  const [timelineNodes, setTimelineNodes] = useState<TimelineNode[]>([]);
+  const [connections, setConnections] = useState<Connection[]>([]);
 
-  // Calculate dimensions and group UTXOs by month
+  // Calculate timeline layout with proper date-based spacing
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !utxos.length) return;
     
     const updateDimensions = () => {
       if (containerRef.current) {
@@ -44,62 +59,102 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
     
     updateDimensions();
     
-    // Group UTXOs by month
-    const groups = groupUtxosByMonth(utxos);
-    setMonthGroups(groups);
+    // Sort UTXOs by date
+    const sortedUtxos = [...utxos].sort((a, b) => {
+      const dateA = a.acquisitionDate ? new Date(a.acquisitionDate).getTime() : 0;
+      const dateB = b.acquisitionDate ? new Date(b.acquisitionDate).getTime() : 0;
+      return dateA - dateB;
+    });
     
-    // Calculate connections between related UTXOs
+    // Calculate time range
+    const dates = sortedUtxos.map(utxo => 
+      utxo.acquisitionDate ? new Date(utxo.acquisitionDate) : new Date()
+    );
+    const minDate = Math.min(...dates.map(d => d.getTime()));
+    const maxDate = Math.max(...dates.map(d => d.getTime()));
+    const timeRange = maxDate - minDate || 1;
+    
+    // Create timeline nodes with proper spacing
+    const nodes: TimelineNode[] = [];
+    const nodesByDate = new Map<string, TimelineNode[]>();
+    
+    sortedUtxos.forEach((utxo, index) => {
+      const date = utxo.acquisitionDate ? new Date(utxo.acquisitionDate) : new Date();
+      const x = 50 + ((date.getTime() - minDate) / timeRange) * (dimensions.width - 100);
+      
+      // Group nodes by date for vertical stacking
+      const dateKey = date.toDateString();
+      if (!nodesByDate.has(dateKey)) {
+        nodesByDate.set(dateKey, []);
+      }
+      
+      const sameDataNodes = nodesByDate.get(dateKey)!;
+      const y = 100 + (sameDataNodes.length * 80); // Vertical spacing for same date
+      
+      const size = Math.max(30, Math.min(60, Math.log10(1 + utxo.amount * 10) * 15));
+      
+      const node: TimelineNode = {
+        utxo,
+        x,
+        y,
+        size
+      };
+      
+      nodes.push(node);
+      sameDataNodes.push(node);
+    });
+    
+    setTimelineNodes(nodes);
+    
+    // Calculate connections
     if (showConnections) {
-      const newConnections: { path: string, source: UTXO, target: UTXO, risk: 'low' | 'medium' | 'high' }[] = [];
+      const newConnections: Connection[] = [];
+      const addressMap = new Map<string, TimelineNode[]>();
       
-      // Simple algorithm to find potential connections based on addresses
-      const addressMap = new Map<string, UTXO[]>();
-      
-      // Group UTXOs by address
-      utxos.forEach(utxo => {
-        if (utxo.address) {
-          if (!addressMap.has(utxo.address)) {
-            addressMap.set(utxo.address, []);
+      // Group nodes by address
+      nodes.forEach(node => {
+        if (node.utxo.address) {
+          if (!addressMap.has(node.utxo.address)) {
+            addressMap.set(node.utxo.address, []);
           }
-          addressMap.get(utxo.address)!.push(utxo);
+          addressMap.get(node.utxo.address)!.push(node);
         }
         
-        if (utxo.senderAddress) {
-          if (!addressMap.has(utxo.senderAddress)) {
-            addressMap.set(utxo.senderAddress, []);
+        if (node.utxo.senderAddress) {
+          if (!addressMap.has(node.utxo.senderAddress)) {
+            addressMap.set(node.utxo.senderAddress, []);
           }
-          addressMap.get(utxo.senderAddress)!.push(utxo);
+          addressMap.get(node.utxo.senderAddress)!.push(node);
         }
       });
       
-      // Create connections between UTXOs with the same address
-      addressMap.forEach(addressUtxos => {
-        if (addressUtxos.length > 1) {
-          // Sort by date to establish direction
-          addressUtxos.sort((a, b) => {
-            const dateA = a.acquisitionDate ? new Date(a.acquisitionDate).getTime() : 0;
-            const dateB = b.acquisitionDate ? new Date(b.acquisitionDate).getTime() : 0;
-            return dateA - dateB;
-          });
+      // Create connections between related nodes
+      addressMap.forEach(addressNodes => {
+        if (addressNodes.length > 1) {
+          // Sort by x position (time)
+          addressNodes.sort((a, b) => a.x - b.x);
           
-          // Connect sequential UTXOs
-          for (let i = 0; i < addressUtxos.length - 1; i++) {
-            const source = addressUtxos[i];
-            const target = addressUtxos[i + 1];
+          // Connect sequential nodes
+          for (let i = 0; i < addressNodes.length - 1; i++) {
+            const source = addressNodes[i];
+            const target = addressNodes[i + 1];
             
-            // Determine highest risk level
+            // Create curved path with arrowhead
+            const path = createCurvedArrowPath(source, target);
+            
+            // Determine risk level
             let risk: 'low' | 'medium' | 'high' = 'low';
-            if (source.privacyRisk === 'high' || target.privacyRisk === 'high') {
+            if (source.utxo.privacyRisk === 'high' || target.utxo.privacyRisk === 'high') {
               risk = 'high';
-            } else if (source.privacyRisk === 'medium' || target.privacyRisk === 'medium') {
+            } else if (source.utxo.privacyRisk === 'medium' || target.utxo.privacyRisk === 'medium') {
               risk = 'medium';
             }
             
             newConnections.push({
               source,
               target,
-              risk,
-              path: '' // Will be calculated when positions are known
+              path,
+              risk
             });
           }
         }
@@ -116,49 +171,21 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
         resizeObserver.unobserve(containerRef.current);
       }
     };
-  }, [utxos, showConnections]);
-  
-  // Calculate node positions and connection paths
-  useEffect(() => {
-    if (!containerRef.current || monthGroups.sortedKeys.length === 0) return;
+  }, [utxos, showConnections, dimensions.width]);
+
+  // Create curved arrow path with visible arrowhead
+  const createCurvedArrowPath = (source: TimelineNode, target: TimelineNode): string => {
+    const dx = target.x - source.x;
+    const dy = target.y - source.y;
+    const midX = source.x + dx / 2;
+    const midY = source.y + dy / 2 - Math.abs(dx) * 0.3; // Curve upward
     
-    // Calculate spacing and positions
-    const { xScale, getTxHeight, monthWidth } = calculateTimelineSpacing(
-      utxos,
-      dimensions.width,
-      dimensions.height
-    );
-    
-    // Update connection paths based on node positions
-    if (showConnections) {
-      const updatedConnections = connections.map(conn => {
-        const sourceDate = conn.source.acquisitionDate ? new Date(conn.source.acquisitionDate) : new Date();
-        const targetDate = conn.target.acquisitionDate ? new Date(conn.target.acquisitionDate) : new Date();
-        
-        // Calculate positions
-        const sourceX = xScale(sourceDate);
-        const targetX = xScale(targetDate);
-        
-        // Estimate Y positions (this is simplified)
-        const sourceY = dimensions.height / 2;
-        const targetY = dimensions.height / 2;
-        
-        // Generate curved path
-        const path = calculateCurvedPath(sourceX, sourceY, targetX, targetY, 0.3);
-        
-        return {
-          ...conn,
-          path
-        };
-      });
-      
-      setConnections(updatedConnections);
-    }
-  }, [dimensions, monthGroups, showConnections, connections, utxos]);
+    return `M ${source.x} ${source.y} Q ${midX} ${midY} ${target.x} ${target.y}`;
+  };
 
   // Handle mouse events for pan and zoom
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return; // Only track left clicks
+    if (e.button !== 0) return;
     setIsDragging(true);
     setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
   };
@@ -181,7 +208,6 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
   
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    // Adjust zoom with mouse wheel
     const delta = -Math.sign(e.deltaY) * 0.1;
     const newZoom = Math.min(3, Math.max(0.5, zoomLevel + delta));
     setZoomLevel(newZoom);
@@ -210,48 +236,11 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
   const handleUtxoClick = (utxo: UTXO) => {
     if (onSelectUtxo) {
       if (selectedUtxo && selectedUtxo.txid === utxo.txid && selectedUtxo.vout === utxo.vout) {
-        onSelectUtxo(null); // Deselect if already selected
+        onSelectUtxo(null);
       } else {
         onSelectUtxo(utxo);
       }
     }
-  };
-  
-  // Handle UTXO hover
-  const handleUtxoMouseEnter = (utxo: UTXO) => {
-    setHoveredUtxo(utxo);
-  };
-  
-  const handleUtxoMouseLeave = () => {
-    setHoveredUtxo(null);
-  };
-  
-  // Calculate node size based on BTC amount
-  const getNodeSize = (amount: number) => {
-    // Logarithmic scale for better visualization
-    return 20 + Math.min(60, Math.log10(1 + amount * 10) * 20);
-  };
-  
-  // Get color based on risk level
-  const getNodeColor = (risk: 'low' | 'medium' | 'high', isSelected: boolean, isHovered: boolean) => {
-    const baseColor = getRiskColor(risk);
-    
-    if (isSelected) {
-      return `${baseColor}`;
-    }
-    
-    if (isHovered) {
-      return `${baseColor}cc`;
-    }
-    
-    return `${baseColor}99`;
-  };
-  
-  // Format date for display
-  const formatMonthLabel = (monthKey: string) => {
-    const [year, month] = monthKey.split('-');
-    const date = new Date(parseInt(year), parseInt(month) - 1);
-    return date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
   };
 
   return (
@@ -302,122 +291,149 @@ export const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({
         <svg 
           width="100%" 
           height="100%" 
-          viewBox="0 0 1000 600" 
-          preserveAspectRatio="xMidYMid meet"
+          viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${zoomLevel})`,
             transformOrigin: '0 0',
             transition: isDragging ? 'none' : 'transform 0.1s ease'
           }}
         >
-          {/* Month separators and labels */}
-          {monthGroups.sortedKeys.map((monthKey, index) => {
-            const x = index * 200;
-            return (
-              <g key={`month-${monthKey}`}>
-                {/* Month separator line */}
-                <line 
-                  x1={x} 
-                  y1={50} 
-                  x2={x} 
-                  y2={550} 
-                  stroke="var(--border)" 
-                  strokeWidth={1} 
-                  strokeDasharray="4,4" 
-                />
-                
-                {/* Month label */}
-                <text 
-                  x={x + 100} 
-                  y={30} 
-                  textAnchor="middle" 
-                  className="fill-foreground text-sm font-medium"
-                >
-                  {formatMonthLabel(monthKey)}
-                </text>
-                
-                {/* UTXO nodes for this month */}
-                {monthGroups.groups[monthKey].map((utxo, utxoIndex) => {
-                  const nodeSize = getNodeSize(utxo.amount);
-                  const isSelected = selectedUtxo && selectedUtxo.txid === utxo.txid && selectedUtxo.vout === utxo.vout;
-                  const isHovered = hoveredUtxo && hoveredUtxo.txid === utxo.txid && hoveredUtxo.vout === utxo.vout;
-                  
-                  // Calculate position within month column
-                  const nodeX = x + 100; // Center of month column
-                  const nodeY = 100 + (utxoIndex * 60) % 400; // Distribute vertically
-                  
-                  return (
-                    <g 
-                      key={`utxo-${utxo.txid}-${utxo.vout}`}
-                      transform={`translate(${nodeX}, ${nodeY})`}
-                      onClick={() => handleUtxoClick(utxo)}
-                      onMouseEnter={() => handleUtxoMouseEnter(utxo)}
-                      onMouseLeave={handleUtxoMouseLeave}
-                      className="cursor-pointer"
-                    >
-                      {/* UTXO node circle */}
-                      <circle
-                        r={nodeSize / 2}
-                        fill={getNodeColor(utxo.privacyRisk, isSelected, isHovered)}
-                        stroke={isSelected ? "white" : "transparent"}
-                        strokeWidth={isSelected ? 2 : 0}
-                        className="transition-all duration-200"
-                      />
-                      
-                      {/* UTXO amount label */}
-                      <text
-                        y={4}
-                        textAnchor="middle"
-                        className="fill-white text-xs font-medium"
-                        style={{ pointerEvents: 'none' }}
-                      >
-                        {formatBTC(utxo.amount, { trimZeros: true, maxDecimals: 4 })}
-                      </text>
-                      
-                      {/* UTXO txid label (only show when selected or hovered) */}
-                      {(isSelected || isHovered) && (
-                        <text
-                          y={nodeSize / 2 + 16}
-                          textAnchor="middle"
-                          className="fill-muted-foreground text-xs"
-                          style={{ pointerEvents: 'none' }}
-                        >
-                          {`${utxo.txid.substring(0, 6)}...${utxo.vout}`}
-                        </text>
-                      )}
-                    </g>
-                  );
-                })}
-              </g>
-            );
-          })}
+          {/* Arrow marker definitions */}
+          <defs>
+            <marker
+              id="arrowhead-high"
+              markerWidth="10"
+              markerHeight="7"
+              refX="9"
+              refY="3.5"
+              orient="auto"
+            >
+              <polygon
+                points="0 0, 10 3.5, 0 7"
+                fill="#dc2626"
+                stroke="#ffffff"
+                strokeWidth="1"
+              />
+            </marker>
+            <marker
+              id="arrowhead-medium"
+              markerWidth="10"
+              markerHeight="7"
+              refX="9"
+              refY="3.5"
+              orient="auto"
+            >
+              <polygon
+                points="0 0, 10 3.5, 0 7"
+                fill="#d97706"
+                stroke="#ffffff"
+                strokeWidth="1"
+              />
+            </marker>
+            <marker
+              id="arrowhead-low"
+              markerWidth="10"
+              markerHeight="7"
+              refX="9"
+              refY="3.5"
+              orient="auto"
+            >
+              <polygon
+                points="0 0, 10 3.5, 0 7"
+                fill="#059669"
+                stroke="#ffffff"
+                strokeWidth="1"
+              />
+            </marker>
+          </defs>
           
-          {/* Connection lines between related UTXOs */}
+          {/* Connection arrows with high contrast */}
           {showConnections && connections.map((conn, index) => (
             <path
               key={`conn-${index}`}
               d={conn.path}
               stroke={getRiskColor(conn.risk)}
-              strokeWidth={conn.source === hoveredUtxo || conn.target === hoveredUtxo ? 2 : 1}
-              strokeOpacity={conn.source === hoveredUtxo || conn.target === hoveredUtxo ? 0.8 : 0.4}
+              strokeWidth={3}
+              strokeOpacity={0.8}
               fill="none"
-              markerEnd="url(#arrowhead)"
+              markerEnd={`url(#arrowhead-${conn.risk})`}
+              style={{
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
+              }}
             />
           ))}
           
-          {/* Arrow marker definition */}
-          <defs>
-            <marker
-              id="arrowhead"
-              markerWidth="6"
-              markerHeight="4"
-              refX="5"
-              refY="2"
-              orient="auto"
-            >
-              <path d="M0,0 L6,2 L0,4 Z" fill="currentColor" />
-            </marker>
-          </defs>
+          {/* Timeline nodes */}
+          {timelineNodes.map((node, index) => {
+            const isSelected = selectedUtxo && 
+              selectedUtxo.txid === node.utxo.txid && 
+              selectedUtxo.vout === node.utxo.vout;
+            const isHovered = hoveredUtxo && 
+              hoveredUtxo.txid === node.utxo.txid && 
+              hoveredUtxo.vout === node.utxo.vout;
+            
+            return (
+              <g 
+                key={`node-${node.utxo.txid}-${node.utxo.vout}`}
+                transform={`translate(${node.x}, ${node.y})`}
+                onClick={() => handleUtxoClick(node.utxo)}
+                onMouseEnter={() => setHoveredUtxo(node.utxo)}
+                onMouseLeave={() => setHoveredUtxo(null)}
+                className="cursor-pointer"
+              >
+                {/* Node circle with risk color */}
+                <circle
+                  r={node.size / 2}
+                  fill={getRiskColor(node.utxo.privacyRisk)}
+                  stroke={isSelected ? "#ffffff" : "#000000"}
+                  strokeWidth={isSelected ? 3 : 1}
+                  className="transition-all duration-200"
+                  style={{
+                    filter: isHovered ? 'brightness(1.2) drop-shadow(0 4px 8px rgba(0,0,0,0.3))' : 
+                            'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+                  }}
+                />
+                
+                {/* BTC amount label - always visible */}
+                <text
+                  y={2}
+                  textAnchor="middle"
+                  className="fill-white text-xs font-bold"
+                  style={{ 
+                    textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                    fontSize: Math.min(12, node.size / 3)
+                  }}
+                >
+                  {formatBTC(node.utxo.amount, { trimZeros: true, maxDecimals: 3 })}
+                </text>
+                
+                {/* Date label below node */}
+                <text
+                  y={node.size / 2 + 16}
+                  textAnchor="middle"
+                  className="fill-foreground text-xs"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {node.utxo.acquisitionDate ? 
+                    new Date(node.utxo.acquisitionDate).toLocaleDateString() : 
+                    'No date'
+                  }
+                </text>
+                
+                {/* UTXO details on hover */}
+                {isHovered && (
+                  <text
+                    y={node.size / 2 + 32}
+                    textAnchor="middle"
+                    className="fill-muted-foreground text-xs"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    tx{node.utxo.vout}_{node.utxo.txid.substring(0, 6)}...
+                  </text>
+                )}
+              </g>
+            );
+          })}
         </svg>
       </div>
       

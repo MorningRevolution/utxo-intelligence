@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/store/WalletContext";
-import { ArrowLeft, Eye, EyeOff, ZoomIn, ZoomOut } from "lucide-react";
+import { Eye, EyeOff, ZoomIn, ZoomOut } from "lucide-react";
 import { UTXO } from "@/types/utxo";
 import { toast } from "sonner";
 import { EnhancedTimelineView } from "@/components/utxo/EnhancedTimelineView";
@@ -40,10 +40,6 @@ const UTXOMap: React.FC = () => {
     }
   };
 
-  const handleBackToTable = () => {
-    navigate("/utxo-table");
-  };
-
   // Handle view change with URL update
   const handleViewChange = (view: "table" | "timeline" | "traceability" | "treemap") => {
     setActiveView(view);
@@ -78,19 +74,6 @@ const UTXOMap: React.FC = () => {
     <div className="container px-4 md:px-8 py-6">
       <div className="flex flex-col md:flex-row justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-foreground">UTXO Visualization</h1>
-        
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleBackToTable}
-            className="flex items-center gap-1"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Back to Table</span>
-            <span className="sm:hidden">Back</span>
-          </Button>
-        </div>
       </div>
 
       <Tabs 
@@ -123,7 +106,7 @@ const UTXOMap: React.FC = () => {
           <div className="flex flex-wrap justify-between items-center mb-4">
             <div className="text-sm text-muted-foreground">
               {activeView === "table" && "Table view shows all UTXOs with detailed information and editing capabilities."}
-              {activeView === "timeline" && "Timeline view shows your transactions chronologically, grouped by month."}
+              {activeView === "timeline" && "Timeline view shows your transactions chronologically, spaced by date."}
               {activeView === "traceability" && "Matrix view shows relationships between addresses and transactions."}
               {activeView === "treemap" && "Treemap displays your UTXOs as proportionally sized tiles based on BTC amount."}
             </div>
