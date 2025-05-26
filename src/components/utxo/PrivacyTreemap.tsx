@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { UTXO } from "@/types/utxo";
 import { ZoomIn, ZoomOut } from "lucide-react";
@@ -47,11 +48,11 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
     return () => resizeObserver.disconnect();
   }, []);
 
-  // Generate mempool-style treemap layout
+  // Enhanced rectangle packing algorithm for mempool-style layout
   useEffect(() => {
     if (!utxos.length) return;
 
-    // Sort UTXOs by amount (largest first) for better packing
+    // Sort UTXOs by amount (largest first) for optimal packing
     const sortedUtxos = [...utxos].sort((a, b) => b.amount - a.amount);
     
     // Calculate total amount for proportional sizing
@@ -59,60 +60,98 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
     
     const newTiles: TreemapTile[] = [];
     
-    // Simple rectangle packing algorithm for mempool-style layout
-    const padding = 2;
-    const availableWidth = containerSize.width - 40; // Account for padding
+    // Enhanced rectangle packing with better space utilization
+    const padding = 1;
+    const availableWidth = containerSize.width - 40;
     const availableHeight = containerSize.height - 40;
+    const totalArea = availableWidth * availableHeight;
     
-    let currentX = 20;
-    let currentY = 20;
-    let rowHeight = 0;
+    // Calculate optimal aspect ratio for rectangles
+    const targetAspectRatio = 1.618; // Golden ratio for pleasing proportions
+    
+    // Bin packing data structure
+    interface PackingNode {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      used: boolean;
+      right?: PackingNode;
+      down?: PackingNode;
+    }
+    
+    const root: PackingNode = {
+      x: 20,
+      y: 20,
+      width: availableWidth,
+      height: availableHeight,
+      used: false
+    };
+    
+    const findNode = (node: PackingNode, width: number, height: number): PackingNode | null => {
+      if (node.used) {
+        return findNode(node.right!, width, height) || findNode(node.down!, width, height);
+      } else if (width <= node.width && height <= node.height) {
+        return node;
+      } else {
+        return null;
+      }
+    };
+    
+    const splitNode = (node: PackingNode, width: number, height: number): PackingNode => {
+      node.used = true;
+      node.down = {
+        x: node.x,
+        y: node.y + height,
+        width: node.width,
+        height: node.height - height,
+        used: false
+      };
+      node.right = {
+        x: node.x + width,
+        y: node.y,
+        width: node.width - width,
+        height: height,
+        used: false
+      };
+      return node;
+    };
     
     sortedUtxos.forEach(utxo => {
-      // Calculate tile size proportional to BTC amount
+      // Calculate proportional area
       const proportion = utxo.amount / totalAmount;
-      const tileArea = proportion * availableWidth * availableHeight;
+      const tileArea = proportion * totalArea * 0.9; // Leave some space for padding
       
-      // Try to maintain reasonable aspect ratio
-      const aspectRatio = 1.5; // Width to height ratio
-      let tileWidth = Math.sqrt(tileArea * aspectRatio);
+      // Calculate optimal dimensions maintaining aspect ratio
+      let tileWidth = Math.sqrt(tileArea * targetAspectRatio);
       let tileHeight = tileArea / tileWidth;
       
-      // Minimum and maximum sizes for visibility
-      tileWidth = Math.max(30, Math.min(200, tileWidth));
-      tileHeight = Math.max(20, Math.min(150, tileHeight));
+      // Apply size constraints for visibility and aesthetics
+      const minSize = 20;
+      const maxSize = Math.min(availableWidth * 0.4, availableHeight * 0.4);
       
-      // Check if we need to start a new row
-      if (currentX + tileWidth > availableWidth + 20) {
-        currentX = 20;
-        currentY += rowHeight + padding;
-        rowHeight = 0;
+      tileWidth = Math.max(minSize, Math.min(maxSize, tileWidth));
+      tileHeight = Math.max(minSize, Math.min(maxSize, tileHeight));
+      
+      // Find position using bin packing
+      const node = findNode(root, tileWidth + padding, tileHeight + padding);
+      
+      if (node) {
+        const splitResult = splitNode(node, tileWidth + padding, tileHeight + padding);
+        
+        newTiles.push({
+          id: `${utxo.txid}-${utxo.vout}`,
+          name: `${utxo.txid.substring(0, 6)}...`,
+          value: utxo.amount,
+          displaySize: Math.sqrt(utxo.amount / totalAmount) * 100,
+          color: getRiskColor(utxo.privacyRisk),
+          data: utxo,
+          x: splitResult.x,
+          y: splitResult.y,
+          width: tileWidth,
+          height: tileHeight
+        });
       }
-      
-      // Make sure we don't exceed container height
-      if (currentY + tileHeight > availableHeight + 20) {
-        // Start a new column or reduce size
-        const scaleFactor = Math.min(1, (availableHeight - currentY + 20) / tileHeight);
-        tileHeight *= scaleFactor;
-        tileWidth *= scaleFactor;
-      }
-      
-      newTiles.push({
-        id: `${utxo.txid}-${utxo.vout}`,
-        name: `${utxo.txid.substring(0, 8)}...`,
-        value: utxo.amount,
-        displaySize: Math.sqrt(utxo.amount / totalAmount) * 100,
-        color: getRiskColor(utxo.privacyRisk),
-        data: utxo,
-        x: currentX,
-        y: currentY,
-        width: tileWidth,
-        height: tileHeight
-      });
-      
-      // Update position for next tile
-      currentX += tileWidth + padding;
-      rowHeight = Math.max(rowHeight, tileHeight);
     });
     
     setTiles(newTiles);
@@ -191,33 +230,66 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
               width={tile.width}
               height={tile.height}
               fill={tile.color}
-              stroke={selectedTile === tile.id ? "#ffffff" : "rgba(255,255,255,0.2)"}
-              strokeWidth={selectedTile === tile.id ? 2 : 1}
-              rx={2}
+              stroke={selectedTile === tile.id ? "#ffffff" : "rgba(255,255,255,0.3)"}
+              strokeWidth={selectedTile === tile.id ? 3 : 1}
+              rx={3}
               className="transition-all duration-200"
             />
             
-            {/* Only show text for tiles large enough */}
-            {tile.width > 60 && tile.height > 30 && (
+            {/* Enhanced text visibility - only show text for tiles large enough */}
+            {tile.width > 50 && tile.height > 25 && (
               <>
+                {/* Background for text readability */}
+                <rect
+                  x={tile.x + 2}
+                  y={tile.y + 2}
+                  width={tile.width - 4}
+                  height={tile.height - 4}
+                  fill="rgba(0,0,0,0.1)"
+                  rx={2}
+                />
+                
+                {/* BTC Amount - primary text */}
                 <text
-                  x={tile.x + 5}
-                  y={tile.y + 15}
-                  className="fill-white text-xs font-medium"
+                  x={tile.x + tile.width / 2}
+                  y={tile.y + tile.height / 2}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  className="fill-white text-sm font-bold"
+                  style={{ 
+                    fontSize: Math.min(14, tile.width / 8, tile.height / 3),
+                    filter: 'drop-shadow(1px 1px 1px rgba(0,0,0,0.5))'
+                  }}
                 >
                   {formatBTC(tile.value, { trimZeros: true, maxDecimals: 5 })}
                 </text>
                 
-                {tile.height > 45 && (
+                {/* Transaction ID - secondary text for larger tiles */}
+                {tile.height > 40 && (
                   <text
-                    x={tile.x + 5}
-                    y={tile.y + 30}
-                    className="fill-white text-xs opacity-80"
+                    x={tile.x + tile.width / 2}
+                    y={tile.y + 15}
+                    textAnchor="middle"
+                    className="fill-white text-xs opacity-90"
+                    style={{ 
+                      fontSize: Math.min(10, tile.width / 12),
+                      filter: 'drop-shadow(1px 1px 1px rgba(0,0,0,0.5))'
+                    }}
                   >
                     {tile.name}
                   </text>
                 )}
               </>
+            )}
+            
+            {/* Small indicator for very small tiles */}
+            {(tile.width <= 50 || tile.height <= 25) && tile.width > 10 && tile.height > 10 && (
+              <circle
+                cx={tile.x + tile.width / 2}
+                cy={tile.y + tile.height / 2}
+                r={Math.min(tile.width, tile.height) / 4}
+                fill="rgba(255,255,255,0.8)"
+              />
             )}
           </g>
         ))}

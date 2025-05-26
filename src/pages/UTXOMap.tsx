@@ -3,12 +3,13 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/store/WalletContext";
-import { Table, BarChart, Grid, CalendarDays, Network, ZoomIn, ZoomOut, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, ZoomIn, ZoomOut } from "lucide-react";
 import { UTXO } from "@/types/utxo";
 import { toast } from "sonner";
 import { EnhancedTimelineView } from "@/components/utxo/EnhancedTimelineView";
 import { ResponsiveTraceabilityMatrix } from "@/components/utxo/ResponsiveTraceabilityMatrix";
 import { PrivacyTreemap } from "@/components/utxo/PrivacyTreemap";
+import { UTXOViewManager } from "@/components/utxo/UTXOViewManager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBTC } from "@/utils/utxo-utils";
 import { getRiskTextColor } from "@/utils/utxo-utils";
@@ -19,8 +20,8 @@ const UTXOMap: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { walletData, hasWallet } = useWallet();
   const [selectedUtxo, setSelectedUtxo] = useState<UTXO | null>(null);
-  const [activeView, setActiveView] = useState<"timeline" | "traceability" | "treemap">(
-    (searchParams.get("view") as "timeline" | "traceability" | "treemap") || "timeline"
+  const [activeView, setActiveView] = useState<"table" | "timeline" | "traceability" | "treemap">(
+    (searchParams.get("view") as "table" | "timeline" | "traceability" | "treemap") || "timeline"
   );
   const [showConnections, setShowConnections] = useState<boolean>(true);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
@@ -44,9 +45,8 @@ const UTXOMap: React.FC = () => {
   };
 
   // Handle view change with URL update
-  const handleViewChange = (view: "timeline" | "traceability" | "treemap") => {
+  const handleViewChange = (view: "table" | "timeline" | "traceability" | "treemap") => {
     setActiveView(view);
-    // Update URL to reflect the current view
     setSearchParams({ view });
   };
 
@@ -86,9 +86,9 @@ const UTXOMap: React.FC = () => {
             onClick={handleBackToTable}
             className="flex items-center gap-1"
           >
-            <Table className="h-4 w-4" />
-            <span className="hidden sm:inline">View UTXO Table</span>
-            <span className="sm:hidden">Table</span>
+            <ArrowLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">Back to Table</span>
+            <span className="sm:hidden">Back</span>
           </Button>
         </div>
       </div>
@@ -96,21 +96,25 @@ const UTXOMap: React.FC = () => {
       <Tabs 
         defaultValue="timeline" 
         value={activeView}
-        onValueChange={(value) => handleViewChange(value as "timeline" | "traceability" | "treemap")}
+        onValueChange={(value) => handleViewChange(value as "table" | "timeline" | "traceability" | "treemap")}
         className="w-full"
       >
-        <TabsList className="w-full max-w-md mx-auto grid grid-cols-3 mb-6">
+        <TabsList className="w-full max-w-lg mx-auto grid grid-cols-4 mb-6">
+          <TabsTrigger value="table" className="flex items-center gap-2">
+            <span className="hidden sm:inline">Table</span>
+            <span className="sm:hidden">Table</span>
+          </TabsTrigger>
           <TabsTrigger value="timeline" className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4" />
             <span className="hidden sm:inline">Timeline</span>
+            <span className="sm:hidden">Time</span>
           </TabsTrigger>
           <TabsTrigger value="traceability" className="flex items-center gap-2">
-            <Network className="h-4 w-4" />
             <span className="hidden sm:inline">Matrix</span>
+            <span className="sm:hidden">Matrix</span>
           </TabsTrigger>
           <TabsTrigger value="treemap" className="flex items-center gap-2">
-            <Grid className="h-4 w-4" />
             <span className="hidden sm:inline">Treemap</span>
+            <span className="sm:hidden">Tree</span>
           </TabsTrigger>
         </TabsList>
 
@@ -118,71 +122,104 @@ const UTXOMap: React.FC = () => {
           {/* Visualization Controls */}
           <div className="flex flex-wrap justify-between items-center mb-4">
             <div className="text-sm text-muted-foreground">
+              {activeView === "table" && "Table view shows all UTXOs with detailed information and editing capabilities."}
               {activeView === "timeline" && "Timeline view shows your transactions chronologically, grouped by month."}
               {activeView === "traceability" && "Matrix view shows relationships between addresses and transactions."}
               {activeView === "treemap" && "Treemap displays your UTXOs as proportionally sized tiles based on BTC amount."}
             </div>
             
-            <div className="flex items-center gap-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      onClick={handleZoomOut}
-                      disabled={zoomLevel <= 0.5}
-                      className="h-8 w-8"
-                    >
-                      <ZoomOut className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Zoom out</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              
-              <span className="text-xs font-mono bg-muted px-2 py-1 rounded">
-                {Math.round(zoomLevel * 100)}%
-              </span>
-              
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      onClick={handleZoomIn}
-                      disabled={zoomLevel >= 2.5}
-                      className="h-8 w-8"
-                    >
-                      <ZoomIn className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Zoom in</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            {activeView !== "table" && (
+              <div className="flex items-center gap-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={handleZoomOut}
+                        disabled={zoomLevel <= 0.5}
+                        className="h-8 w-8"
+                      >
+                        <ZoomOut className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Zoom out</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
+                <span className="text-xs font-mono bg-muted px-2 py-1 rounded">
+                  {Math.round(zoomLevel * 100)}%
+                </span>
+                
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={handleZoomIn}
+                        disabled={zoomLevel >= 2.5}
+                        className="h-8 w-8"
+                      >
+                        <ZoomIn className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Zoom in</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
 
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      onClick={handleToggleConnections}
-                      className={`h-8 w-8 ${showConnections ? "bg-primary/10" : ""}`}
-                    >
-                      {showConnections ? (
-                        <Eye className="h-4 w-4" />
-                      ) : (
-                        <EyeOff className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{showConnections ? "Hide connections" : "Show connections"}</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
+                {(activeView === "timeline" || activeView === "traceability") && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          onClick={handleToggleConnections}
+                          className={`h-8 w-8 ${showConnections ? "bg-primary/10" : ""}`}
+                        >
+                          {showConnections ? (
+                            <Eye className="h-4 w-4" />
+                          ) : (
+                            <EyeOff className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{showConnections ? "Hide connections" : "Show connections"}</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
+            )}
           </div>
+          
+          <TabsContent value="table" className="animate-fade-in">
+            <div className="h-[600px] overflow-hidden">
+              <UTXOViewManager
+                view="table"
+                filteredUtxos={walletData.utxos}
+                walletData={walletData}
+                visibleColumns={{}} // We'll need to manage this properly
+                sortConfig={{ key: 'amount', direction: 'desc' }}
+                handleSort={() => {}} // Placeholder
+                editableUtxo={null}
+                setEditableUtxo={() => {}} // Placeholder
+                datePickerOpen={null}
+                setDatePickerOpen={() => {}} // Placeholder
+                confirmDeleteUtxo={() => {}} // Placeholder
+                handleTagSelection={() => {}} // Placeholder
+                handleAddToSimulation={() => {}} // Placeholder
+                handleSenderAddressEdit={() => {}} // Placeholder
+                handleReceiverAddressEdit={() => {}} // Placeholder
+                handleDateEdit={() => {}} // Placeholder
+                handleBtcPriceEdit={() => {}} // Placeholder
+                handleCostBasisEdit={() => {}} // Placeholder
+                handleNotesEdit={() => {}} // Placeholder
+                selectedVisualUtxo={selectedUtxo}
+                handleVisualSelect={handleUtxoSelect}
+              />
+            </div>
+          </TabsContent>
           
           <TabsContent value="timeline" className="animate-fade-in">
             <div className="h-[600px] overflow-hidden">

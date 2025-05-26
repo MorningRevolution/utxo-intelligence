@@ -64,7 +64,7 @@ interface TransactionLink {
 export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps> = ({ 
   utxos, 
   onSelectUtxo,
-  showConnections: externalShowConnections // Accept the prop from parent
+  showConnections: externalShowConnections
 }) => {
   // State for graph visualization
   const [transactions, setTransactions] = useState<TransactionNode[]>([]);
@@ -95,7 +95,7 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
     };
   }, [containerRef.current?.clientWidth, containerRef.current?.clientHeight]);
   
-  // Process UTXOs to create timeline data
+  // Enhanced process UTXO data with better node positioning
   const processUTXOData = useCallback(() => {
     if (!utxos.length) return;
     
@@ -167,6 +167,7 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
     
     // Create transaction nodes
     const nodes: TransactionNode[] = [];
+    const usedPositions = new Map<string, { x: number; y: number }[]>(); // Track positions per month
     
     txGroups.forEach((groupUtxos, txid) => {
       // Find first available date for this transaction
@@ -193,6 +194,45 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
       
       const x = month.x + xOffset;
       
+      // Enhanced Y positioning to prevent overlaps
+      const monthKey = format(txDate, 'yyyy-MM');
+      if (!usedPositions.has(monthKey)) {
+        usedPositions.set(monthKey, []);
+      }
+      
+      const existingPositions = usedPositions.get(monthKey)!;
+      const minDistance = 120; // Minimum distance between nodes
+      let y = dimensions.height / 2;
+      
+      // Find a position that doesn't overlap with existing nodes
+      let attempts = 0;
+      let positionFound = false;
+      
+      while (!positionFound && attempts < 20) {
+        let hasCollision = false;
+        
+        for (const pos of existingPositions) {
+          const distance = Math.sqrt(Math.pow(x - pos.x, 2) + Math.pow(y - pos.y, 2));
+          if (distance < minDistance) {
+            hasCollision = true;
+            break;
+          }
+        }
+        
+        if (!hasCollision) {
+          positionFound = true;
+        } else {
+          // Try different Y positions
+          const offset = (attempts % 2 === 0 ? 1 : -1) * Math.ceil(attempts / 2) * 60;
+          y = dimensions.height / 2 + offset;
+          // Keep within bounds
+          y = Math.max(100, Math.min(dimensions.height - 100, y));
+        }
+        attempts++;
+      }
+      
+      existingPositions.push({ x, y });
+      
       // Calculate total amount
       const totalAmount = groupUtxos.reduce((sum, u) => sum + u.amount, 0);
       
@@ -204,12 +244,9 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
       // Extract all tags
       const tags = Array.from(new Set(groupUtxos.flatMap(u => u.tags)));
       
-      // Create node
+      // Create node with enhanced positioning
       const height = Math.max(60, Math.min(100, 50 + Math.log10(1 + totalAmount) * 25));
       const width = Math.max(100, Math.min(180, 80 + Math.log10(1 + totalAmount) * 40));
-      
-      // Randomize Y position slightly to avoid perfect alignment
-      const y = dimensions.height / 2 + (Math.random() - 0.5) * 100;
       
       nodes.push({
         id: txid,
@@ -262,28 +299,31 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
       const targetNode = nodes.find(n => n.id === link.target);
       
       if (sourceNode && targetNode) {
-        // Calculate curve height based on horizontal distance
+        // Calculate enhanced curve with better visual appeal
         const dx = targetNode.x - sourceNode.x;
-        const curveHeight = Math.min(200, Math.abs(dx) * 0.3);
+        const dy = targetNode.y - sourceNode.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
         
-        // Generate SVG path
-        const startX = sourceNode.x + sourceNode.width / 2;
-        const startY = sourceNode.y;
-        const endX = targetNode.x - targetNode.width / 2;
-        const endY = targetNode.y;
+        // Dynamic curve height based on distance and direction
+        const curveHeight = Math.min(150, Math.max(50, distance * 0.25));
+        const curveDirection = dy > 0 ? -1 : 1; // Curve away from closer nodes
         
-        // Calculate control points for the curve
-        const controlX1 = startX + dx / 3;
-        const controlY1 = startY - curveHeight;
-        const controlX2 = startX + (dx * 2) / 3;
-        const controlY2 = endY - curveHeight;
+        // Enhanced connection points
+        const startX = sourceNode.x + sourceNode.width;
+        const startY = sourceNode.y + sourceNode.height / 2;
+        const endX = targetNode.x;
+        const endY = targetNode.y + targetNode.height / 2;
+        
+        // Quadratic Bezier curve for smoother appearance
+        const controlX = startX + dx / 2;
+        const controlY = startY + curveDirection * curveHeight;
         
         // Save control points
-        link.controlPointX = (controlX1 + controlX2) / 2;
-        link.controlPointY = (controlY1 + controlY2) / 2;
+        link.controlPointX = controlX;
+        link.controlPointY = controlY;
         
-        // Create SVG path
-        link.path = `M ${startX} ${startY} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${endX} ${endY}`;
+        // Create enhanced SVG path with arrow
+        link.path = `M ${startX} ${startY} Q ${controlX} ${controlY} ${endX} ${endY}`;
       }
     });
     
@@ -475,6 +515,57 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
         onWheel={handleWheel}
       >
         <svg width="100%" height="100%" className="overflow-visible">
+          <defs>
+            <marker
+              id="arrowhead-low"
+              markerWidth="12"
+              markerHeight="8"
+              refX="11"
+              refY="4"
+              orient="auto"
+              markerUnits="strokeWidth"
+            >
+              <path
+                d="M 0 0 L 12 4 L 0 8 Z"
+                fill="#10b981"
+                stroke="#10b981"
+                strokeWidth="1"
+              />
+            </marker>
+            <marker
+              id="arrowhead-medium"
+              markerWidth="12"
+              markerHeight="8"
+              refX="11"
+              refY="4"
+              orient="auto"
+              markerUnits="strokeWidth"
+            >
+              <path
+                d="M 0 0 L 12 4 L 0 8 Z"
+                fill="#f97316"
+                stroke="#f97316"
+                strokeWidth="1"
+              />
+            </marker>
+            <marker
+              id="arrowhead-high"
+              markerWidth="12"
+              markerHeight="8"
+              refX="11"
+              refY="4"
+              orient="auto"
+              markerUnits="strokeWidth"
+            >
+              <path
+                d="M 0 0 L 12 4 L 0 8 Z"
+                fill="#ea384c"
+                stroke="#ea384c"
+                strokeWidth="1"
+              />
+            </marker>
+          </defs>
+          
           <g transform={transform}>
             {/* Month group backgrounds and labels */}
             <g>
@@ -516,42 +607,48 @@ export const TimelineTraceabilityGraph: React.FC<TimelineTraceabilityGraphProps>
                 (selectedTransaction.id === link.source || selectedTransaction.id === link.target);
                 
               const strokeColor = getRiskColor(link.riskLevel);
-              const strokeWidth = Math.max(1, Math.min(5, Math.log10(1 + link.amount) * 1.5));
-              const opacity = isHighlighted ? 0.8 : 0.4;
+              const strokeWidth = Math.max(2, Math.min(6, Math.log10(1 + link.amount) * 2));
+              const opacity = isHighlighted ? 0.9 : 0.6;
+              const markerEnd = `url(#arrowhead-${link.riskLevel})`;
               
               return (
                 <g key={`link-${i}`}>
+                  {/* Enhanced path with arrow */}
                   <path
                     d={link.path}
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
                     strokeOpacity={opacity}
                     fill="none"
+                    markerEnd={markerEnd}
+                    className="transition-opacity duration-200"
                   />
                   
-                  {/* Optional: Add arrow markers */}
-                  {link.controlPointX && link.controlPointY && (
-                    <circle 
-                      cx={link.controlPointX} 
-                      cy={link.controlPointY} 
-                      r={strokeWidth + 1}
-                      fill={strokeColor}
-                      fillOpacity={opacity}
-                    />
-                  )}
-                  
-                  {/* Amount label on link (only for larger values) */}
-                  {(link.amount > 0.01 && link.controlPointX && link.controlPointY) && (
-                    <text
-                      x={link.controlPointX}
-                      y={link.controlPointY - 10}
-                      textAnchor="middle"
-                      fill="currentColor"
-                      fontSize="10"
-                      opacity={isHighlighted ? 0.9 : 0.6}
-                    >
-                      {formatBTC(link.amount)}
-                    </text>
+                  {/* Enhanced amount label with better positioning */}
+                  {(link.amount > 0.001 && link.controlPointX && link.controlPointY) && (
+                    <g>
+                      {/* Background for text readability */}
+                      <rect
+                        x={link.controlPointX - 25}
+                        y={link.controlPointY - 8}
+                        width="50"
+                        height="16"
+                        rx="8"
+                        fill="rgba(0,0,0,0.7)"
+                        fillOpacity={isHighlighted ? 0.9 : 0.7}
+                      />
+                      <text
+                        x={link.controlPointX}
+                        y={link.controlPointY + 3}
+                        textAnchor="middle"
+                        fill="white"
+                        fontSize="10"
+                        fontWeight="bold"
+                        opacity={isHighlighted ? 1 : 0.8}
+                      >
+                        {formatBTC(link.amount)}
+                      </text>
+                    </g>
                   )}
                 </g>
               );
