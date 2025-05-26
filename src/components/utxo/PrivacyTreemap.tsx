@@ -12,13 +12,21 @@ interface PrivacyTreemapProps {
   zoomLevel?: number;
 }
 
+interface Rectangle {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  utxo: UTXO;
+}
+
 export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
   utxos,
   onSelectUtxo,
   zoomLevel: initialZoomLevel = 1
 }) => {
   const [zoomLevel, setZoomLevel] = useState(initialZoomLevel);
-  const [tiles, setTiles] = useState<TreemapTile[]>([]);
+  const [rectangles, setRectangles] = useState<Rectangle[]>([]);
   const [selectedTile, setSelectedTile] = useState<string | null>(null);
   const [hoveredTile, setHoveredTile] = useState<string | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 800, height: 600 });
@@ -48,7 +56,7 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
     return () => resizeObserver.disconnect();
   }, []);
 
-  // Enhanced rectangle packing algorithm for mempool-style layout
+  // Mempool-style rectangle packing algorithm
   useEffect(() => {
     if (!utxos.length) return;
 
@@ -58,115 +66,158 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
     // Calculate total amount for proportional sizing
     const totalAmount = sortedUtxos.reduce((sum, utxo) => sum + utxo.amount, 0);
     
-    const newTiles: TreemapTile[] = [];
+    const newRectangles: Rectangle[] = [];
     
-    // Enhanced rectangle packing with better space utilization
-    const padding = 1;
+    // Container dimensions with padding
+    const padding = 4;
     const availableWidth = containerSize.width - 40;
     const availableHeight = containerSize.height - 40;
-    const totalArea = availableWidth * availableHeight;
+    const totalArea = availableWidth * availableHeight * 0.95; // Use 95% of available space
     
-    // Calculate optimal aspect ratio for rectangles
-    const targetAspectRatio = 1.618; // Golden ratio for pleasing proportions
-    
-    // Bin packing data structure
-    interface PackingNode {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      used: boolean;
-      right?: PackingNode;
-      down?: PackingNode;
+    // Squarified treemap algorithm
+    interface PackingRow {
+      rectangles: Rectangle[];
+      totalArea: number;
+      bounds: { x: number; y: number; width: number; height: number };
     }
     
-    const root: PackingNode = {
-      x: 20,
-      y: 20,
-      width: availableWidth,
-      height: availableHeight,
-      used: false
+    const calculateAspectRatio = (areas: number[], width: number): number => {
+      const sum = areas.reduce((a, b) => a + b, 0);
+      const maxArea = Math.max(...areas);
+      const minArea = Math.min(...areas);
+      return Math.max((width * width * maxArea) / (sum * sum), (sum * sum) / (width * width * minArea));
     };
     
-    const findNode = (node: PackingNode, width: number, height: number): PackingNode | null => {
-      if (node.used) {
-        return findNode(node.right!, width, height) || findNode(node.down!, width, height);
-      } else if (width <= node.width && height <= node.height) {
-        return node;
-      } else {
-        return null;
-      }
-    };
-    
-    const splitNode = (node: PackingNode, width: number, height: number): PackingNode => {
-      node.used = true;
-      node.down = {
-        x: node.x,
-        y: node.y + height,
-        width: node.width,
-        height: node.height - height,
-        used: false
-      };
-      node.right = {
-        x: node.x + width,
-        y: node.y,
-        width: node.width - width,
-        height: height,
-        used: false
-      };
-      return node;
-    };
-    
-    sortedUtxos.forEach(utxo => {
-      // Calculate proportional area
-      const proportion = utxo.amount / totalAmount;
-      const tileArea = proportion * totalArea * 0.9; // Leave some space for padding
+    const layoutRow = (row: number[], x: number, y: number, width: number, height: number): Rectangle[] => {
+      const sum = row.reduce((a, b) => a + b, 0);
+      const rects: Rectangle[] = [];
+      let offset = 0;
       
-      // Calculate optimal dimensions maintaining aspect ratio
-      let tileWidth = Math.sqrt(tileArea * targetAspectRatio);
-      let tileHeight = tileArea / tileWidth;
+      const isHorizontal = width >= height;
       
-      // Apply size constraints for visibility and aesthetics
-      const minSize = 20;
-      const maxSize = Math.min(availableWidth * 0.4, availableHeight * 0.4);
-      
-      tileWidth = Math.max(minSize, Math.min(maxSize, tileWidth));
-      tileHeight = Math.max(minSize, Math.min(maxSize, tileHeight));
-      
-      // Find position using bin packing
-      const node = findNode(root, tileWidth + padding, tileHeight + padding);
-      
-      if (node) {
-        const splitResult = splitNode(node, tileWidth + padding, tileHeight + padding);
+      row.forEach((area, index) => {
+        const utxo = sortedUtxos[rectangles.length + index];
+        if (!utxo) return;
         
-        newTiles.push({
-          id: `${utxo.txid}-${utxo.vout}`,
-          name: `${utxo.txid.substring(0, 6)}...`,
-          value: utxo.amount,
-          displaySize: Math.sqrt(utxo.amount / totalAmount) * 100,
-          color: getRiskColor(utxo.privacyRisk),
-          data: utxo,
-          x: splitResult.x,
-          y: splitResult.y,
-          width: tileWidth,
-          height: tileHeight
-        });
-      }
-    });
+        if (isHorizontal) {
+          const rectHeight = height;
+          const rectWidth = (area / sum) * width;
+          rects.push({
+            x: x + offset,
+            y: y,
+            width: rectWidth - padding,
+            height: rectHeight - padding,
+            utxo
+          });
+          offset += rectWidth;
+        } else {
+          const rectWidth = width;
+          const rectHeight = (area / sum) * height;
+          rects.push({
+            x: x,
+            y: y + offset,
+            width: rectWidth - padding,
+            height: rectHeight - padding,
+            utxo
+          });
+          offset += rectHeight;
+        }
+      });
+      
+      return rects;
+    };
     
-    setTiles(newTiles);
+    // Calculate areas proportional to BTC amounts
+    const areas = sortedUtxos.map(utxo => (utxo.amount / totalAmount) * totalArea);
+    
+    const rectangles: Rectangle[] = [];
+    let remainingAreas = [...areas];
+    let currentBounds = { x: 20, y: 20, width: availableWidth, height: availableHeight };
+    
+    while (remainingAreas.length > 0) {
+      let row: number[] = [remainingAreas[0]];
+      let bestAspectRatio = calculateAspectRatio(row, Math.min(currentBounds.width, currentBounds.height));
+      
+      // Try adding more rectangles to the row
+      for (let i = 1; i < remainingAreas.length; i++) {
+        const newRow = [...row, remainingAreas[i]];
+        const newAspectRatio = calculateAspectRatio(newRow, Math.min(currentBounds.width, currentBounds.height));
+        
+        if (newAspectRatio < bestAspectRatio) {
+          row = newRow;
+          bestAspectRatio = newAspectRatio;
+        } else {
+          break;
+        }
+      }
+      
+      // Layout the current row
+      const rowRects = layoutRow(row, currentBounds.x, currentBounds.y, currentBounds.width, currentBounds.height);
+      rectangles.push(...rowRects);
+      
+      // Update remaining areas and bounds
+      remainingAreas = remainingAreas.slice(row.length);
+      
+      if (remainingAreas.length > 0) {
+        const rowSum = row.reduce((a, b) => a + b, 0);
+        const remainingSum = remainingAreas.reduce((a, b) => a + b, 0);
+        
+        if (currentBounds.width >= currentBounds.height) {
+          // Horizontal split
+          const usedWidth = (rowSum / (rowSum + remainingSum)) * currentBounds.width;
+          currentBounds = {
+            x: currentBounds.x + usedWidth,
+            y: currentBounds.y,
+            width: currentBounds.width - usedWidth,
+            height: currentBounds.height
+          };
+        } else {
+          // Vertical split
+          const usedHeight = (rowSum / (rowSum + remainingSum)) * currentBounds.height;
+          currentBounds = {
+            x: currentBounds.x,
+            y: currentBounds.y + usedHeight,
+            width: currentBounds.width,
+            height: currentBounds.height - usedHeight
+          };
+        }
+      }
+    }
+    
+    setRectangles(rectangles);
   }, [utxos, containerSize]);
 
   // Handle tile selection
-  const handleTileClick = (tile: TreemapTile) => {
+  const handleTileClick = (rectangle: Rectangle) => {
     if (onSelectUtxo) {
-      if (selectedTile === tile.id) {
+      const tileId = `${rectangle.utxo.txid}-${rectangle.utxo.vout}`;
+      if (selectedTile === tileId) {
         setSelectedTile(null);
         onSelectUtxo(null);
       } else {
-        setSelectedTile(tile.id);
-        onSelectUtxo(tile.data);
+        setSelectedTile(tileId);
+        onSelectUtxo(rectangle.utxo);
       }
+    }
+  };
+
+  // Get risk border color
+  const getRiskBorderColor = (risk: 'low' | 'medium' | 'high') => {
+    switch (risk) {
+      case 'high': return '#dc2626'; // red-600
+      case 'medium': return '#d97706'; // amber-600
+      case 'low': return '#059669'; // emerald-600
+      default: return '#6b7280'; // gray-500
+    }
+  };
+
+  // Get subtle fill color
+  const getRiskFillColor = (risk: 'low' | 'medium' | 'high') => {
+    switch (risk) {
+      case 'high': return '#fef2f2'; // red-50
+      case 'medium': return '#fffbeb'; // amber-50
+      case 'low': return '#f0fdf4'; // emerald-50
+      default: return '#f9fafb'; // gray-50
     }
   };
 
@@ -190,15 +241,15 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
       {/* Risk level legend */}
       <div className="absolute top-2 left-4 flex flex-col gap-1 z-10">
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-rose-500"></div>
+          <div className="w-3 h-3 rounded-sm border-2" style={{ borderColor: getRiskBorderColor('high'), backgroundColor: getRiskFillColor('high') }}></div>
           <span className="text-xs font-medium">High Risk</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+          <div className="w-3 h-3 rounded-sm border-2" style={{ borderColor: getRiskBorderColor('medium'), backgroundColor: getRiskFillColor('medium') }}></div>
           <span className="text-xs font-medium">Medium Risk</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+          <div className="w-3 h-3 rounded-sm border-2" style={{ borderColor: getRiskBorderColor('low'), backgroundColor: getRiskFillColor('low') }}></div>
           <span className="text-xs font-medium">Low Risk</span>
         </div>
       </div>
@@ -215,88 +266,105 @@ export const PrivacyTreemap: React.FC<PrivacyTreemapProps> = ({
         }}
       >
         {/* Render tiles */}
-        {tiles.map(tile => (
-          <g 
-            key={tile.id}
-            onClick={() => handleTileClick(tile)}
-            onMouseEnter={() => setHoveredTile(tile.id)}
-            onMouseLeave={() => setHoveredTile(null)}
-            className="cursor-pointer transition-opacity duration-200"
-            style={{ opacity: hoveredTile && hoveredTile !== tile.id ? 0.7 : 1 }}
-          >
-            <rect
-              x={tile.x}
-              y={tile.y}
-              width={tile.width}
-              height={tile.height}
-              fill={tile.color}
-              stroke={selectedTile === tile.id ? "#ffffff" : "rgba(255,255,255,0.3)"}
-              strokeWidth={selectedTile === tile.id ? 3 : 1}
-              rx={3}
-              className="transition-all duration-200"
-            />
-            
-            {/* Enhanced text visibility - only show text for tiles large enough */}
-            {tile.width > 50 && tile.height > 25 && (
-              <>
-                {/* Background for text readability */}
+        {rectangles.map((rect, index) => {
+          const tileId = `${rect.utxo.txid}-${rect.utxo.vout}`;
+          const isSelected = selectedTile === tileId;
+          const isHovered = hoveredTile === tileId;
+          
+          return (
+            <g 
+              key={tileId}
+              onClick={() => handleTileClick(rect)}
+              onMouseEnter={() => setHoveredTile(tileId)}
+              onMouseLeave={() => setHoveredTile(null)}
+              className="cursor-pointer"
+              style={{ 
+                transform: isHovered ? 'scale(1.02)' : 'scale(1)',
+                transformOrigin: `${rect.x + rect.width/2}px ${rect.y + rect.height/2}px`,
+                transition: 'transform 0.2s ease'
+              }}
+            >
+              {/* Hover glow effect */}
+              {isHovered && (
                 <rect
-                  x={tile.x + 2}
-                  y={tile.y + 2}
-                  width={tile.width - 4}
-                  height={tile.height - 4}
-                  fill="rgba(0,0,0,0.1)"
-                  rx={2}
+                  x={rect.x - 2}
+                  y={rect.y - 2}
+                  width={rect.width + 4}
+                  height={rect.height + 4}
+                  fill="none"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  rx={4}
+                  className="animate-pulse"
                 />
-                
-                {/* BTC Amount - primary text */}
-                <text
-                  x={tile.x + tile.width / 2}
-                  y={tile.y + tile.height / 2}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  className="fill-white text-sm font-bold"
-                  style={{ 
-                    fontSize: Math.min(14, tile.width / 8, tile.height / 3),
-                    filter: 'drop-shadow(1px 1px 1px rgba(0,0,0,0.5))'
-                  }}
-                >
-                  {formatBTC(tile.value, { trimZeros: true, maxDecimals: 5 })}
-                </text>
-                
-                {/* Transaction ID - secondary text for larger tiles */}
-                {tile.height > 40 && (
+              )}
+              
+              {/* Main rectangle */}
+              <rect
+                x={rect.x}
+                y={rect.y}
+                width={rect.width}
+                height={rect.height}
+                fill={getRiskFillColor(rect.utxo.privacyRisk)}
+                stroke={getRiskBorderColor(rect.utxo.privacyRisk)}
+                strokeWidth={isSelected ? 3 : 2}
+                rx={3}
+                className="transition-all duration-200"
+                style={{
+                  filter: isSelected ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))' : 'none'
+                }}
+              />
+              
+              {/* Text content - only show if rectangle is large enough */}
+              {rect.width > 60 && rect.height > 40 && (
+                <g>
+                  {/* BTC Amount */}
                   <text
-                    x={tile.x + tile.width / 2}
-                    y={tile.y + 15}
+                    x={rect.x + rect.width / 2}
+                    y={rect.y + rect.height / 2 - 5}
                     textAnchor="middle"
-                    className="fill-white text-xs opacity-90"
+                    dominantBaseline="middle"
+                    className="fill-gray-800 text-sm font-bold"
                     style={{ 
-                      fontSize: Math.min(10, tile.width / 12),
-                      filter: 'drop-shadow(1px 1px 1px rgba(0,0,0,0.5))'
+                      fontSize: Math.min(14, rect.width / 8, rect.height / 4)
                     }}
                   >
-                    {tile.name}
+                    {formatBTC(rect.utxo.amount, { trimZeros: true, maxDecimals: 4 })}
                   </text>
-                )}
-              </>
-            )}
-            
-            {/* Small indicator for very small tiles */}
-            {(tile.width <= 50 || tile.height <= 25) && tile.width > 10 && tile.height > 10 && (
-              <circle
-                cx={tile.x + tile.width / 2}
-                cy={tile.y + tile.height / 2}
-                r={Math.min(tile.width, tile.height) / 4}
-                fill="rgba(255,255,255,0.8)"
-              />
-            )}
-          </g>
-        ))}
+                  
+                  {/* Transaction ID - show if height allows */}
+                  {rect.height > 60 && (
+                    <text
+                      x={rect.x + rect.width / 2}
+                      y={rect.y + rect.height / 2 + 12}
+                      textAnchor="middle"
+                      className="fill-gray-600 text-xs"
+                      style={{ 
+                        fontSize: Math.min(10, rect.width / 12)
+                      }}
+                    >
+                      {`${rect.utxo.txid.substring(0, 6)}...${rect.utxo.vout}`}
+                    </text>
+                  )}
+                </g>
+              )}
+              
+              {/* Small indicator for very small tiles */}
+              {(rect.width <= 60 || rect.height <= 40) && rect.width > 20 && rect.height > 20 && (
+                <circle
+                  cx={rect.x + rect.width / 2}
+                  cy={rect.y + rect.height / 2}
+                  r={Math.min(rect.width, rect.height) / 6}
+                  fill={getRiskBorderColor(rect.utxo.privacyRisk)}
+                />
+              )}
+            </g>
+          );
+        })}
       </svg>
       
       {/* Empty state */}
-      {tiles.length === 0 && (
+      {rectangles.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted/20">
           <p className="text-muted-foreground text-lg">No UTXOs available for treemap visualization.</p>
         </div>

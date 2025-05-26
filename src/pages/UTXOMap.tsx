@@ -195,29 +195,41 @@ const UTXOMap: React.FC = () => {
           
           <TabsContent value="table" className="animate-fade-in">
             <div className="h-[600px] overflow-hidden">
-              <UTXOViewManager
-                view="table"
-                filteredUtxos={walletData.utxos}
-                walletData={walletData}
-                visibleColumns={{}} // We'll need to manage this properly
-                sortConfig={{ key: 'amount', direction: 'desc' }}
-                handleSort={() => {}} // Placeholder
-                editableUtxo={null}
-                setEditableUtxo={() => {}} // Placeholder
-                datePickerOpen={null}
-                setDatePickerOpen={() => {}} // Placeholder
-                confirmDeleteUtxo={() => {}} // Placeholder
-                handleTagSelection={() => {}} // Placeholder
-                handleAddToSimulation={() => {}} // Placeholder
-                handleSenderAddressEdit={() => {}} // Placeholder
-                handleReceiverAddressEdit={() => {}} // Placeholder
-                handleDateEdit={() => {}} // Placeholder
-                handleBtcPriceEdit={() => {}} // Placeholder
-                handleCostBasisEdit={() => {}} // Placeholder
-                handleNotesEdit={() => {}} // Placeholder
-                selectedVisualUtxo={selectedUtxo}
-                handleVisualSelect={handleUtxoSelect}
-              />
+              <div className="h-full w-full bg-card rounded-lg border">
+                <div className="sticky top-0 z-10 bg-card border-b">
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold">UTXO Table</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Comprehensive table view with editable fields for all UTXOs
+                    </p>
+                  </div>
+                </div>
+                <div className="overflow-y-auto h-[calc(100%-80px)]">
+                  <UTXOViewManager
+                    view="table"
+                    filteredUtxos={walletData.utxos}
+                    walletData={walletData}
+                    visibleColumns={{}}
+                    sortConfig={{ key: 'amount', direction: 'desc' }}
+                    handleSort={() => {}}
+                    editableUtxo={null}
+                    setEditableUtxo={() => {}}
+                    datePickerOpen={null}
+                    setDatePickerOpen={() => {}}
+                    confirmDeleteUtxo={() => {}}
+                    handleTagSelection={() => {}}
+                    handleAddToSimulation={() => {}}
+                    handleSenderAddressEdit={() => {}}
+                    handleReceiverAddressEdit={() => {}}
+                    handleDateEdit={() => {}}
+                    handleBtcPriceEdit={() => {}}
+                    handleCostBasisEdit={() => {}}
+                    handleNotesEdit={() => {}}
+                    selectedVisualUtxo={selectedUtxo}
+                    handleVisualSelect={handleUtxoSelect}
+                  />
+                </div>
+              </div>
             </div>
           </TabsContent>
           
