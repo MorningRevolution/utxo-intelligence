@@ -35,20 +35,14 @@ export function SideNav() {
       path: "/dashboard",
       icon: <Home className="mr-2 h-5 w-5" />,
       disabled: false,
-      subItems: [
-        {
-          name: "Portfolio",
-          path: "/portfolio",
-          icon: <ChartLine className="mr-2 h-4 w-4" />,
-          disabled: !hasWallet
-        },
-        {
-          name: "Risk Simulator",
-          path: "/risk-simulator",
-          icon: <AlertTriangle className="mr-2 h-4 w-4" />,
-          disabled: !hasWallet
-        }
-      ]
+      subItems: []
+    },
+    {
+      name: "Portfolio",
+      path: "/portfolio",
+      icon: <ChartLine className="mr-2 h-5 w-5" />,
+      disabled: !hasWallet,
+      subItems: []
     },
     {
       name: "UTXO Visualization",
@@ -57,6 +51,13 @@ export function SideNav() {
       disabled: !hasWallet,
       subItems: [],
       tooltip: "Explore your coins visually – by time, connection, or risk."
+    },
+    {
+      name: "Risk Simulator",
+      path: "/risk-simulator",
+      icon: <AlertTriangle className="mr-2 h-5 w-5" />,
+      disabled: !hasWallet,
+      subItems: []
     },
     {
       name: "AI Assistant",
