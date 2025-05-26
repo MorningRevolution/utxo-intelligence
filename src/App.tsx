@@ -10,7 +10,6 @@ import { Layout } from "./components/layout/Layout";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import WalletImport from "./pages/WalletImport";
-import UTXOTable from "./pages/UTXOTable";
 import UTXOMap from "./pages/UTXOMap";
 import RiskSimulator from "./pages/RiskSimulator";
 import ReportExport from "./pages/ReportExport";
@@ -35,7 +34,6 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/wallet-import" element={<WalletImport />} />
-                <Route path="/utxo-table" element={<UTXOTable />} />
                 <Route path="/utxo-map" element={<UTXOMap />} />
                 <Route path="/risk-simulator" element={<RiskSimulator />} />
                 <Route path="/report-export" element={<ReportExport />} />

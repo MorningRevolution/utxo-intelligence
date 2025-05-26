@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChartArea, ChartLine, Wallet, CircleDollarSign, CalendarIcon, DollarSign, Pencil } from "lucide-react";
@@ -235,44 +234,6 @@ function Portfolio() {
             </TabsContent>
           </div>
         </Tabs>
-        
-        <Card className="bg-dark-card border-dark-border shadow-lg mt-12">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>UTXO Management</CardTitle>
-              <CardDescription>
-                Manage your UTXOs and their cost basis information
-              </CardDescription>
-            </div>
-            <div className="flex gap-2">
-              <Button 
-                onClick={() => setIsAddUTXOModalOpen(true)}
-                className="ml-4"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add UTXO
-              </Button>
-              <Button 
-                variant="outline"
-                onClick={() => navigate("/utxo-table")}
-              >
-                View All UTXOs
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-              <div>
-                <p className="text-muted-foreground">
-                  You have {walletData?.utxos.length} UTXOs with a total balance of {formatBTC(walletData!.totalBalance)}
-                </p>
-              </div>
-              <Button onClick={() => navigate("/utxo-table")}>
-                Go to UTXO Manager
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <AddUTXOModal
