@@ -1,73 +1,64 @@
-# Welcome to your Lovable project
+# UTXO Intelligence
 
-## Project info
+A thought experiment, not a product.
 
-**URL**: https://lovable.dev/projects/82cf4db8-ddb6-493d-86f7-61fae34b3f69
+This is the prototype I built while learning to "vibecode": letting an AI
+agent (Lovable) put a working UI together while I focused on what the
+experience should feel like. The goal was never to ship a UTXO management
+app. The goal was to spark a conversation about what one could look like if
+it took regular Bitcoin holders seriously.
 
-## How can I edit this code?
+## What is UTXO management, and why does it matter?
 
-There are several ways of editing your application.
+Every Bitcoin transaction leaves a trail of "leftover change" called UTXOs
+(Unspent Transaction Outputs). Most wallets hide them. Most users never see
+them. But UTXOs are how Bitcoin actually works under the hood, and they
+carry real consequences:
 
-**Use Lovable**
+- **Privacy**: spending two UTXOs together permanently links them in public
+  view, leaking information about who you are.
+- **Cost**: smart UTXO selection can dramatically lower the fees you pay
+  when sending Bitcoin.
+- **Tax**: in most jurisdictions each UTXO carries its own cost basis,
+  which matters at tax time.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/82cf4db8-ddb6-493d-86f7-61fae34b3f69) and start prompting.
+Bitcoiners who care about these things use specialty wallets (Sparrow,
+Specter, Wasabi) that surface UTXOs but assume technical fluency.
+Everyone else flies blind.
 
-Changes made via Lovable will be committed automatically to this repo.
+## What I prototyped
 
-**Use your preferred IDE**
+The repo holds 12 routes exploring what a friendlier UTXO experience could
+look like:
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+| Route | What I was exploring |
+|---|---|
+| Dashboard | A summary view of your full UTXO portfolio |
+| UTXO Map | Visual layout of all your UTXOs by age, size, source |
+| UTXO Table | Sortable, filterable detail view |
+| Portfolio | Cost basis and unrealized gain or loss per UTXO |
+| Risk Simulator | "What happens if I spend these together?" privacy preview |
+| AI Assistant | Plain English UTXO coaching ("you should probably consolidate these three") |
+| Tax Settings | FIFO vs LIFO vs HIFO selection per jurisdiction |
+| Wallet Import | View only xpub import flow |
+| Settings | The usual |
+| Report Export | CSV or PDF for accountants |
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## What I learned (and where this is going)
 
-Follow these steps:
+The exercise convinced me UTXO awareness belongs inside a broader Bitcoin
+native finance app, not as a standalone tool. The categories the prototype
+surfaced (privacy cost, tax basis, fee optimization) are exactly what a
+sovereign Bitcoin holder needs at decision time, not as a separate
+dashboard they have to remember to open.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+That thinking now lives on inside a bigger project I'm building elsewhere.
+This repo stays public as a record of the question that started it.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## Status
 
-# Step 3: Install the necessary dependencies.
-npm i
+**Paused.** Not in development. No issues, no PRs, no support.
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+## License
 
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/82cf4db8-ddb6-493d-86f7-61fae34b3f69) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Apache 2.0
